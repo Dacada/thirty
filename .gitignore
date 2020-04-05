@@ -1,19 +1,24 @@
 # Directory with resulting binaries
 bin
 
+# Exclude object files and generated dependency files (only useful for
+# continuous development
+obj
+
 # For emacs' (and also vim's) C IDE
 .clang_complete
 
-# Automatically generated glad files
+# Automatically generated (downloaded) files
 include/KHR
 include/glad/glad_dbg.h
 include/glad/glad_rel.h
 src/glad_dbg.c
 src/glad_rel.c
-
-# Exclude object files, but not generated dependency files (expensive
-# to generate)
-obj/*.o
+include/stb_image.h
 
 # Python virtualenv (we do include the requirements.txt file
 venv
+
+# TAGS files
+TAGS
+sysh_TAGS

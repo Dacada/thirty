@@ -1,65 +1,127 @@
+#include <window.h>
+#include <util.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include <stdio.h>
-#include <stdlib.h>
+void(*window_onKeyboardInput)(void) = NULL;
+void(*window_onKeyboardEvent)(int, int, int) = NULL;
+void(*window_onMousePosition)(double, double) = NULL;
+void(*window_onMouseScroll)(double) = NULL;
+void(*window_onDraw)(void) = NULL;
 
-#include <window.h>
+vec3s window_clearColor = { .x=0.2f, .y=0.3f, .z=0.3f };
+char *window_title = NULL;
 
-static void framebufferSizeChanged(GLFWwindow *window, int width, int height) {
-        (void)window;
+static void onFramebufferSizeChanged(GLFWwindow *const w,
+                                     const int width, const int height) {
+        (void)w;
         glViewport(0, 0, width, height);
 }
 
-static window_processInput_cb onProcessInput = NULL;
-void window_setProcessInputCallback(window_processInput_cb fun) {
-        onProcessInput = fun;
+static void onKeyboardEvent(GLFWwindow *const w, const int key,
+                            const int scancode, const int action,
+                            const int mods) {
+        (void)w;
+        (void)scancode;
+        window_onKeyboardEvent(key, action, mods);
 }
 
-static window_draw_cb onDraw = NULL;
-void window_setDrawCallback(window_draw_cb fun) {
-        onDraw = fun;
+static void onMousePosition(GLFWwindow *const w, const double xpos,
+                            const double ypos) {
+        (void)w;
+        if (window_onMousePosition != NULL) {
+                window_onMousePosition(xpos, ypos);
+        }
 }
 
-GLFWwindow *window_init(int width, int height, const char *const title) {
+static void onMouseScroll(GLFWwindow *const w, const double xoff,
+                          const double yoff) {
+        (void)w;
+        (void)xoff;
+        if (window_onMouseScroll != NULL) {
+                window_onMouseScroll(yoff);
+        }
+}
+
+static void onDraw(void) {
+        if (window_onDraw != NULL) {
+                window_onDraw();
+        }
+}
+
+static GLFWwindow *window = NULL;
+static float timeDelta = 1.0f/30.0f; // Initialize with a sane value
+                                     // just in case
+
+void window_init(const int width, const int height) {
         glfwInit();
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        
-        GLFWwindow *window = glfwCreateWindow(width, height, title, NULL, NULL);
+
+        window = glfwCreateWindow(width, height, "", NULL, NULL);
         if (window == NULL) {
-                fprintf(stderr, "Failed to create GLFW window\n");
                 glfwTerminate();
-                exit(EXIT_FAILURE);
+                die("Failed to create GLFW window.");
         }
+
         glfwMakeContextCurrent(window);
-        
+
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-                fprintf(stderr, "Failed to initialize GLAD\n");
                 glfwTerminate();
-                exit(EXIT_FAILURE);
+                die("Failed to initialize GLAD.");
         }
-        
+
         glViewport(0, 0, width, height);
-        glfwSetFramebufferSizeCallback(window, framebufferSizeChanged);
+        glfwSetFramebufferSizeCallback(window, onFramebufferSizeChanged);
+        glfwSetKeyCallback(window, onKeyboardEvent);
+        glfwSetCursorPosCallback(window, onMousePosition);
+        glfwSetScrollCallback(window, onMouseScroll);
         
-        return window;
+        glEnable(GL_DEPTH_TEST);
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
-void window_run(GLFWwindow *window) {
+void window_run(void) {
         while (!glfwWindowShouldClose(window)) {
-                if (onProcessInput != NULL) onProcessInput(window);
-                
-                glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-                glClear(GL_COLOR_BUFFER_BIT);
-                
-                if (onDraw != NULL) onDraw();
-                
+                // Update deltatime
+                timeDelta = (float)glfwGetTime();
+                glfwSetTime(0);
+
+                // Clear screen
+                glClearColor(window_clearColor.x, window_clearColor.y,
+                             window_clearColor.z, 1.0f);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+                // Draw stuff
+                onDraw();
+
                 glfwSwapBuffers(window);
+
+                // Process inputs
                 glfwPollEvents();
+                window_onKeyboardInput();
         }
-        
         glfwTerminate();
+}
+
+float window_timeDelta(void) {
+        return timeDelta;
+}
+
+bool window_keyPressed(const int key) {
+        return glfwGetKey(window, key) == GLFW_PRESS;
+}
+
+void window_updateTitle(void) {
+        if (window_title == NULL) {
+                glfwSetWindowTitle(window, "");
+        } else {
+                glfwSetWindowTitle(window, window_title);
+        }
+}
+
+void window_close(void) {
+        glfwSetWindowShouldClose(window, 1);
 }

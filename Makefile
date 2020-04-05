@@ -30,8 +30,8 @@ TARGETS := $(BIN_DIR)/main_dbg $(BIN_DIR)/main_rel $(BIN_DIR)/main_dev
 CC := gcc
 
 # Common flags
-CFLAGS := -DASSETSPATH=\"$(realpath assets)/\" -I$(INCLUDE_DIR) `pkg-config --cflags glfw3` `pkg-config --cflags cglm` -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wmissing-prototypes -Wwrite-strings -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wimplicit-fallthrough -std=c11 -MMD
-LDFLAGS := `pkg-config --libs glfw3` `pkg-config --libs cglm` -ldl -std=c11
+CFLAGS := -DASSETSPATH=\"$(realpath assets)\" -I$(INCLUDE_DIR) `pkg-config --cflags glfw3` `pkg-config --cflags cglm` -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wmissing-prototypes -Wwrite-strings -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wimplicit-fallthrough -std=c11 -MMD
+LDFLAGS := `pkg-config --libs glfw3` `pkg-config --libs cglm` -lm -ldl -std=c11
 
 # Flags for generating glad files (also common)
 GLAD_FLAGS := --profile=core --api=gl=3.3 --spec=gl --extensions= --out-path=$$tmpdir
@@ -48,7 +48,21 @@ GLAD_FLAGS_DEBUG := --generator=c-debug
 GLAD_FLAGS_RELEASE := --generator=c
 
 
-.PHONY: dbg dev rel clean veryclean purify impolute
+define FIND_HEADERS_CMD
+( \
+    find . '(' -type d -name .git ')' -prune -o \
+           '(' -type d -name venv ')' -prune -o \
+           -type f '(' -name '*.c' -o -name '*.h' ')' -print; \
+)
+endef
+
+define FIND_SYSHEADERS_CMD
+( \
+    find /usr/include -type f -name '*.h' -print; \
+)
+endef
+
+.PHONY: dbg dev rel generated clean veryclean purify impolute etags
 
 rel: $(BIN_DIR)/main
 dev: $(BIN_DIR)/main_dev
@@ -58,12 +72,20 @@ clean:
 	-rm -f $(BIN_DIR)/* $(OBJ_DIR)/*.o
 veryclean: clean
 	-rm -f $(OBJ_DIR)/*
+	-rm -f TAGS
 purify: veryclean
 	-rm -f $(SRC_DIR)/glad_dbg.c $(SRC_DIR)/glad_rel.c
 	-rm -f $(INCLUDE_DIR)/glad/glad_dbg.h $(INCLUDE_DIR)/glad/glad_rel.h
 	-rm -rf $(INCLUDE_DIR)/KHR/
+	-rm -f sysh_TAGS
 impolute:
 	-rm -rf venv
+
+etags: sysh_TAGS
+	-rm -f TAGS
+	$(FIND_HEADERS_CMD) | etags --include=$< -
+sysh_TAGS:
+	$(FIND_SYSHEADERS_CMD) | etags -o $@ -
 
 
 $(BIN_DIR)/main_dbg: LDFLAGS += $(LDFLAGS_DEBUG)
@@ -133,6 +155,9 @@ $(INCLUDE_DIR)/glad/glad_dbg.h $(SRC_DIR)/glad_dbg.c &: venv
 venv: requirements.txt
 	virtualenv venv
 	source venv/bin/activate; pip install -r requirements.txt
+
+$(INCLUDE_DIR)/stb_image.h:
+	wget -q -O $@ "https://raw.githubusercontent.com/nothings/stb/master/stb_image.h"
 
 
 -include $(DEPENDS_DEBUG)
