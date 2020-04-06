@@ -59,6 +59,11 @@ void window_init(const int width, const int height) {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifndef NDEBUG
+        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+#else
+        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_FALSE);
+#endif
 
         window = glfwCreateWindow(width, height, "", NULL, NULL);
         if (window == NULL) {
@@ -80,6 +85,11 @@ void window_init(const int width, const int height) {
         glfwSetScrollCallback(window, onMouseScroll);
         
         glEnable(GL_DEPTH_TEST);
+#ifdef NDEBUG
+        glEnable(GL_CULL_FACE);
+#else
+        glDisable(GL_CULL_FACE);
+#endif
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 

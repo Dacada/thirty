@@ -30,10 +30,13 @@ static void init_defaults(struct camera *const cam) {
         cam->zoom_level = defaultZoom;
 }
 
-void camera_init(struct camera *const cam, const vec3s *const position,
-                 const vec3s *const up, const float *const yaw,
-                 const float *const pitch) {
+void camera_init(struct camera *const cam,
+                 const float width, const float height,
+                 const vec3s *const position, const vec3s *const up,
+                 const float *const yaw, const float *const pitch) {
         init_defaults(cam);
+        cam->width = width;
+        cam->height = height;
         cam->yaw = NULLDEFAULT(yaw, defaultYaw);
         cam->pitch = NULLDEFAULT(pitch, defaultPitch);
         cam->position = NULLDEFAULT(position, defaultPosition);
@@ -44,6 +47,12 @@ void camera_init(struct camera *const cam, const vec3s *const position,
 mat4s camera_viewMatrix(const struct camera *const cam) {
         vec3s tmp = glms_vec3_add(cam->position, cam->front);
         return glms_lookat(cam->position, tmp, cam->up);
+}
+
+mat4s camera_projectionMatrix(const struct camera *const cam) {
+        float fov = glm_rad(cam->zoom_level);
+        float aspect = cam->width / cam->height;
+        return glms_perspective(fov, aspect, 0.1f, 100.0f);
 }
 
 void camera_move(struct camera *const cam, const enum camera_movement mov,

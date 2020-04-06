@@ -65,7 +65,7 @@ endef
 .PHONY: dbg dev rel generated clean veryclean purify impolute etags
 
 rel: $(BIN_DIR)/main
-dev: $(BIN_DIR)/main_dev
+dev: etags $(BIN_DIR)/main_dev
 dbg: $(BIN_DIR)/main_dbg
 
 clean:
@@ -104,6 +104,12 @@ $(OBJ_DIR)/%_dev.o: CFLAGS += $(CFLAGS_DEVELOP)
 # prototypes for some reason
 $(OBJ_DIR)/glad_dbg.o: CFLAGS += -Wno-missing-prototypes
 $(OBJ_DIR)/glad_dev.o: CFLAGS += -Wno-missing-prototypes
+
+# Remove some spurious warnings from stb_image
+$(OBJ_DIR)/stb_image_%.o: CFLAGS += -Wno-cast-qual
+$(OBJ_DIR)/stb_image_%.o: CFLAGS += -Wno-sign-conversion
+$(OBJ_DIR)/stb_image_%.o: CFLAGS += -Wno-conversion
+$(OBJ_DIR)/stb_image_%.o: CFLAGS += -Wno-switch-default
 
 # Specific dependencies for glad generated files
 $(OBJ_DIR)/glad_rel.o: $(SRC_DIR)/glad_rel.c

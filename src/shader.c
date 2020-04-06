@@ -6,13 +6,6 @@
 #include <string.h>
 #include <limits.h>
 
-// This is usually the actual number, just in case it's not in
-// limits.h
-// TODO: Windows version should be 260, put in utils.h instead?
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
-
 static char *readall(const char *const filename) {
         if (!accessible(filename, true, false, false)) {
                 bail("Failed to access shader file.");

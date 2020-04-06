@@ -1,11 +1,19 @@
 #ifndef CUTIL_UTIL_H
 #define CUTIL_UTIL_H
 
-#include <unistd.h>
+#include <unistd.h> //TODO: Only for linux
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <limits.h>
+
+// This is usually the actual number, just in case it's not in
+// limits.h
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+// TODO: Also for windows: 260
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #define max(a,b) ((a) > (b) ? (a) : (b))
