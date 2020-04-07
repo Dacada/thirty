@@ -8,7 +8,7 @@
 
 static char *readall(const char *const filename) {
         if (!accessible(filename, true, false, false)) {
-                bail("Failed to access shader file.");
+                bail("Failed to access shader file.\n");
         }
         
         FILE *const f = sfopen(filename, "rb");
@@ -29,7 +29,7 @@ static void buildpath(const size_t destsize, char *const dest,
                       const char *const extension) {
         size_t len = pathnjoin(destsize, dest, 3, ASSETSPATH, "shaders", file);
         if (len + extsize - 1 >= destsize) {
-                die("Path to shader file too long.");
+                die("Path to shader file too long.\n");
         }
         strcpy(dest+len-2, extension);
 }

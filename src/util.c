@@ -68,7 +68,7 @@ FILE *sfopen(const char *const pathname, const char *const mode) {
         FILE *const f = fopen(pathname, mode);
         if (f == NULL) {
                 perror(pathname);
-                die("Failed to open shader file.");
+                die("Failed to open file.");
         }
         return f;
 }

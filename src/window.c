@@ -68,14 +68,14 @@ void window_init(const int width, const int height) {
         window = glfwCreateWindow(width, height, "", NULL, NULL);
         if (window == NULL) {
                 glfwTerminate();
-                die("Failed to create GLFW window.");
+                die("Failed to create GLFW window.\n");
         }
 
         glfwMakeContextCurrent(window);
 
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
                 glfwTerminate();
-                die("Failed to initialize GLAD.");
+                die("Failed to initialize GLAD.\n");
         }
 
         glViewport(0, 0, width, height);
