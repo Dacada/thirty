@@ -82,19 +82,19 @@ unsigned object_initFromFile(struct object **const objects,
                 sfread(vertices, sizeof(*vertices), obj_header.vertlen, f);
                 sfread(indices, sizeof(*indices), obj_header.indlen, f);
 
-                int c = fgetc(f);
-                if (c != EOF) {
-                        //ungetc(c, f);
-                        bail("Malformated file, trash at the end, I'm being "
-                             "very strict so I won't just ignore it.\n");
-                }
-
-                object_initFromArray(*objects,
+                object_initFromArray(object,
                                      vertices, obj_header.vertlen,
                                      indices, obj_header.indlen);
                 object++;
                 free(vertices);
                 free(indices);
+        }
+
+        int c = fgetc(f);
+        if (c != EOF) {
+                //ungetc(c, f);
+                bail("Malformated file, trash at the end, I'm being "
+                     "very strict so I won't just ignore it.\n");
         }
 
         return header.nobjs;

@@ -9,29 +9,34 @@
 #define SCREEN_HEIGHT 600
 
 static unsigned int shader;
+static unsigned int shader2;
 
 static struct object cubes[10];
+static struct object humanf;
 
+static const vec3s humanfPosition = { .x=0.0f, .y=0.0f, .z=7.0f };
+static const float humanfRotationY = (float)GLM_PI;
 static const vec3s cubePositions[] = {
-  { .x= 0.0f, .y= 0.0f, .z=  0.0f },
-  { .x= 2.0f, .y= 5.0f, .z=-15.0f },
-  { .x=-1.5f, .y=-2.2f, .z=- 2.5f },
-  { .x=-3.8f, .y=-2.0f, .z=-12.3f },
-  { .x= 2.4f, .y=-0.4f, .z=- 3.5f },
-  { .x=-1.7f, .y= 3.0f, .z=- 7.5f },
-  { .x= 1.3f, .y=-2.0f, .z=- 2.5f },
-  { .x= 1.5f, .y= 2.0f, .z=- 2.5f },
-  { .x= 1.5f, .y= 0.2f, .z=- 1.5f },
-  { .x=-1.3f, .y= 1.0f, .z=- 1.5f }
+        { .x= 0.0f, .y= 0.0f, .z= 0.0f },
+        { .x= 2.0f, .y= 4.0f, .z=-1.8f },
+        { .x=-1.5f, .y=-2.2f, .z=-2.5f },
+        { .x=-3.8f, .y=-2.0f, .z=-2.3f },
+        { .x= 2.4f, .y= 0.4f, .z=-3.5f },
+        { .x=-1.7f, .y= 3.0f, .z=-2.5f },
+        { .x= 1.3f, .y=-2.0f, .z=-2.5f },
+        { .x= 1.5f, .y= 2.0f, .z=-2.5f },
+        { .x= 1.5f, .y= 0.2f, .z=-1.5f },
+        { .x=-1.3f, .y= 1.0f, .z=-1.5f }
 };
 
 static const char *cubeTextures[] = {
         "container",
         "awesomeface"
 };
+static const char *const humanfTexture = "HumanF";
 
 static const vec3s startingCameraPosition = {
-        .x=0.0f, .y=0.0f, .z=3.0f
+        .x=0.0f, .y=1.25f, .z=10.0f
 };
 static struct camera cam;
 
@@ -109,6 +114,7 @@ static void draw(void) {
                 struct object *cube = &cubes[i];
                 object_draw(cube, &cam, shader);
         }
+        object_draw(&humanf, &cam, shader2);
 
 #ifndef NDEBUG
         GLenum error = glGetError();
@@ -133,6 +139,10 @@ int main(void) {
         shader_setInt(shader, "texture0", 0);
         shader_setInt(shader, "texture1", 1);
 
+        shader2 = shader_new("simple", "simple");
+        shader_use(shader2);
+        shader_setInt(shader2, "texture0", 0);
+
         for (int i=0; i<10; i++) {
                 struct object *cube = &cubes[i];
                 object_initFromFile(&cube, "test", true);
@@ -154,6 +164,12 @@ int main(void) {
                 object_rotate(cube, angle, rot_axis);
                 object_scale(cube, scale);
         }
+        struct object *human = &humanf;
+        object_initFromFile(&human, "HumanF", true);
+        object_setTextures(human, &humanfTexture, 1);
+        object_translate(human, humanfPosition);
+        object_rotate(human, humanfRotationY,
+                      ((vec3s){{0.0f, 1.0f, 0.0f}}));
 
         window_onKeyboardInput = processKeyboardInput;
         window_onKeyboardEvent = processKeyboardEvent;
@@ -164,7 +180,9 @@ int main(void) {
         window_run();
 
         for (int i=0; i<10; i++) {
+                // TODO: This crashes, why?
                 //object_tearDown(&cubes[i]);
         }
+        //object_tearDown(human);
         return 0;
 }

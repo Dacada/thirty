@@ -6,9 +6,9 @@
 static const vec3s defaultPosition = { .x=0.0f, .y=0.0f, .z=0.0f };
 static const vec3s defaultUp = { .x=0.0f, .y=1.0f, .z=0.0f };
 static const vec3s defaultFront = { .x=0.0f, .y=0.0f, .z=-1.0f };
-static const float defaultYaw = -90.0f;
+static const float defaultYaw = -(float)GLM_PI_2;
 static const float defaultPitch = 0.0f;
-static const float defaultSpeed = 2.5f;
+static const float defaultSpeed = 10.0f;
 static const float defaultSensitivity = 0.1f;
 static const float defaultZoom = 45.0f;
 
