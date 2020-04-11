@@ -1,3 +1,5 @@
+# <pep8-80 compliant>
+
 """This converter converts the mesh data from a Blender object into a
 representation that is more suitable for OpenGL indexed drawing.
 
@@ -14,9 +16,9 @@ from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 
 # useful imports from Blender's API
-from mathutils import Vector
+from mathutils import Vector, Matrix
 
-# useful imports from Python's stdlib itself
+# useful imports from Python's stdlib
 import struct
 import array
 
@@ -25,7 +27,7 @@ bl_info = {
     'name': "BOGLE exporter (dev)",
     'description': "Export blender data to a custom binary file format BOGLE",
     'author': "David Carrera",
-    'version': (0, 0, 0),
+    'version': (0, 0),
     'blender': (2, 82, 0),
     'location': "File > Export",
     'warning': "",
@@ -37,6 +39,11 @@ class BOGLEConversionError(Exception):
     pass
 
 
+def assign_attributes_to_object(object, dict):
+    for _ in map(lambda item: setattr(object, *item), dict.items()):
+        pass
+
+
 class BOGLEVertex:
     """Represents vertex data for OpenGL: vertex coordinates (3D) and texture
 coordinates (2D)."""
@@ -46,7 +53,7 @@ coordinates (2D)."""
 
     def export(self, f):
         """Write vertex data to file"""
-        vertex_fmt = '<fffff'
+        vertex_fmt = '<5f'
         vertex_data = (
             self.vert.x,
             self.vert.y,
@@ -61,7 +68,17 @@ coordinates (2D)."""
 class BOGLEObject:
     """Blender object export to BOGLE object file"""
 
-    def __init__(self):
+    # (x,y,z) => (-x, z, y)
+    _change_basis_matrix = Matrix((
+        (-1, 0, 0, 0),
+        (0, 0, 1, 0),
+        (0, 1, 0, 0),
+        (0, 0, 0, 1)
+    ))
+
+    def __init__(self, **settings):
+        assign_attributes_to_object(self, settings)
+
         self.name = ""
         self.vertices = []
         self.indices = []
@@ -71,28 +88,38 @@ class BOGLEObject:
         self._indexed_mesh = []
         self._triangle_vertices = {}
         self._index_map = {}
+        self._transforms = None
 
     def convert(self, object):
         """This is where the fun starts, the rest is boilerplate. Check each of the
         functions called here to see every step of the process.
 
         """
-        self._object = object
-        self._obtain_name()
-        self._obtain_mesh()
-        self._index_mesh()
-        self._remove_indexed_mesh_repeats()
-        self._triangulate_indexed_mesh()
-        self._map_indices()
-        self._get_indices()
-        self._get_vertices()
+        try:
+            self.name = object.original.name
+            self._object = object
+            self._obtain_mesh()
+            print(f"Exporting mesh with {len(self._mesh.vertices)} vertices")
+            self._index_mesh()
+            self._remove_indexed_mesh_repeats()
+            self._triangulate_indexed_mesh()
+            self._map_indices()
+            self._get_indices()
+            self._get_vertices()
+            print(f"Converted mesh to {len(self.vertices)} vertices")
+            self._get_transforms()
+        finally:
+            self._cleanup()
 
     def export(self, f):
         """Export the converted data"""
+        print(f"Writing {len(self.vertices)} vertices and "
+              f"{len(self.indices)} indices to file.")
         self._export_header(f)
         self._export_name(f)
         self._export_vertices(f)
         self._export_indices(f)
+        self._export_transforms(f)
 
     def _export_header(self, f):
         header_fmt = "<BLL"
@@ -118,12 +145,22 @@ class BOGLEObject:
         indices = array.array(indices_fmt, self.indices).tobytes()
         f.write(indices)
 
-    def _obtain_name(self):
-        self.name = self._object.name
+    def _export_transforms(self, f):
+        matrix_fmt = '<3f3f1f3f'
+        trans, (rot, a), scale = self._transforms
+        transforms = (
+            trans.x, trans.y, trans.z,
+            rot.x, rot.y, rot.z, a,
+            scale.x, scale.y, scale.z
+        )
+        matrix = struct.pack(matrix_fmt, *transforms)
+        f.write(matrix)
 
     def _obtain_mesh(self):
-        # TODO: Automatically triangulate, apply modifiers, etc.
-        self._mesh = self._object.data
+        if self.apply_modifiers:
+            self._mesh = self._object.to_mesh()
+        else:
+            self._mesh = self._object.original.to_mesh()
         self._uv_data = self._mesh.uv_layers.active.data
 
     def _index_mesh(self):
@@ -222,13 +259,56 @@ class BOGLEObject:
         # triangle, we get the index corresponding to each of its three
         # vertices, and add these three indexes sequentially to the final list.
 
-        # TODO: CORRECT WINDING ORDER TO AVOID FACE CULLING!!!!
         indices = [
             self._index_map[vertex]
             for triangle, vertices in self._triangle_vertices.items()
-            for vertex in vertices
+            for vertex in self._sort_winding_tri(triangle, vertices)
         ]
         self.indices = indices
+
+    def _sort_winding_tri(self, triangle_index, vertex_indices):
+        # Determine correct winding order for OpenGL face culling (assume CCW):
+        # We have three vertices. We'll start from the first one, p1, and
+        # decide which the other two, p2 or p3, to continue with. Then we'll
+        # end with the other. We calculate the vector that goes from p1 to p2
+        # and the one that goes from p1 to p3 (v1=p2-p1 and v2=p3-p1
+        # respectively). Then we calculate their cross prodcut: v1.cross(v2)
+        # and v2.cross(v1). Whichever is more similar (should be equal) to the
+        # normal blender has for that triangle (mesh.polygons[triangle_index])
+        # marks the correct winding order.
+
+        if self.winding_order == 'NONE':
+            return vertex_indices
+
+        ip1, ip2, ip3 = vertex_indices
+
+        p1 = self._mesh.vertices[ip1[0]].co
+        p2 = self._mesh.vertices[ip2[0]].co
+        p3 = self._mesh.vertices[ip3[0]].co
+
+        v1 = p2 - p1
+        v2 = p3 - p1
+
+        norm1 = v1.cross(v2)
+        norm2 = v2.cross(v1)
+
+        Vector.normalize(norm1)
+        Vector.normalize(norm2)
+
+        norm = self._mesh.polygons[triangle_index].normal
+
+        diff1 = abs((norm-norm1).magnitude)
+        diff2 = abs((norm-norm2).magnitude)
+
+        if diff1 < diff2:
+            order = (ip1, ip2, ip3)
+        else:
+            order = (ip1, ip3, ip2)
+
+        if self.winding_order == 'CW':
+            return reversed(order)
+        else:
+            return order
 
     def _get_vertices(self):
         # Remember that self._index_map is a mapping from a vertex to the index
@@ -244,15 +324,44 @@ class BOGLEObject:
             vertex_index, loop_index = reverse_index_map[gl_index]
             vertex = self._mesh.vertices[vertex_index].co
             uv = self._uv_data[loop_index].uv
-            gl_vertex = BOGLEVertex(-vertex.x, vertex.z, vertex.y, uv.x, uv.y)
+            gl_vertex = BOGLEVertex(*self._convert_vec3(vertex), *uv)
             self.vertices.append(gl_vertex)
+
+    def _convert_vec3(self, vec):
+        if self.convert_coordinates:
+            return vec @ self._change_basis_matrix
+        else:
+            return Vector(vec)
+
+    def _get_transforms(self):
+        trans, rotq, scale = self._object.matrix_local.decompose()
+        rot, a = rotq.to_axis_angle()
+        if self.convert_coordinates:
+            convert_trans = trans @ self._change_basis_matrix
+            convert_rot = rot @ self._change_basis_matrix
+            convert_rota = (convert_rot, a)
+            convert_scale = scale @ self._change_basis_matrix
+            self._transforms = (convert_trans, convert_rota, convert_scale)
+        else:
+            self._transforms = (trans, (rot, a), scale)
+
+    def _cleanup(self):
+        self._object.to_mesh_clear()
+        self._object.original.to_mesh_clear()
+        self._object = None
+        self._mesh = None
+        self._indexed_mesh = []
+        self._triangle_vertices = {}
+        self._index_map = {}
 
 
 class BOGLExporter:
     """Blender export to BOGLE file"""
 
-    def __init__(self):
+    def __init__(self, **settings):
         self.objects = []
+        self.settings = settings
+        assign_attributes_to_object(self, settings)
 
     def convert(self, context):
         """Convert the objects that should be converted"""
@@ -268,17 +377,26 @@ class BOGLExporter:
                 object.export(f)
 
     def _iterate_objects(self, context):
-        for object in context.scene.objects:
-            if object.type == 'MESH':
-                yield object
+        depsgraph = context.evaluated_depsgraph_get()
+        for object_instance in depsgraph.object_instances:
+            object = object_instance.object
+            if not self.only_selected_objects or \
+               self.is_object_selected(object):
+                if object.original.type == 'MESH':
+                    yield object
+
+    def is_object_selected(self, object):
+        selected_parent = object.parent is None or \
+            object.parent.original.select_get()
+        return selected_parent and object.original.select_get()
 
     def _convert_object(self, object):
-        bogle_object = BOGLEObject()
+        bogle_object = BOGLEObject(**self.settings)
         bogle_object.convert(object)
         return bogle_object
 
     def _export_header(self, f):
-        header_fmt = '<cccccBL'
+        header_fmt = '<5cBL'
         header_data = (
             b'B', b'O', b'G', b'L', b'E',  # Magic
             0,  # Version
@@ -302,27 +420,50 @@ class BogleExportData(Operator, ExportHelper):
         maxlen=255,
     )
 
-    use_setting: BoolProperty(
-        name="Example Boolean",
-        description="Example Tooltip",
+    apply_modifiers: BoolProperty(
+        name="Apply Modifiers",
+        description="Whether to apply modifiers.",
         default=True,
     )
 
-    type: EnumProperty(
-        name="Example Enum",
-        description="Choose between two items",
+    only_selected_objects: BoolProperty(
+        name="Only selected objects",
+        description="Export only the selected objects instead of the "
+        "whole scene",
+        default=False,
+    )
+
+    convert_coordinates: BoolProperty(
+        name="Convert coordinates",
+        description="Convert Blender's coordinates (x,y,z) to OpenGL "
+        "coordinates (-x,z,y)",
+        default=True,
+    )
+
+    winding_order: EnumProperty(
+        name="Winding order",
+        description="Winding order of triangles, for OpenGL's face culling",
         items=(
-            ('OPT_A', "First Option", "Description one"),
-            ('OPT_B', "Second Option", "Description two"),
+            ('NONE', "Don't care", "Do not care about winding order, whatever "
+             "happens happens"),
+            ('CCW', "Counter-Clockwise", "Default for OpenGL"),
+            ('CW', "Clockwise", ""),
         ),
-        default='OPT_A',
+        default='CCW',
     )
 
     def execute(self, context):
+        settings = {
+            'apply_modifiers': self.apply_modifiers,
+            'only_selected_objects': self.only_selected_objects,
+            'convert_coordinates': self.convert_coordinates,
+            'winding_order': self.winding_order
+        }
+
         print("running BOGLE export...")
         try:
             # self.use_setting, self.type, etc
-            exporter = BOGLExporter()
+            exporter = BOGLExporter(**settings)
             exporter.convert(context)
             exporter.export(self.filepath)
         except BOGLEConversionError as e:

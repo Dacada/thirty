@@ -29,6 +29,7 @@ struct object {
         GLuint *textures;
         unsigned ntextures;
         mat4s model;
+        char *name;
 };
 
 void object_initModule(void);

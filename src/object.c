@@ -72,19 +72,41 @@ unsigned object_initFromFile(struct object **const objects,
                 sfread(&obj_header.vertlen, 4, 1, f);
                 sfread(&obj_header.indlen, 4, 1, f);
 
-                char *name = scalloc(obj_header.namelen, sizeof(*name));
+                char *name = scalloc(obj_header.namelen+(size_t)1,
+                                     sizeof(*name));
                 struct vertex *vertices = scalloc(obj_header.vertlen,
                                                   sizeof(*vertices));
                 unsigned *indices = scalloc(obj_header.indlen,
                                             sizeof(*indices));
 
                 sfread(name, sizeof(*name), obj_header.namelen, f);
+                name[obj_header.namelen] = '\0';
                 sfread(vertices, sizeof(*vertices), obj_header.vertlen, f);
                 sfread(indices, sizeof(*indices), obj_header.indlen, f);
 
                 object_initFromArray(object,
                                      vertices, obj_header.vertlen,
                                      indices, obj_header.indlen);
+
+                vec3s translation, axis, scale;
+                float angle;
+                
+                sfread(translation.raw, sizeof(float), 3, f);
+                sfread(axis.raw, sizeof(float), 3, f);
+                sfread(&angle, sizeof(float), 1, f);
+                sfread(scale.raw, sizeof(float), 3, f);
+                
+                object->model =
+                        glms_scale(
+                                glms_rotate(
+                                        glms_translate(
+                                                object->model,
+                                                translation),
+                                        angle, axis),
+                                scale);
+                
+                object->name = name;
+                
                 object++;
                 free(vertices);
                 free(indices);
@@ -244,4 +266,5 @@ void object_tearDown(struct object *object) {
         glDeleteBuffers(1, &object->ibo);
         glDeleteVertexArrays(1, &object->vao);
         free(object->textures);
+        free(object->name);
 }

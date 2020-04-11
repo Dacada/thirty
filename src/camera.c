@@ -6,7 +6,7 @@
 static const vec3s defaultPosition = { .x=0.0f, .y=0.0f, .z=0.0f };
 static const vec3s defaultUp = { .x=0.0f, .y=1.0f, .z=0.0f };
 static const vec3s defaultFront = { .x=0.0f, .y=0.0f, .z=-1.0f };
-static const float defaultYaw = -(float)GLM_PI_2;
+static const float defaultYaw = 0.0f;
 static const float defaultPitch = 0.0f;
 static const float defaultSpeed = 10.0f;
 static const float defaultSensitivity = 0.1f;
@@ -97,7 +97,8 @@ void camera_look(struct camera *const cam,
         cam->pitch += yoffset * cam->look_sensitivity;
 
         if (constrain_pitch) {
-                glm_clamp(cam->pitch, -89.0f, 89.0f);
+                cam->pitch = glm_clamp(cam->pitch,
+                                       -GLM_PI_2f+0.1f, GLM_PI_2f-0.1f);
         }
         
         update_camera_vectors(cam);
@@ -105,5 +106,5 @@ void camera_look(struct camera *const cam,
 
 void camera_zoom(struct camera *const cam, const float offset) {
         cam->zoom_level -= offset;
-        glm_clamp(cam->zoom_level, 1.0f, 45.0f);
+        cam->zoom_level = glm_clamp(cam->zoom_level, 1.0f, 45.0f);
 }

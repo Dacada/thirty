@@ -2,42 +2,37 @@
 #include <shader.h>
 #include <camera.h>
 #include <window.h>
+#include <util.h>
 #include <cglm/cglm.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 
-static unsigned int shader;
-static unsigned int shader2;
+static unsigned int shader_simple;
+static unsigned int shader_mix;
+static unsigned int shader_color;
 
-static struct object cubes[10];
-static struct object humanf;
+static unsigned nobjects = 0;
+static struct object *objects = NULL;
 
-static const vec3s humanfPosition = { .x=0.0f, .y=0.0f, .z=7.0f };
-static const float humanfRotationY = (float)GLM_PI;
-static const vec3s cubePositions[] = {
-        { .x= 0.0f, .y= 0.0f, .z= 0.0f },
-        { .x= 2.0f, .y= 4.0f, .z=-1.8f },
-        { .x=-1.5f, .y=-2.2f, .z=-2.5f },
-        { .x=-3.8f, .y=-2.0f, .z=-2.3f },
-        { .x= 2.4f, .y= 0.4f, .z=-3.5f },
-        { .x=-1.7f, .y= 3.0f, .z=-2.5f },
-        { .x= 1.3f, .y=-2.0f, .z=-2.5f },
-        { .x= 1.5f, .y= 2.0f, .z=-2.5f },
-        { .x= 1.5f, .y= 0.2f, .z=-1.5f },
-        { .x=-1.3f, .y= 1.0f, .z=-1.5f }
-};
-
-static const char *cubeTextures[] = {
+static const char *const cubeTextures[] = {
         "container",
         "awesomeface"
 };
 static const char *const humanfTexture = "HumanF";
+static const vec4s floorPlaneColor = {
+        .x = 0.4f,
+        .y = 0.3f,
+        .z = 0.1f,
+        .w = 1.0f,
+};
 
 static const vec3s startingCameraPosition = {
-        .x=0.0f, .y=1.25f, .z=10.0f
+        .x=-0.0f, .y=1.2f, .z=-9.0f
 };
+static const float startingCameraYaw = GLM_PI_2f;
 static struct camera cam;
 
 static char title[256];
@@ -109,12 +104,21 @@ static void draw(void) {
         } else {
                 count++;
         }
-        
-        for (int i=0; i<10; i++) {
-                struct object *cube = &cubes[i];
-                object_draw(cube, &cam, shader);
+
+        for (unsigned i=0; i<nobjects; i++) {
+                struct object *obj = &objects[i];
+                unsigned shader;
+                if (strcmp(obj->name, "HumanF") == 0) {
+                        shader = shader_simple;
+                } else if (strncmp(obj->name, "Cube", 4) == 0) {
+                        shader = shader_mix;
+                } else if (strcmp(obj->name, "FloorPlane") == 0) {
+                        shader = shader_color;
+                } else {
+                        bail("Got an unexpected object name! %s\n", obj->name);
+                }
+                object_draw(obj, &cam, shader);
         }
-        object_draw(&humanf, &cam, shader2);
 
 #ifndef NDEBUG
         GLenum error = glGetError();
@@ -128,48 +132,37 @@ int main(void) {
         object_initModule();
         
         camera_init(&cam, SCREEN_WIDTH, SCREEN_HEIGHT,
-                    &startingCameraPosition, NULL, NULL, NULL);
+                    &startingCameraPosition, NULL, &startingCameraYaw, NULL);
         cam.look_sensitivity = 0.01f;
 
         window_init(SCREEN_WIDTH, SCREEN_HEIGHT);
         window_title = title;
+
+        shader_simple = shader_new("simple", "simple");
+        shader_use(shader_simple);
+        shader_setInt(shader_simple, "texture0", 0);
         
-        shader = shader_new("mix_two_textures", "simple");
-        shader_use(shader);
-        shader_setInt(shader, "texture0", 0);
-        shader_setInt(shader, "texture1", 1);
+        shader_mix = shader_new("mix_two_textures", "simple");
+        shader_use(shader_mix);
+        shader_setInt(shader_mix, "texture0", 0);
+        shader_setInt(shader_mix, "texture1", 1);
 
-        shader2 = shader_new("simple", "simple");
-        shader_use(shader2);
-        shader_setInt(shader2, "texture0", 0);
+        shader_color = shader_new("color", "simple");
+        shader_use(shader_color);
+        shader_setVec4(shader_color, "color", floorPlaneColor);
 
-        for (int i=0; i<10; i++) {
-                struct object *cube = &cubes[i];
-                object_initFromFile(&cube, "test", true);
-                
-                object_setTextures(cube, cubeTextures, 2);
-                
-                static const vec3s rot_axis = (vec3s){
-                        .x=1.0f,
-                        .y=0.3f,
-                        .z=0.5f
-                };
-                static const vec3s scale = (vec3s){
-                        .x=0.5f,
-                        .y=0.5f,
-                        .z=0.5f
-                };
-                float angle = (float)i * 20.0f;
-                object_translate(cube, cubePositions[i]);
-                object_rotate(cube, angle, rot_axis);
-                object_scale(cube, scale);
+        nobjects = object_initFromFile(&objects, "scene", false);
+        for (unsigned i=0; i<nobjects; i++) {
+                struct object *obj = &objects[i];
+                if (strcmp(obj->name, "HumanF") == 0) {
+                        object_setTextures(obj, &humanfTexture, 1);
+                } else if (strncmp(obj->name, "Cube", 4) == 0) {
+                        object_setTextures(obj, cubeTextures, 2);
+                } else if (strcmp(obj->name, "FloorPlane") == 0) {
+                } else {
+                        bail("Got an unexpected object name! %s\n", obj->name);
+                }
         }
-        struct object *human = &humanf;
-        object_initFromFile(&human, "HumanF", true);
-        object_setTextures(human, &humanfTexture, 1);
-        object_translate(human, humanfPosition);
-        object_rotate(human, humanfRotationY,
-                      ((vec3s){{0.0f, 1.0f, 0.0f}}));
 
         window_onKeyboardInput = processKeyboardInput;
         window_onKeyboardEvent = processKeyboardEvent;
@@ -179,10 +172,10 @@ int main(void) {
         
         window_run();
 
-        for (int i=0; i<10; i++) {
+        for (unsigned i=0; i<nobjects; i++) {
                 // TODO: This crashes, why?
-                //object_tearDown(&cubes[i]);
+                // object_tearDown(&objects[i]);
         }
-        //object_tearDown(human);
+        
         return 0;
 }

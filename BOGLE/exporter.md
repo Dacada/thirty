@@ -4,7 +4,7 @@ BOGLE meaning Blender to OpenGL Exporter.
 
 The extension is .bgl :)
 
-All numbers are little-endian encoded.
+All numbers are little-endian encoded. All matrices are in column-major order.
 
 There's one header, then for each object an object header and object
 data.
@@ -46,13 +46,15 @@ OBJECT N DATA
 
 * `indlen*4` bytes -> The index data. Unsigned integers.
 
+* `12` bytes -> Translation vector of the object.
+
+* `12` bytes -> Rotation axis of the object.
+
+* `4` bytes -> Rotation angle of the object.
+
+* `12` bytes -> Scale vector of the object.
+
 ## Vertices
 
-Vertices are outlined in the typical OpenGl fashion: 3 floats for the
+Vertices are outlined in the typical OpenGL fashion: 3 floats for the
 vertex coordinate, 2 floats for the texture coordinate.
-
-## That's it?
-
-Yes. More will be added in the future. Immediately in the future,
-normal data. And maybe at some point an entire scene instead of just
-individual objects.
