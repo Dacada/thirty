@@ -122,8 +122,6 @@ unsigned object_initFromFile(struct object **const objects,
         return header.nobjs;
 }
 
-// TODO: Instead of all these arrays, create a vertex struct in the header file
-// and make them pass an array of these structs.
 void object_initFromArray(struct object *object,
                           const struct vertex *vertices, size_t nvertices,
                           const unsigned *indices, size_t nindices) {
@@ -154,6 +152,10 @@ void object_initFromArray(struct object *object,
                               sizeof(struct vertex),
                               (const void*)offsetof(struct vertex, tex));
 
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE,
+                              sizeof(struct vertex),
+                              (const void*)offsetof(struct vertex, norm));
         
         glGenBuffers(1, &object->ibo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, object->ibo);

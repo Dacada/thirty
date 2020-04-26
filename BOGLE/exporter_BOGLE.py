@@ -47,19 +47,23 @@ def assign_attributes_to_object(object, dict):
 class BOGLEVertex:
     """Represents vertex data for OpenGL: vertex coordinates (3D) and texture
 coordinates (2D)."""
-    def __init__(self, vx, vy, vz, tx, ty):
+    def __init__(self, vx, vy, vz, tx, ty, nx, ny, nz):
         self.vert = Vector((vx, vy, vz))
         self.uv = Vector((tx, ty))
+        self.norm = Vector((nx, ny, nz))
 
     def export(self, f):
         """Write vertex data to file"""
-        vertex_fmt = '<5f'
+        vertex_fmt = '<8f'
         vertex_data = (
             self.vert.x,
             self.vert.y,
             self.vert.z,
             self.uv.x,
-            self.uv.y
+            self.uv.y,
+            self.norm.x,
+            self.norm.y,
+            self.norm.z
         )
         vertex = struct.pack(vertex_fmt, *vertex_data)
         f.write(vertex)
@@ -176,7 +180,8 @@ class BOGLEObject:
 
         for triangle_index, triangle in enumerate(self._mesh.polygons):
             if triangle.loop_total != 3:
-                raise Exception("Mesh is not made entirely out of triangles!")
+                raise BOGLEConversionError(
+                    "Mesh is not made entirely out of triangles!")
             for loop_index in triangle.loop_indices:
                 vertex_index = self._mesh.loops[loop_index].vertex_index
                 indices = (vertex_index, loop_index, [triangle_index])
@@ -305,7 +310,7 @@ class BOGLEObject:
         else:
             order = (ip1, ip3, ip2)
 
-        if self.winding_order == 'CW':
+        if self.winding_order == 'CCW':
             return reversed(order)
         else:
             return order
@@ -324,7 +329,11 @@ class BOGLEObject:
             vertex_index, loop_index = reverse_index_map[gl_index]
             vertex = self._mesh.vertices[vertex_index].co
             uv = self._uv_data[loop_index].uv
-            gl_vertex = BOGLEVertex(*self._convert_vec3(vertex), *uv)
+            normal = self._mesh.vertices[vertex_index].normal
+            gl_vertex = BOGLEVertex(
+                *self._convert_vec3(vertex),
+                *uv,
+                *self._convert_vec3(normal))
             self.vertices.append(gl_vertex)
 
     def _convert_vec3(self, vec):

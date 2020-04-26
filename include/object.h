@@ -21,6 +21,7 @@
 struct vertex {
         vec3s vert;
         vec2s tex;
+        vec3s norm;
 };
 
 struct object {

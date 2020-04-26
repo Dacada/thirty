@@ -42,7 +42,7 @@ OBJECT N DATA
 
 * `namelen` bytes -> The name of the object, if any.
 
-* `vertlen*5*4` bytes -> The vertex data, more on that below. Floats.
+* `vertlen*8*4` bytes -> The vertex data, more on that below. Floats.
 
 * `indlen*4` bytes -> The index data. Unsigned integers.
 
@@ -56,5 +56,5 @@ OBJECT N DATA
 
 ## Vertices
 
-Vertices are outlined in the typical OpenGL fashion: 3 floats for the
-vertex coordinate, 2 floats for the texture coordinate.
+Vertices are outlined in the typical OpenGL fashion: 3 floats for the vertex
+coordinate, 2 floats for the texture coordinate, 3 floats for the normal.

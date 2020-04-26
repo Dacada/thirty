@@ -35,6 +35,22 @@ static const vec3s startingCameraPosition = {
 static const float startingCameraYaw = GLM_PI_2f;
 static struct camera cam;
 
+static const vec3s lightPos = {
+        .x=0.0f, .y=10.0f, .z=0.0f
+};
+static const vec4s ambientLightColor = {
+        .x=1.0f, .y=1.0f, .z=1.0f
+};
+static const vec4s difuseLightColor = {
+        .x=1.0f, .y=1.0f, .z=1.0f
+};
+static const vec4s specularLightColor = {
+        .x=1.0f, .y=1.0f, .z=1.0f
+};
+static const float ambientLightPower = 0.15f;
+static const float difuseLightPower = 50.0f;
+static const float specularLightPower = 50.0f;
+
 static char title[256];
 static bool freefly = false;
 
@@ -138,18 +154,66 @@ int main(void) {
         window_init(SCREEN_WIDTH, SCREEN_HEIGHT);
         window_title = title;
 
-        shader_simple = shader_new("simple", "simple");
+        // Up next: material system
+        // * Separate textures from objects
+        // * Create "material" which is associated to object
+        // * Material has data like texture, shaders, and various (difuse?)
+        //   properties
+
+        // After that: Export cameras and lights from blender
+        // * Automate interaction and setting variables in shaders
+
+        shader_simple = shader_new("diffuse", "diffuse");
         shader_use(shader_simple);
         shader_setInt(shader_simple, "texture0", 0);
+        shader_setVec3(shader_simple, "light_pos", lightPos);
+        shader_setVec4(shader_simple, "ambient_light_color",
+                       ambientLightColor);
+        shader_setVec4(shader_simple, "difuse_light_color",
+                       difuseLightColor);
+        shader_setVec4(shader_simple, "specular_light_color",
+                       specularLightColor);
+        shader_setFloat(shader_simple, "ambient_light_power",
+                        ambientLightPower);
+        shader_setFloat(shader_simple, "difuse_light_power",
+                        difuseLightPower);
+        shader_setFloat(shader_simple, "specular_light_power",
+                        specularLightPower);
         
-        shader_mix = shader_new("mix_two_textures", "simple");
+        shader_mix = shader_new("mix_two_textures_difuse", "diffuse");
         shader_use(shader_mix);
         shader_setInt(shader_mix, "texture0", 0);
         shader_setInt(shader_mix, "texture1", 1);
+        shader_setVec3(shader_mix, "light_pos", lightPos);
+        shader_setVec4(shader_mix, "ambient_light_color",
+                       ambientLightColor);
+        shader_setVec4(shader_mix, "difuse_light_color",
+                       difuseLightColor);
+        shader_setVec4(shader_mix, "specular_light_color",
+                       specularLightColor);
+        shader_setFloat(shader_mix, "ambient_light_power",
+                        ambientLightPower);
+        shader_setFloat(shader_mix, "difuse_light_power",
+                        difuseLightPower);
+        shader_setFloat(shader_mix, "specular_light_power",
+                        specularLightPower);
 
-        shader_color = shader_new("color", "simple");
+        shader_color = shader_new("color_difuse", "diffuse");
         shader_use(shader_color);
         shader_setVec4(shader_color, "color", floorPlaneColor);
+        shader_setVec3(shader_color, "light_pos", lightPos);
+        shader_setVec4(shader_color, "ambient_light_color",
+                       ambientLightColor);
+        shader_setVec4(shader_color, "difuse_light_color",
+                       difuseLightColor);
+        shader_setVec4(shader_color, "specular_light_color",
+                       specularLightColor);
+        shader_setFloat(shader_color, "ambient_light_power",
+                        ambientLightPower);
+        shader_setFloat(shader_color, "difuse_light_power",
+                        difuseLightPower);
+        shader_setFloat(shader_color, "specular_light_power",
+                        specularLightPower);
 
         nobjects = object_initFromFile(&objects, "scene", false);
         for (unsigned i=0; i<nobjects; i++) {

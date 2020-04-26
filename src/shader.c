@@ -130,6 +130,10 @@ void shader_setFloat(const unsigned int shader, const char *const name,
 		     const float value) {
         glUniform1f(getloc(shader, name), value); 
 }
+void shader_setVec3(const unsigned int shader, const char *const name,
+                    const vec3s value) {
+        glUniform3fv(getloc(shader, name), 1, value.raw);
+}
 void shader_setVec4(const unsigned int shader, const char *const name,
                     const vec4s value) {
         glUniform4fv(getloc(shader, name), 1, value.raw);
