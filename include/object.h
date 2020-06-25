@@ -31,16 +31,16 @@ struct object {
  * and it will read all of the header and the data then return without doing
  * anything else to the file object.
  */
-void object_init_fromFile(struct object *restrict object, FILE *restrict f);
+void object_init_fromFile(struct object *object, FILE *f);
 
-void object_translate(struct object *restrict object, vec3s position);
-void object_rotate(struct object *restrict object, float angle, vec3s axis);
-void object_scale(struct object *restrict object, vec3s scale);
+void object_translate(struct object *object, vec3s position);
+void object_rotate(struct object *object, float angle, vec3s axis);
+void object_scale(struct object *object, vec3s scale);
 
-void object_draw(const struct object *restrict object,
-                 const struct camera *restrict camera,
+void object_draw(const struct object *object,
+                 const struct camera *camera,
                  const struct light lights[LIGHTLIMIT]);
 
-void object_free(struct object *restrict object);
+void object_free(const struct object *object);
 
 #endif /* OBJECT_H */

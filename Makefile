@@ -89,7 +89,7 @@ purify: veryclean
 	-rm -f $(INCLUDE_DIR)/glad/glad_dbg.h $(INCLUDE_DIR)/glad/glad_rel.h
 	-rm -rf $(INCLUDE_DIR)/KHR/
 	-rm -f sysh_TAGS
-impolute:
+impolute: purify
 	-rm -rf venv
 
 etags: sysh_TAGS

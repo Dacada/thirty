@@ -50,20 +50,20 @@ void camera_init(struct camera *const cam,
 }
 
 mat4s camera_viewMatrix(const struct camera *const cam) {
-        vec3s tmp = glms_vec3_add(cam->position, cam->front);
+        const vec3s tmp = glms_vec3_add(cam->position, cam->front);
         return glms_lookat(cam->position, tmp, cam->up);
 }
 
 mat4s camera_projectionMatrix(const struct camera *const cam) {
-        float fov = glm_rad(cam->zoom_level);
-        float aspect = cam->width / cam->height;
+        const float fov = glm_rad(cam->zoom_level);
+        const float aspect = cam->width / cam->height;
         return glms_perspective(fov, aspect, cam->near, cam->far);
 }
 
 void camera_move(struct camera *const cam, const enum camera_movement mov,
                  const float deltaTime, const bool freefly) {
-        float prev_y = cam->position.y;
-        float velocity = cam->movement_speed * deltaTime;
+        const float prev_y = cam->position.y;
+        const float velocity = cam->movement_speed * deltaTime;
         
         switch (mov) {
         case camera_FORWARD:
@@ -95,9 +95,8 @@ void camera_move(struct camera *const cam, const enum camera_movement mov,
         }
 }
 
-void camera_look(struct camera *const cam,
-                 const float xoffset, const float yoffset,
-                 const bool constrain_pitch) {
+void camera_look(struct camera *const cam, const float xoffset,
+                 const float yoffset, const bool constrain_pitch) {
         cam->yaw += xoffset * cam->look_sensitivity;
         cam->pitch += yoffset * cam->look_sensitivity;
 

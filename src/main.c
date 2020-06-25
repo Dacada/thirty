@@ -19,7 +19,7 @@ static char title[TITLE_BUFFER_SIZE];
 static bool freefly = false;
 
 static void processKeyboardInput(void) {
-        float deltaTime = window_timeDelta();
+        const float deltaTime = window_timeDelta();
         
         if (window_keyPressed(GLFW_KEY_W)) {
                 camera_move(&scene.camera, camera_FORWARD,
@@ -56,15 +56,15 @@ static void processMousePosition(const double xpos, const double ypos) {
         static vec2s last;
 
         vec2s pos = {
-                .x=(float)xpos,
-                .y=(float)ypos
+                .x=(const float)xpos,
+                .y=(const float)ypos
         };
 
         if (first) {
                 last = pos;
                 first = false;
         } else {
-                vec2s offset = {
+                const vec2s offset = {
                         .x=pos.x - last.x,
                         .y=last.y - pos.y
                 };
@@ -74,13 +74,13 @@ static void processMousePosition(const double xpos, const double ypos) {
 }
 
 static void processMouseScroll(const double offset) {
-        camera_zoom(&scene.camera, (float)offset);
+        camera_zoom(&scene.camera, (const float)offset);
 }
 
 static void draw(void) {
         static unsigned count = 0;
         if (count == FRAME_PERIOD_FPS_REFRESH) {
-                int fps = (int)(1.0F/window_timeDelta());
+                const int fps = (const int)(1.0F/window_timeDelta());
                 snprintf(title, TITLE_BUFFER_SIZE, "[%d] Boxes (%s)", fps,
                          freefly ? "Freefly camera" : "FPS camera");
                 window_updateTitle();
@@ -92,7 +92,7 @@ static void draw(void) {
         scene_draw(&scene);
 
 #ifndef NDEBUG
-        GLenum error = glGetError();
+        const GLenum error = glGetError();
         if (error != GL_NO_ERROR) {
                 fprintf(stderr, "OpenGL Error: %u", error);
         }

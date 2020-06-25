@@ -26,20 +26,20 @@ struct camera {
         float movement_speed, look_sensitivity, zoom_level;
 };
 
-void camera_init(struct camera *restrict cam, float width, float height,
+void camera_init(struct camera *cam, float width, float height,
                  const vec3s *position, const vec3s *worldup,
                  const float *yaw, const float *pitch,
                  const float *near, const float *far);
 
-mat4s camera_viewMatrix(const struct camera *restrict cam);
-mat4s camera_projectionMatrix(const struct camera *restrict cam);
+mat4s camera_viewMatrix(const struct camera *cam);
+mat4s camera_projectionMatrix(const struct camera *cam);
 
-void camera_move(struct camera *restrict cam,
-                 enum camera_movement mov, float deltaTime, bool freefly);
+void camera_move(struct camera *cam, enum camera_movement mov,
+                 float deltaTime, bool freefly);
 
-void camera_look(struct camera *restrict cam,
-                 float xoffset, float yoffset, bool constrain_pitch);
+void camera_look(struct camera *cam, float xoffset, float yoffset,
+                 bool constrain_pitch);
 
-void camera_zoom(struct camera *restrict cam, float offset);
+void camera_zoom(struct camera *cam, float offset);
 
 #endif /* CAMERA_H */

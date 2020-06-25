@@ -18,12 +18,12 @@ struct scene {
  * Must also pass the width and height of the screen for correct camera
  * initialization.
  */
-unsigned scene_initFromFile(struct scene *restrict scene, 
+unsigned scene_initFromFile(struct scene *scene, 
                             float width, float height,
-                            const char *restrict filename);
+                            const char *filename);
 
-void scene_draw(const struct scene *restrict scene);
+void scene_draw(const struct scene *scene);
 
-void scene_free(struct scene *restrict scene);
+void scene_free(const struct scene *scene);
 
 #endif /* SCENE_H */

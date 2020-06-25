@@ -14,10 +14,10 @@
  * crash horribly on any kind of error.
  */
 
-unsigned int shader_new(const char *vertfile, const char*fragfile);
+unsigned int shader_new(const char *vertfile, const char *fragfile);
 void shader_use(unsigned int shader);
 void shader_setBool(unsigned int shader, const char *name, bool value);
-void shader_setInt(unsigned int shader, const char *name, int value);
+void shader_setInt( unsigned int shader, const char *name, int value);
 void shader_setFloat(unsigned int shader, const char *name, float value);
 void shader_setVec3(unsigned int shader, const char *name, vec3s value);
 void shader_setVec4(unsigned int shader, const char *name, vec4s value);

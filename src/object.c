@@ -22,16 +22,17 @@ void object_init_fromFile(struct object *const object, FILE *const f) {
                 bail("Number of vertices and indices make no sense. "
                      "Both should be 0 or both should be over 0.");
         }
-        bool skip_geometry = obj_header.vertlen == 0 && obj_header.indlen == 0;
+        const bool skip_geometry = obj_header.vertlen == 0 &&
+                obj_header.indlen == 0;
 
         sfread(object->name, sizeof(char), OBJECT_NAME_SIZE, f);
 
         struct geometry *geometry = NULL;
         if (!skip_geometry) {
-                struct vertex *vertices = scalloc(obj_header.vertlen,
-                                                  sizeof(*vertices));
-                unsigned *indices = scalloc(obj_header.indlen,
-                                            sizeof(*indices));
+                struct vertex *const vertices = scalloc(obj_header.vertlen,
+                                                        sizeof(*vertices));
+                unsigned *const indices = scalloc(obj_header.indlen,
+                                                  sizeof(*indices));
         
                 sfread(vertices, sizeof(*vertices), obj_header.vertlen, f);
                 sfread(indices, sizeof(*indices), obj_header.indlen, f);
@@ -131,10 +132,10 @@ void object_scale(struct object *const object, const vec3s scale) {
 static void draw_tree(const struct object *const object,
                       const struct camera *const camera,
                       const struct light lights[LIGHTLIMIT],
-                      mat4s parent_model) {
+                      const mat4s parent_model) {
         // TODO: All drawing operations should be done per shader, so as to
         // minimize the number of shader changes.
-        mat4s model = glms_mat4_mul(parent_model, object->model);
+        const mat4s model = glms_mat4_mul(parent_model, object->model);
         if (object->geometry != NULL) {
                 geometry_draw(object->geometry, model, camera, object->shader);
                 light_update_shader(&lights[0], object->shader);
@@ -150,7 +151,7 @@ void object_draw(const struct object *const object,
         draw_tree(object, camera, lights, object->model);
 }
 
-void object_free(struct object *object) {
+void object_free(const struct object *object) {
         if (object->geometry != NULL) {
                 geometry_free(object->geometry);
                 free(object->geometry);

@@ -41,17 +41,20 @@ void geometry_initFromArray(struct geometry *const geometry,
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
                               sizeof(struct vertex),
-                              (const void*)offsetof(struct vertex, vert));
+                              (const void *const)
+                              offsetof(struct vertex, vert));
 
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
                               sizeof(struct vertex),
-                              (const void*)offsetof(struct vertex, tex));
+                              (const void *const)
+                              offsetof(struct vertex, tex));
 
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE,
                               sizeof(struct vertex),
-                              (const void*)offsetof(struct vertex, norm));
+                              (const void *const)
+                              offsetof(struct vertex, norm));
         
         glGenBuffers(1, &geometry->ibo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geometry->ibo);
@@ -61,13 +64,13 @@ void geometry_initFromArray(struct geometry *const geometry,
                      indices, GL_STATIC_DRAW);
         
         glBindVertexArray(0);
-        geometry->nindices = (int)nindices;
+        geometry->nindices = (const int)nindices;
 }
 
 static void buildpathTex(const size_t destsize, char *const dest,
                          const char *const file) {
-        size_t len = pathnjoin(destsize, dest, 3,
-                               ASSETSPATH, "textures", file);
+        const size_t len = pathnjoin(destsize, dest, 3, ASSETSPATH,
+                                     "textures", file);
         if (len + 3 - 1 >= destsize) {
                 die("Path to texture file too long.\n");
         }
@@ -80,9 +83,9 @@ void geometry_setTextures(struct geometry *const geometry,
         stbi_set_flip_vertically_on_load(true);
         
         geometry->ntextures = ntextures;
-        geometry->textures = scalloc((size_t)geometry->ntextures,
+        geometry->textures = scalloc((const size_t)geometry->ntextures,
                                    sizeof(*geometry->textures));
-        glGenTextures((int)ntextures, geometry->textures);
+        glGenTextures((const int)ntextures, geometry->textures);
 
         for (unsigned i=0; i<ntextures; i++) {
                 glActiveTexture(GL_TEXTURE0+i);
@@ -96,7 +99,7 @@ void geometry_setTextures(struct geometry *const geometry,
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
                                 GL_LINEAR);
 
-                char path[PATH_MAX];
+                static char path[PATH_MAX];
                 buildpathTex(PATH_MAX, path, textures[i]);
                 if (!accessible(path, true, false, false)) {
                         bail("Can't read texture file.\n");
@@ -105,7 +108,7 @@ void geometry_setTextures(struct geometry *const geometry,
                 int width;
                 int height;
                 int nrChannels;
-                unsigned char *data = stbi_load(
+                unsigned char *const data = stbi_load(
                         path, &width, &height, &nrChannels, 0);
                 if (data == NULL) {
                         bail("Can't read texture image data.\n");
@@ -139,8 +142,8 @@ void geometry_draw(const struct geometry *const geometry,
                 glBindTexture(GL_TEXTURE_2D, geometry->textures[i]);
         }
 
-        mat4s projection = camera_projectionMatrix(camera);
-        mat4s view = camera_viewMatrix(camera);
+        const mat4s projection = camera_projectionMatrix(camera);
+        const mat4s view = camera_viewMatrix(camera);
         shader_setMat4(shader, "view", view);
         shader_setMat4(shader, "projection", projection);
         shader_setMat4(shader, "model", model);
@@ -150,9 +153,10 @@ void geometry_draw(const struct geometry *const geometry,
         glDrawElements(GL_TRIANGLES, geometry->nindices, GL_UNSIGNED_INT, 0);
 }
 
-void geometry_free(struct geometry *const geometry) {
+void geometry_free(const struct geometry *const geometry) {
         if (geometry->textures != NULL) {
-                glDeleteTextures((int)geometry->ntextures, geometry->textures);
+                glDeleteTextures((const int)geometry->ntextures,
+                                 geometry->textures);
         }
         
         glDeleteBuffers(1, &geometry->vbo);

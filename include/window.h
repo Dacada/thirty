@@ -51,10 +51,10 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-extern void(*window_onKeyboardEvent)(int, int, int);
+extern void(*window_onKeyboardEvent)(const int, const int, const int);
 extern void(*window_onKeyboardInput)(void);
-extern void(*window_onMousePosition)(double, double);
-extern void(*window_onMouseScroll)(double);
+extern void(*window_onMousePosition)(const double, const double);
+extern void(*window_onMouseScroll)(const double);
 extern void(*window_onDraw)(void);
 extern void(*window_onTearDown)(void);
 

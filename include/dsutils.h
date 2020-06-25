@@ -14,35 +14,35 @@ struct growingArray {
         void *data;
 };
 
-typedef bool (*growingArray_foreach_cb)(void *, void *);
+typedef bool (*const growingArray_foreach_cb)(void *const, void *const);
 
-void growingArray_init(struct growingArray *restrict ga, size_t itemSize,
-                       size_t initialCapacity);
+void growingArray_init(struct growingArray *ga,
+                       size_t itemSize, size_t initialCapacity);
 
 /*
  * Allocate space (if needed) for a new element for the array, then return a
  * pointer to the newly allocated element. The calling code can then write
  * whatever data it wants to this pointer.
  */
-void *growingArray_append(struct growingArray *restrict ga);
+void *growingArray_append(struct growingArray *ga);
 
 /*
  * Remove the last element from the growing array. Will not deallocate memory
  * in any case.
  */
-void growingArray_pop(struct growingArray *restrict ga);
+void growingArray_pop(struct growingArray *ga);
 
 /*
  * Deallocate all the memory from the growing array that isn't being used so
  * that capacity == size.
  */
-void growingArray_pack(struct growingArray *restrict ga);
+void growingArray_pack(struct growingArray *ga);
 
 /*
  * Deallocate everything in the growing array, reducing capacity to 0. Should
  * be reinitialized if it's going to be reused.
  */
-void growingArray_destroy(struct growingArray *restrict ga);
+void growingArray_destroy(struct growingArray *ga);
 
 /*
  * Run the given function for each element in the growing array. The function
@@ -70,30 +70,30 @@ struct stack {
         void *data;
 };
 
-void stack_init(struct stack *restrict s, size_t capacity, size_t itemSize);
+void stack_init(struct stack *s, size_t capacity, size_t itemSize);
 
 /*
  * Adds an element to the stack, returning the address of the element so that
  * the calling code can write the actual data to it. Returns NULL if stack is
  * full.
  */
-void *stack_push(struct stack *restrict s);
+void *stack_push(struct stack *s);
 
 /*
  * Removes the element at the top of the stack and returns its address. Returns
  * NULL if stack is empty.
  */
-void *stack_pop(struct stack *restrict s);
+void *stack_pop(struct stack *s);
 
 /*
  * Returns the address of the element at the top of the stack or NULL if the
  * stack is empty.
  */
-void *stack_peek(const struct stack *restrict s);
+const void *stack_peek(const struct stack *s);
 
 /*
  * Destroy stack and free memory. Should be reinitialized if reused.
  */
-void stack_destroy(struct stack *restrict s);
+void stack_destroy(struct stack *s);
 
 #endif /* DSUTILS_H */

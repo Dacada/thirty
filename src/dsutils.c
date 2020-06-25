@@ -2,8 +2,8 @@
 #include <util.h>
 #include <stdlib.h>
 
-void growingArray_init(struct growingArray *const ga, const size_t itemSize,
-                       const size_t initialCapacity) {
+void growingArray_init(struct growingArray *const ga,
+                       const size_t itemSize, const size_t initialCapacity) {
         ga->capacity = initialCapacity;
         ga->length = 0;
         ga->itemSize = itemSize;
@@ -15,7 +15,7 @@ void *growingArray_append(struct growingArray *const ga) {
                 ga->capacity *= 2;
                 ga->data = sreallocarray(ga->data, ga->capacity, ga->itemSize);
         }
-        void *ptr = (void*)((char*)ga->data + (ga->length * ga->itemSize));
+        void *const ptr = (void *const)((char *const)ga->data + (ga->length * ga->itemSize));
         ga->length++;
         return ptr;
 }
@@ -49,7 +49,8 @@ void growingArray_foreach(const struct growingArray *const ga,
 
 
 
-void stack_init(struct stack *const s, const size_t capacity, const size_t itemSize) {
+void stack_init(struct stack *const s,
+                const size_t capacity, const size_t itemSize) {
         s->capacity = capacity;
         s->itemSize = itemSize;
         s->ptr = 0;
@@ -58,7 +59,8 @@ void stack_init(struct stack *const s, const size_t capacity, const size_t itemS
 
 void *stack_push(struct stack *const s) {
         if (s->ptr < s->capacity) {
-                void *ptr = (void*)((char*)s->data + s->ptr * s->itemSize);
+                void *ptr = (void *const)
+                        ((char *const)s->data + s->ptr * s->itemSize);
                 s->ptr += 1;
                 return ptr;
         }
@@ -68,14 +70,17 @@ void *stack_push(struct stack *const s) {
 void *stack_pop(struct stack *const s) {
         if (s->ptr > 0) {
                 s->ptr -= 1;
-                return (void*)((char*)s->data + s->ptr * s->itemSize);
+                return (void *const)
+                        ((char *const)s->data + s->ptr * s->itemSize);
         }
         return NULL;
 }
 
-void *stack_peek(const struct stack *const s) {
+const void *stack_peek(const struct stack *const s) {
         if (s->ptr > 0) {
-                return (void*)((char*)s->data + (s->ptr - 1) * s->itemSize);
+                return (const void *const)
+                        ((const char *const)
+                         s->data + (s->ptr - 1) * s->itemSize);
         }
         return NULL;
 }

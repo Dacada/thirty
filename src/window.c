@@ -7,9 +7,9 @@
 #define STARTING_TIMEDELTA (1.0F/30.0F)
 
 void(*window_onKeyboardInput)(void) = NULL;
-void(*window_onKeyboardEvent)(int, int, int) = NULL;
-void(*window_onMousePosition)(double, double) = NULL;
-void(*window_onMouseScroll)(double) = NULL;
+void(*window_onKeyboardEvent)(const int, const int, const int) = NULL;
+void(*window_onMousePosition)(const double, const double) = NULL;
+void(*window_onMouseScroll)(const double) = NULL;
 void(*window_onDraw)(void) = NULL;
 void(*window_onTearDown)(void) = NULL;
 
@@ -82,7 +82,7 @@ void window_init(const int width, const int height) {
 
         glfwMakeContextCurrent(window);
 
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        if (!gladLoadGLLoader((const GLADloadproc)glfwGetProcAddress)) {
                 glfwTerminate();
                 die("Failed to initialize GLAD.\n");
         }
@@ -105,7 +105,7 @@ void window_init(const int width, const int height) {
 void window_run(void) {
         while (!glfwWindowShouldClose(window)) {
                 // Update deltatime
-                timeDelta = (float)glfwGetTime();
+                timeDelta = (const float)glfwGetTime();
                 glfwSetTime(0);
 
                 // Clear screen

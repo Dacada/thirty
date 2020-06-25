@@ -10,9 +10,10 @@
 #define OBJECT_TREE_MAXIMUM_DEPTH 256
 #define OBJECT_TREE_NUMBER_BASE 10
 
-static void buildpathObj(const size_t destsize, char *restrict const dest,
-                         const char *restrict const file) {
-        size_t len = pathnjoin(destsize, dest, 3, ASSETSPATH, "objects", file);
+static void buildpathObj(const size_t destsize, char *const dest,
+                         const char *const file) {
+        const size_t len = pathnjoin(destsize, dest, 3, ASSETSPATH,
+                                     "objects", file);
         if (len + 3 - 1 >= destsize) {
                 die("Path to geometry file too long.\n");
         }
@@ -20,8 +21,8 @@ static void buildpathObj(const size_t destsize, char *restrict const dest,
 }
 
 static struct object *parse_objects(const unsigned nobjs,
-                                    FILE *restrict const f) {
-        struct object *objects = scalloc(nobjs, sizeof(*objects));
+                                    FILE * const f) {
+        struct object *const objects = scalloc(nobjs, sizeof(*objects));
         
         for (unsigned n=0; n<nobjs; n++) {
                 object_init_fromFile(&objects[n], f);
@@ -30,18 +31,19 @@ static struct object *parse_objects(const unsigned nobjs,
         return objects;
 }
 
-static bool assign_parent(void *restrict const element,
-                          void *restrict const args) {
+static bool assign_parent(void *const element,
+                          void *const args) {
         struct object **child = element;
         struct object *parent = args;
         (*child)->parent = parent;
         return true;
 }
 
-static void parse_object_tree(struct object *restrict const root,
-                              struct object *restrict const objects,
-                              const unsigned nobjs, FILE *restrict const f) {
-        struct growingArray *children = scalloc(nobjs+1, sizeof(*children));
+static void parse_object_tree(struct object *const root,
+                              struct object *const objects,
+                              const unsigned nobjs, FILE *const f) {
+        struct growingArray *const children =
+                scalloc(nobjs+1, sizeof(*children));
         for (unsigned i=0; i<nobjs+1; i++) {
                 growingArray_init(&children[i], sizeof(struct object*), 1);
         }
@@ -65,16 +67,16 @@ static void parse_object_tree(struct object *restrict const root,
                         ungetc(c, f);
                         newObject += 1;
                         
-                        struct object **obj = growingArray_append(
+                        const struct object **const obj = growingArray_append(
                                 &children[currentObject]);
                         *obj = &objects[newObject-1];
                 } else if (isspace(c)) {
                 } else if (c == '{') {
-                        unsigned *num = stack_push(&stack);
+                        unsigned *const num = stack_push(&stack);
                         *num = currentObject;
                         currentObject = newObject;
                 } else if (c == '}') {
-                        unsigned *num = stack_pop(&stack);
+                        const unsigned *const num = stack_pop(&stack);
                         newObject = currentObject;
                         currentObject = *num;
                 } else if (c == '\0') {
@@ -100,17 +102,17 @@ static void parse_object_tree(struct object *restrict const root,
                         bail("Too many children.\n");
                 }
                 obj->children = children[i].data;
-                obj->nchildren = (unsigned int)children[i].length;
+                obj->nchildren = (const unsigned int)children[i].length;
                 growingArray_foreach(&children[i], &assign_parent, obj);
         }
 
         free(children);
 }
 
-static void parse_cameras(struct camera *restrict const camera,
+static void parse_cameras(struct camera *const camera,
                           const unsigned ncams,
                           const float width, const float height,
-                   FILE *const f) {
+                          FILE *const f) {
         if (ncams != 1) {
                 bail("Right now only exactly 1 camera is supported.");
         }
@@ -127,9 +129,9 @@ static void parse_cameras(struct camera *restrict const camera,
                     NULL, &yaw, &pitch, NULL, NULL);
 }
 
-static void parse_lights(struct light *restrict const lights,
+static void parse_lights(struct light *const lights,
                          const unsigned nlights,
-                         FILE *restrict const f) {
+                         FILE *const f) {
         for (unsigned n=0; n<nlights; n++) {
                 sfread(&lights[n].position, 4, 3, f);
                 sfread(&lights[n].ambientColor, 4, 4, f);
@@ -150,7 +152,7 @@ unsigned scene_initFromFile(struct scene *const scene,
                 bail("Cannot read scene file.\n");
         }
 
-        FILE *f = sfopen(path, "rb");
+        FILE *const f = sfopen(path, "rb");
         struct {
                 char magic[BOGLE_MAGIC_SIZE];
                 char version;
@@ -174,7 +176,7 @@ unsigned scene_initFromFile(struct scene *const scene,
         sfread(&header.ncams, 4, 1, f);
         sfread(&header.nlights, 4, 1, f);
 
-        struct object *objects = parse_objects(header.nobjs, f);
+        struct object *const objects = parse_objects(header.nobjs, f);
         parse_object_tree(&scene->root, objects, header.nobjs, f);
         parse_cameras(&scene->camera, header.ncams, width, height, f);
         parse_lights(scene->lights, header.nlights, f);
@@ -187,7 +189,7 @@ unsigned scene_initFromFile(struct scene *const scene,
         strcpy(scene->root.name, "root");
         scene->root.parent = NULL;
 
-        int c = fgetc(f);
+        const int c = fgetc(f);
         if (c != EOF) {
                 //ungetc(c, f);
                 bail("Malformated file, trash at the end, I'm being "
@@ -202,7 +204,7 @@ void scene_draw(const struct scene *const scene) {
         object_draw(&scene->root, &scene->camera, scene->lights);
 }
 
-void scene_free(struct scene *const scene) {
+void scene_free(const struct scene *const scene) {
         free(scene->root.children);
         for (unsigned i=0; i<scene->nobjs; i++) {
                 free(scene->objs[i].children);

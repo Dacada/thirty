@@ -27,20 +27,22 @@ static char *readall(const char *const filename) {
 static void buildpath(const size_t destsize, char *const dest,
                       const char *const file, const size_t extsize,
                       const char *const extension) {
-        size_t len = pathnjoin(destsize, dest, 3, ASSETSPATH, "shaders", file);
+        const size_t len = pathnjoin(destsize, dest, 3, ASSETSPATH,
+                                     "shaders", file);
         if (len + extsize - 1 >= destsize) {
                 die("Path to shader file too long.\n");
         }
         strcpy(dest+len-2, extension);
 }
 
-static void handle_compile_infolog(unsigned int shader) {
+static void handle_compile_infolog(const unsigned int shader) {
         int success;
         glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
         if (success == 0) {
                 int length;
                 glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
-                char *const info_log = scalloc((size_t)length, sizeof(char));
+                char *const info_log = scalloc((const size_t)length,
+                                               sizeof(char));
                 glGetShaderInfoLog(shader, length, NULL, info_log);
                 fprintf(stderr, "Error compiling shaders:\n%s\n", info_log);
                 free(info_log);
@@ -48,13 +50,14 @@ static void handle_compile_infolog(unsigned int shader) {
         }
 }
 
-static void handle_link_infolog(unsigned int program) {
+static void handle_link_infolog(const unsigned int program) {
         int success;
         glGetProgramiv(program, GL_LINK_STATUS, &success);
         if (success == 0) {
                 int length;
                 glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-                char *const info_log = scalloc((size_t)length, sizeof(char));
+                char *const info_log = scalloc((const size_t)length,
+                                               sizeof(char));
                 glGetProgramInfoLog(program, length, NULL, info_log);
                 fprintf(stderr, "Error linking shaders:\n%s\n", info_log);
                 free(info_log);
@@ -66,11 +69,11 @@ static unsigned int compile_shader(char *const path,
                                    const char *const filename,
                                    const size_t ext_len,
                                    const char *const ext,
-                                   GLenum shader_type) {
+                                   const GLenum shader_type) {
         buildpath(PATH_MAX, path, filename, ext_len, ext);
         char *const vertex_src = readall(path);
         const char *const const_vertex_src = vertex_src;
-        unsigned int shader = glCreateShader(shader_type);
+        const unsigned int shader = glCreateShader(shader_type);
         glShaderSource(shader, 1, &const_vertex_src, NULL);
         glCompileShader(shader);
         handle_compile_infolog(shader);
@@ -79,8 +82,8 @@ static unsigned int compile_shader(char *const path,
 }
 
 static unsigned int link_shader(const unsigned int vertex_shader,
-                          const unsigned int fragment_shader) {
-        unsigned int shader = glCreateProgram();
+                                const unsigned int fragment_shader) {
+        const unsigned int shader = glCreateProgram();
         glAttachShader(shader, vertex_shader);
         glAttachShader(shader, fragment_shader);
         glLinkProgram(shader);
@@ -96,13 +99,13 @@ unsigned int shader_new(const char *const vertfile,
         static const size_t frag_ext_len = strlen(frag_ext);
         
         char *const path = scalloc(PATH_MAX, sizeof(char));
-        unsigned int vert = compile_shader(
+        const unsigned int vert = compile_shader(
                 path, fragfile, vert_ext_len, vert_ext, GL_VERTEX_SHADER);
-        unsigned int frag = compile_shader(
+        const unsigned int frag = compile_shader(
                 path, vertfile, frag_ext_len, frag_ext, GL_FRAGMENT_SHADER);
         free(path);
         
-        unsigned int shader = link_shader(vert, frag);
+        const unsigned int shader = link_shader(vert, frag);
         glDeleteShader(vert);
         glDeleteShader(frag);
 

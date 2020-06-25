@@ -1,2 +1,4 @@
-obj/glad_dbg.o: src/glad_dbg.c include/glad/glad.h \
- include/glad/glad_dbg.h include/KHR/khrplatform.h
+obj/glad_dbg.o: src/glad_dbg.c \
+ /home/donpolilla/git/thirty/include/glad/glad.h \
+ /home/donpolilla/git/thirty/include/glad/glad_dbg.h \
+ /home/donpolilla/git/thirty/include/KHR/khrplatform.h

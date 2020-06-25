@@ -28,21 +28,16 @@ struct geometry {
         unsigned ntextures;
 };
 
-void geometry_initFromArray(struct geometry *restrict geometry,
-                            const struct vertex *restrict vertices,
-                            size_t nvertices,
-                            const unsigned *restrict indices,
-                            size_t nindices);
+void geometry_initFromArray(struct geometry *geometry,
+                            const struct vertex *vertices, size_t nvertices,
+                            const unsigned *indices, size_t nindices);
 
-void geometry_setTextures(struct geometry *restrict geometry,
-                          const char *const textures[],
-                          unsigned ntextures);
+void geometry_setTextures(struct geometry *geometry,
+                          const char *const textures[], unsigned ntextures);
 
-void geometry_draw(const struct geometry *restrict geometry,
-                   mat4s model,
-                   const struct camera *restrict camera,
-                   unsigned int shader);
+void geometry_draw(const struct geometry *geometry, mat4s model,
+                   const struct camera *camera, unsigned int shader);
 
-void geometry_free(struct geometry *restrict geometry);
+void geometry_free(const struct geometry *geometry);
 
 #endif /* GEOMETRY_H */

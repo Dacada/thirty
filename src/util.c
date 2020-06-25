@@ -91,7 +91,8 @@ size_t sftell(FILE *const stream) {
         return (size_t)size;
 }
 
-void sfread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+void sfread(void *const ptr, const size_t size, const size_t nmemb,
+            FILE *const stream) {
         if (fread(ptr, size, nmemb, stream) != size &&
             ferror(stream) != 0) {
                 perror("fread");
@@ -99,7 +100,7 @@ void sfread(void *ptr, size_t size, size_t nmemb, FILE *stream) {
         }
 }
 
-void sfclose(FILE *stream) {
+void sfclose(FILE *const stream) {
         if (fclose(stream) != 0) {
                 perror("fclose");
                 die(NULL);
@@ -107,7 +108,8 @@ void sfclose(FILE *stream) {
 }
 
 // TODO: Unittest this
-bool accessible(const char *filepath, bool read, bool write, bool execute) {
+bool accessible(const char *filepath, const bool read, const bool write,
+                const bool execute) {
         // TODO: Windows version
         
         int mode = 0;
