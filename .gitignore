@@ -5,7 +5,7 @@ bin
 # continuous development
 obj
 
-# For emacs' (and also vim's) C IDE
+# For Emacs (or Vim) C IDE and for clang-tidy. Auto generated.
 .clang_complete
 
 # Automatically generated (downloaded) files

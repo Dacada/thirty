@@ -11,6 +11,17 @@ SOURCES := $(wildcard $(SRC_DIR)/*.c)
 SOURCES := $(filter-out $(SRC_DIR)/glad_rel.c,$(SOURCES))
 SOURCES := $(filter-out $(SRC_DIR)/glad_dbg.c,$(SOURCES))
 
+# Sources to analyze for tidying up (only file names)
+TIDY_SOURCES := $(filter-out $(SRC_DIR)/stb_image.c,$(SOURCES))
+TIDY_SOURCES := $(patsubst $(SRC_DIR)/%,%,$(TIDY_SOURCES))
+
+# Header files to analyze for tidying up (only file names)
+TIDY_INCLUDES := $(wildcard $(INCLUDE_DIR)/*.h)
+TIDY_INCLUDES := $(filter-out $(INCLUDE_DIR)/stb_image.h,$(TIDY_INCLUDES))
+TIDY_INCLUDES := $(patsubst $(INCLUDE_DIR)/%,%,$(TIDY_INCLUDES))
+
+TIDY_CHECKS := "-checks=-*,bugprone-*,linuxkernel-*,misc-*,modernize-*,performance-*,portability-*,readability-*"
+
 OBJECTS_DEBUG := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%_dbg.o,$(SOURCES))
 OBJECTS_RELEASE := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%_rel.o,$(SOURCES))
 OBJECTS_DEVELOP := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%_dev.o,$(SOURCES))
@@ -30,7 +41,7 @@ TARGETS := $(BIN_DIR)/main_dbg $(BIN_DIR)/main_rel $(BIN_DIR)/main_dev
 CC := gcc
 
 # Common flags
-CFLAGS := -DASSETSPATH=\"$(realpath assets)\" -I$(INCLUDE_DIR) `pkg-config --cflags glfw3` `pkg-config --cflags cglm` -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wmissing-prototypes -Wwrite-strings -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wimplicit-fallthrough -std=c11 -MMD
+CFLAGS := -DASSETSPATH=\"$(realpath assets)\" -DLIGHTLIMIT=5 -DCAMERA_PITCH_LIMIT_OFFSET=0.1F -DCAMERA_MINIMUM_ZOOM=1.0F -DCAMERA_MAXIMUM_ZOOM=45.0F -I$(realpath $(INCLUDE_DIR)) `pkg-config --cflags glfw3` `pkg-config --cflags cglm` -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wmissing-prototypes -Wwrite-strings -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wimplicit-fallthrough -std=c11 -MMD
 LDFLAGS := `pkg-config --libs glfw3` `pkg-config --libs cglm` -lm -ldl -std=c11
 
 # Flags for generating glad files (also common)
@@ -62,7 +73,7 @@ define FIND_SYSHEADERS_CMD
 )
 endef
 
-.PHONY: dbg dev rel generated clean veryclean purify impolute etags
+.PHONY: dbg dev rel generated clean veryclean purify impolute etags valgrind static-analysis tidy_src tidy_include
 
 rel: $(BIN_DIR)/main
 dev: etags $(BIN_DIR)/main_dev
@@ -84,6 +95,37 @@ impolute:
 etags: sysh_TAGS
 	-rm -f TAGS
 	$(FIND_HEADERS_CMD) | etags --include=$< -
+
+valgrind: $(BIN_DIR)/main_dbg
+	valgrind --leak-check=full           \
+                 --show-leak-kinds=all       \
+	         --track-origins=yes         \
+	         --verbose                   \
+	         --log-file=valgrind-out.txt \
+	         $(BIN_DIR)/main_dbg
+
+static-analysis: clean
+	scan-build -disable-checker cplusplus.InnerPointer \
+		   -disable-checker cplusplus.Move \
+		   -disable-checker cplusplus.NewDelete \
+		   -disable-checker cplusplus.NewDeleteLeaks \
+		   -disable-checker cplusplus.PureVirtualCall \
+		   -enable-checker nullability.NullableDereferenced \
+		   -enable-checker nullability.NullablePassedToNonnull \
+		   -enable-checker nullability.NullableReturnedFromNonnull \
+		   -enable-checker optin.performance.Padding \
+		   -enable-checker optin.portability.UnixAPI \
+		   -enable-checker security.FloatLoopCounter \
+		   -enable-checker valist.CopyToSelf \
+		   -enable-checker valist.Uninitialized \
+		   -enable-checker valist.Unterminated \
+		   make dbg
+
+tidy_src: $(SRC_DIR)/.clang_complete
+	cd $(SRC_DIR) && clang-tidy $(TIDY_SOURCES) $(TIDY_CHECKS) -- $$(<.clang_complete)
+tidy_include: $(INCLUDE_DIR)/.clang_complete
+	cd $(INCLUDE_DIR) && clang-tidy $(TIDY_INCLUDES) $(TIDY_CHECKS) -- $$(<.clang_complete)
+
 sysh_TAGS:
 	$(FIND_SYSHEADERS_CMD) | etags -o $@ -
 
@@ -144,26 +186,33 @@ $(INCLUDE_DIR)/KHR/khrplatform.h $(INCLUDE_DIR)/glad/glad_rel.h $(SRC_DIR)/glad_
 	set -e; \
 	source venv/bin/activate; \
 	tmpdir=`mktemp -d`; \
-	trap 'rm -r $$tmpdir'; \
 	glad $(GLAD_FLAGS) $(GLAD_FLAGS_RELEASE); \
 	cp $$tmpdir/include/glad/glad.h $(INCLUDE_DIR)/glad/glad_rel.h; \
 	cp $$tmpdir/src/glad.c $(SRC_DIR)/glad_rel.c; \
-	cp $$tmpdir/include/KHR/khrplatform.h $(INCLUDE_DIR)/KHR
+	cp $$tmpdir/include/KHR/khrplatform.h $(INCLUDE_DIR)/KHR; \
+	rm -r $$tmpdir
+
 $(INCLUDE_DIR)/glad/glad_dbg.h $(SRC_DIR)/glad_dbg.c &: venv
 	mkdir -p $(INCLUDE_DIR)/glad
 	set -e; \
 	source venv/bin/activate; \
 	tmpdir=`mktemp -d`; \
-	trap 'rm -r $$tmpdir'; \
 	glad $(GLAD_FLAGS) $(GLAD_FLAGS_DEBUG); \
 	cp $$tmpdir/include/glad/glad.h $(INCLUDE_DIR)/glad/glad_dbg.h; \
-	cp $$tmpdir/src/glad.c $(SRC_DIR)/glad_dbg.c
+	sed -e '1i#ifndef __clang_analyzer__' -e '$$a#endif' $$tmpdir/src/glad.c > $(SRC_DIR)/glad_dbg.c; \
+	rm -r $$tmpdir
+
 venv: requirements.txt
 	virtualenv venv
 	source venv/bin/activate; pip install -r requirements.txt
 
+
 $(INCLUDE_DIR)/stb_image.h:
 	wget -q -O $@ "https://raw.githubusercontent.com/nothings/stb/master/stb_image.h"
+
+
+$(SRC_DIR)/.clang_complete $(INCLUDE_DIR)/.clang_complete: Makefile
+	echo $(CFLAGS) | tr " " "\n" > $@
 
 
 -include $(DEPENDS_DEBUG)
