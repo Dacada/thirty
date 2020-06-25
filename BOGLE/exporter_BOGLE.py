@@ -356,7 +356,7 @@ class BOGLEObject(BOGLEBaseObject):
         else:
             order = (ip1, ip3, ip2)
 
-        if self.config.winding_order == 'CCW':
+        if self.config.winding_order == 'CW':
             return reversed(order)
         else:
             return order
