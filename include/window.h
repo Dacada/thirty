@@ -28,6 +28,9 @@
  * This is useful for when you want to react to a single keypress instead of a
  * key being pressed or not on that particular frame (e.g. press E to activate)
  *
+ * onTearDown is called just before the GL context is torn down, for cleanup
+ * and stuff.
+ *
  * window_onKeyboardEvent: key, action, modifiers
  *
  * window_onKeyboardInput: No arguments.
@@ -37,6 +40,8 @@
  * window_onMouseScroll: Scroll offset.
  *
  * window_onDraw: No arguments.
+ *
+ * window_onTearDown: No arguments.
  *
  * You can edit window_clearColor (effective next frame) and window_title
  * (effective upon call to window_updateTitle).
@@ -51,8 +56,9 @@ extern void(*window_onKeyboardInput)(void);
 extern void(*window_onMousePosition)(double, double);
 extern void(*window_onMouseScroll)(double);
 extern void(*window_onDraw)(void);
+extern void(*window_onTearDown)(void);
 
-extern vec3s window_clearColor;
+extern vec4s window_clearColor;
 extern char *window_title;
 
 void window_init(int width, int height);

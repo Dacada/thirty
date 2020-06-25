@@ -60,24 +60,22 @@ void *scalloc(size_t nmemb, size_t size)
         __attribute__((returns_nonnull))
         __attribute__((warn_unused_result));
 
-void *srealloc(void *const ptr, size_t size)
-        __attribute__((returns_nonnull))
+void *srealloc(void *ptr, size_t size)
         __attribute__((warn_unused_result));
 
 // unique to glibc, provides special implementation for windows; also ensures
 // nmemb*size won't overflow
-void *sreallocarray(void *const ptr, size_t nmemb, size_t size)
-        __attribute__((returns_nonnull))
+void *sreallocarray(void *ptr, size_t nmemb, size_t size)
         __attribute__((warn_unused_result));
 
 
-FILE *sfopen(const char *const pathname, const char *const mode)
+FILE *sfopen(const char *pathname, const char *mode)
         __attribute__((returns_nonnull))
         __attribute__((warn_unused_result));
 
-void sfseek(FILE *const stream, const long offset, const int whence);
+void sfseek(FILE *stream, long offset, int whence);
 
-size_t sftell(FILE *const stream);
+size_t sftell(FILE *stream);
 
 void sfread(void *ptr, size_t size, size_t nmemb, FILE *stream);
 
@@ -93,6 +91,6 @@ bool accessible(const char *filepath, bool read, bool write, bool execute);
 
 
 /* Join paths, like python's os.path.join, yes it's also OS independent. */
-size_t pathnjoin(const size_t size, char *const dest, const int nargs, ...);
+size_t pathnjoin(size_t size, char *dest, int nargs, ...);
 
 #endif /* CUTIL_UTIL_H */

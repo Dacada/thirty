@@ -1,58 +1,46 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
+#define OBJECT_NAME_SIZE 32
+
+#include <geometry.h>
 #include <camera.h>
-#include <glad/glad.h>
+#include <light.h>
 
 /*
- * This module encapsulates OpenGL objects. Given the geometric data, a 3D
- * object is initialized. Its model matrix is also tracked. The draw method
- * uses a camera and a shader to draw the object. The module should be
- * initialized before doing anything else. Tearing down an object frees any
- * data used in the struct object as well as by OpenGL. Objects can be
- * initialized in two ways: From arrays with all the 3D coordinates, or from a
- * file containing this information. The only supported format is one I made up
- * myself, which pretty much directly maps to OpenGL data. The "expected"
- * parameter means that you already know how many object the file contains. If
- * it's false, an array of appropiate size will be allocated at *object. If
- * it's true then we asume that memory is already allocated at *object.
+ * This module offers an implementation of an object. Objects follow a tree
+ * organization and each object has one parent (except the root object) and can
+ * have several children.
  */
 
-struct vertex {
-        vec3s vert;
-        vec2s tex;
-        vec3s norm;
-};
-
 struct object {
-        GLuint vao, vbo, ibo;
-        int nindices;
-        GLuint *textures;
-        unsigned ntextures;
+        struct object *parent;
+        unsigned nchildren;
+        struct object **children;
+
+        char name[OBJECT_NAME_SIZE];
         mat4s model;
-        char *name;
+
+        struct geometry *geometry;
+        unsigned shader;
 };
 
-void object_initModule(void);
+/*
+ * Initialize object from a file pointer. Does not set parent or children. This
+ * is expected to be a BOGLE file that's already pointing at an object header,
+ * and it will read all of the header and the data then return without doing
+ * anything else to the file object.
+ */
+void object_init_fromFile(struct object *restrict object, FILE *restrict f);
 
-unsigned object_initFromFile(struct object **object, const char *filename,
-                             bool expected);
+void object_translate(struct object *restrict object, vec3s position);
+void object_rotate(struct object *restrict object, float angle, vec3s axis);
+void object_scale(struct object *restrict object, vec3s scale);
 
-void object_initFromArray(struct object *object,
-                          const struct vertex *vertices, size_t nvertices,
-                          const unsigned *indices, size_t nindices);
+void object_draw(const struct object *restrict object,
+                 const struct camera *restrict camera,
+                 const struct light lights[LIGHTLIMIT]);
 
-void object_setTextures(struct object *object,
-                        const char *const textures[], unsigned ntextures);
-
-void object_translate(struct object *object, vec3s position);
-void object_rotate(struct object *object, float angle, vec3s axis);
-void object_scale(struct object *object, vec3s scale);
-
-void object_draw(const struct object *object,
-                 const struct camera *camera,
-                 unsigned int shader);
-
-void object_tearDown(struct object *object);
+void object_free(struct object *restrict object);
 
 #endif /* OBJECT_H */

@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define BUFFER_SIZE 256
+
 void bail(const char *const msg, ...) {
         if (msg != NULL) {
                 va_list ap;
@@ -47,7 +49,7 @@ void *scalloc(const size_t nmemb, const size_t size) {
 
 void *srealloc(void *const ptr, const size_t size) {
         void *const new_ptr = realloc(ptr, size);
-        if (new_ptr == NULL) {
+        if (new_ptr == NULL && size > 0) {
                 perror("realloc");
                 die(NULL);
         }
@@ -57,7 +59,7 @@ void *srealloc(void *const ptr, const size_t size) {
 // TODO: Ensure that it does what the current glibc does
 void *sreallocarray(void *const ptr, const size_t nmemb, const size_t size) {
         void *const new_ptr = reallocarray(ptr, nmemb, size);
-        if (new_ptr == NULL) {
+        if (new_ptr == NULL && nmemb > 0 && size > 0) {
                 perror("reallocarray");
                 die(NULL);
         }
@@ -124,8 +126,8 @@ bool accessible(const char *filepath, bool read, bool write, bool execute) {
 
         const bool ret = access(filepath, mode) == 0;
         if (!ret) {
-                static char msg[256];
-                snprintf(msg, 256, "Cannot access file %s", filepath);
+                static char msg[BUFFER_SIZE];
+                snprintf(msg, BUFFER_SIZE, "Cannot access file %s", filepath);
                 perror(msg);
         }
         return ret;
