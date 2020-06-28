@@ -51,14 +51,14 @@ class BOGLEConfig:
 class BOGLEBaseObject:
     def __init__(self, config):
         self.config = config
-        
+
     def convert(self, object):
         raise NotImplementedError
-        
+
     def export(self, f):
         raise NotImplementedError
 
-    def _convert_vec(self, vec, negate_x = True):
+    def _convert_vec(self, vec, negate_x=True):
         if negate_x:
             # (x,y,z) => (-x, z, y)
             _change_basis_matrix = Matrix((
@@ -75,7 +75,7 @@ class BOGLEBaseObject:
                 (0, 1, 0, 0),
                 (0, 0, 0, 1)
             ))
-    
+
         if self.config.convert_coordinates:
             return vec @ _change_basis_matrix
         else:
@@ -85,6 +85,7 @@ class BOGLEBaseObject:
 class BOGLEVertex(BOGLEBaseObject):
     """Represents vertex data for OpenGL: vertex coordinates (3D) and texture
 coordinates (2D)."""
+
     def __init__(self, config, vx, vy, vz, tx, ty, nx, ny, nz):
         super().__init__(config)
         self.vert = Vector((vx, vy, vz))
@@ -116,7 +117,7 @@ class BOGLEObject(BOGLEBaseObject):
 
         self.name = ""
         self.parent_name = None
-        
+
         self.vertices = []
         self.indices = []
 
@@ -134,21 +135,24 @@ class BOGLEObject(BOGLEBaseObject):
         """
         try:
             self._object = object
-            
+
             self.name = object.original.name.encode('ascii')
             if object.parent is not None:
                 self.parent_name = object.parent.name.encode('ascii')
-            
+
             if len(self.name) > 31:
-                raise BOGLEConversionError(f"Name {repr(self.name)} too long, supported names of only up to 31 characters")
+                raise BOGLEConversionError(
+                    f"Name {repr(self.name)} too long, supported names of only up to 31 characters")
             elif b'\0' in self.name:
-                raise BOGLEConversionError(f"Invalid name {repr(self.name)} can't have the null character.")
-                
+                raise BOGLEConversionError(
+                    f"Invalid name {repr(self.name)} can't have the null character.")
+
             if empty:
                 print("Exporting object without a mesh.")
             else:
                 self._obtain_mesh()
-                print(f"Exporting mesh with {len(self._mesh.vertices)} vertices")
+                print(
+                    f"Exporting mesh with {len(self._mesh.vertices)} vertices")
                 self._index_mesh()
                 self._remove_indexed_mesh_repeats()
                 self._triangulate_indexed_mesh()
@@ -156,7 +160,7 @@ class BOGLEObject(BOGLEBaseObject):
                 self._get_indices()
                 self._get_vertices()
                 print(f"Converted mesh to {len(self.vertices)} vertices")
-                
+
             self._get_transforms()
         finally:
             self._cleanup()
@@ -389,7 +393,7 @@ class BOGLEObject(BOGLEBaseObject):
         convert_trans = self._convert_vec(trans)
         convert_rot = self._convert_vec(rot)
         convert_rota = (convert_rot, a)
-        convert_scale = self._convert_vec(scale, negate_x = False)
+        convert_scale = self._convert_vec(scale, negate_x=False)
         self._transforms = (convert_trans, convert_rota, convert_scale)
 
     def _cleanup(self):
@@ -400,34 +404,36 @@ class BOGLEObject(BOGLEBaseObject):
         self._indexed_mesh = []
         self._triangle_vertices = {}
         self._index_map = {}
-        
-        
+
+
 class BOGLECamera(BOGLEBaseObject):
     """Blender camera export to BOGLE file"""
+
     def __init__(self, config):
         super().__init__(config)
         self.position = None
         self.yaw = None
         self.pitch = None
-        
+
     def convert(self, object):
         position, rotation, scale = object.matrix_local.decompose()
-        
+
         self.position = self._convert_vec(position)
-                
+
         # Adjust rotation angles between Blender's and our systems
-        x,y,z = rotation.to_euler()
+        x, y, z = rotation.to_euler()
         self.pitch = x - pi/2
         self.yaw = z + pi/2
-    
+
     def export(self, f):
         fmt = '<fffff'
         camera = struct.pack(fmt, *self.position, self.yaw, self.pitch)
         f.write(camera)
 
-        
+
 class BOGLELight(BOGLEBaseObject):
     """Blender light export to BOGLE file"""
+
     def __init__(self, config):
         super().__init__(config)
         self.position = None
@@ -437,20 +443,24 @@ class BOGLELight(BOGLEBaseObject):
         self.ambient_power = None
         self.diffuse_power = None
         self.specular_power = None
-        
+
     def convert(self, object):
         position, _, _ = object.matrix_local.decompose()
         light = object.data
-        
+
         self.position = self._convert_vec(position)
-            
-        self.ambient = self.diffuse = self.specular = Vector(tuple(light.color) + (1,))
-        self.ambient_power = self.diffuse_power = self.specular_power = light.energy * 5
+
+        self.ambient = self.diffuse = self.specular = Vector(
+            tuple(light.color) + (1,))
+        self.ambient_power = light.energy * 5
+        self.diffuse_power = self.specular_power = self.ambient_power
         self.ambient_power *= 0.003
-    
+
     def export(self, f):
         fmt = '<ffffffffffffffffff'
-        light = struct.pack(fmt, *self.position, *self.ambient, *self.diffuse, *self.specular, self.ambient_power, self.diffuse_power, self.specular_power)
+        light = struct.pack(fmt, *self.position, *self.ambient,
+                            *self.diffuse, *self.specular, self.ambient_power,
+                            self.diffuse_power, self.specular_power)
         f.write(light)
 
 
@@ -468,7 +478,7 @@ class BOGLExporter(BOGLEBaseObject):
         """Convert the objects that should be converted"""
         for object in self._iterate_objects(context):
             type = object.original.type
-            
+
             if type == 'MESH':
                 list = self.objects
                 bogle_entity = self._convert(BOGLEObject, object, empty=False)
@@ -484,9 +494,9 @@ class BOGLExporter(BOGLEBaseObject):
             else:
                 print(f"Not converting object type: {type}")
                 continue
-                
+
             list.append(bogle_entity)
-            
+
         self._convert_object_tree()
 
     def export(self, filepath):
@@ -507,42 +517,41 @@ class BOGLExporter(BOGLEBaseObject):
             object = object_instance.object
             if not self.config.only_selected_objects or \
                self.is_object_selected(object):
-               yield object
+                yield object
 
     def is_object_selected(self, object):
         selected_parent = object.parent is None or \
             object.parent.original.select_get()
         return selected_parent and object.original.select_get()
-    
+
     def _convert(self, cls, object, *args, **kwargs):
         bogle = cls(self.config)
         bogle.convert(object, *args, **kwargs)
         return bogle
-    
+
     def _convert_object_tree(self):
         parent_children = {-1: []}
         objs = {obj.name: i for i, obj in enumerate(self.objects)}
-        
+
         for obj in self.objects:
             me = objs[obj.name]
             if obj.parent_name is None:
                 parent = -1
             else:
                 parent = objs[obj.parent_name]
-                
+
             children = parent_children.setdefault(parent, [])
             children.append(me)
-            
+
         def convert_children(i):
             s = ''
             if i in parent_children:
                 for child in parent_children[i]:
                     s += str(child) + '{' + convert_children(child) + '}'
             return s
-        
+
         self.object_tree = convert_children(-1).encode('ascii')
-            
-    
+
     def _export_object_tree(self, f):
         fmt = 'B'
         exported_tree = self.object_tree + b'\0'
