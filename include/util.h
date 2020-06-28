@@ -58,8 +58,8 @@ void *smalloc(size_t size)
         __attribute__((returns_nonnull))
         __attribute__((warn_unused_result));
 
-// glibc behaviour: also ensure nmemb*size won't overflow
-void *scalloc(size_t nmemb, size_t size)
+// like malloc, but ensures nmemb * size doesn't overflow, doesn't align memory
+void *smallocarray(size_t nmemb, size_t size)
         __attribute__((alloc_size (1, 2)))
         __attribute__((malloc))
         __attribute__((leaf))
@@ -71,13 +71,11 @@ void *srealloc(void *restrict ptr, size_t size)
         __attribute__((leaf))
         __attribute__((warn_unused_result));
 
-// unique to glibc, provides special implementation for windows; also ensures
-// nmemb*size won't overflow
+// similar to smallocarray, but for realloc, also no memory alignment
 void *sreallocarray(void *restrict ptr, size_t nmemb, size_t size)
         __attribute__((alloc_size (2, 3)))
         __attribute__((leaf))
         __attribute__((warn_unused_result));
-
 
 FILE *sfopen(const char *pathname, const char *mode)
         __attribute__((access (read_only, 1)))

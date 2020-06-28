@@ -7,9 +7,23 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <limits.h>
+#include <errno.h>
 
 #define BUFFER_SIZE 256
+
+__attribute__((const))
+static bool is_safe_multiply(const size_t a, const size_t b) {
+        if (a == 0 || b == 0) {
+                return true;
+        } else {
+                static const int sizet_size_bits = sizeof(size_t) * 8;
+                const int a_size_bits = sizet_size_bits - __builtin_clzl(a);
+                const int b_size_bits = sizet_size_bits - __builtin_clzl(b);
+                return a_size_bits + b_size_bits <= sizet_size_bits;
+        }
+}
 
 void bail(const char *const msg, ...) {
         if (msg != NULL) {
@@ -42,14 +56,13 @@ void *smalloc(const size_t size) {
         return ptr;
 }
 
-// TODO: Ensure that it does what the current glibc does
-void *scalloc(const size_t nmemb, const size_t size) {
-        void *const restrict ptr = calloc(nmemb, size);
-        if (ptr == NULL) {
-                perror("calloc");
-                die(NULL);
+void *smallocarray(const size_t nmemb, const size_t size) {
+        if (is_safe_multiply(nmemb, size)) {
+                return smalloc(nmemb * size);
+        } else {
+                die("calloc would overflow (%lu elements of size %lu)",
+                    nmemb, size);
         }
-        return ptr;
 }
 
 void *srealloc(void *const ptr, const size_t size) {
@@ -61,7 +74,6 @@ void *srealloc(void *const ptr, const size_t size) {
         return new_ptr;
 }
 
-// TODO: Ensure that it does what the current glibc does
 void *sreallocarray(void *const ptr, const size_t nmemb, const size_t size) {
         void *const restrict new_ptr = reallocarray(ptr, nmemb, size);
         if (new_ptr == NULL && nmemb > 0 && size > 0) {
