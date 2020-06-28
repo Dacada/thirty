@@ -1,8 +1,6 @@
 #ifndef WINDOW_H
 #define WINDOW_H
 
-#include <stdbool.h>
-
 /*
  * Create the window, OpenGL context, and everything else. After window_init,
  * call window_run to start the program's main loop.
@@ -50,6 +48,7 @@
 #include <cglm/struct.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <stdbool.h>
 
 extern void(*window_onKeyboardEvent)(const int, const int, const int);
 extern void(*window_onKeyboardInput)(void);

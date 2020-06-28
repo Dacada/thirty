@@ -26,9 +26,10 @@
  * Optionally can be passed a message and arguments printf style to be printed
  * to stderr before exiting.
  */
-void bail(const char *msg, ...)
-        __attribute__((cold))
+void bail(const char *restrict msg, ...)
+        __attribute__((access (read_only, 1)))
         __attribute__((format (printf, 1, 2)))
+        __attribute__((leaf))
         __attribute__((noreturn));
 
 /*
@@ -37,9 +38,10 @@ void bail(const char *msg, ...)
  * Optionally can be passed a message and arguments printf style to be printed
  * to stderr before exiting.
  */
-void die(const char *msg, ...)
-        __attribute__((cold))
+void die(const char *restrict msg, ...)
+        __attribute__((access (read_only, 1)))
         __attribute__((format (printf, 1, 2)))
+        __attribute__((leaf))
         __attribute__((noreturn));
 
 /* 
@@ -50,36 +52,62 @@ void die(const char *msg, ...)
  */
 
 void *smalloc(size_t size)
+        __attribute__((alloc_size (1)))
         __attribute__((malloc))
+        __attribute__((leaf))
         __attribute__((returns_nonnull))
         __attribute__((warn_unused_result));
 
 // glibc behaviour: also ensure nmemb*size won't overflow
 void *scalloc(size_t nmemb, size_t size)
+        __attribute__((alloc_size (1, 2)))
         __attribute__((malloc))
+        __attribute__((leaf))
         __attribute__((returns_nonnull))
         __attribute__((warn_unused_result));
 
-void *srealloc(void *ptr, size_t size)
+void *srealloc(void *restrict ptr, size_t size)
+        __attribute__((alloc_size (2)))
+        __attribute__((leaf))
         __attribute__((warn_unused_result));
 
 // unique to glibc, provides special implementation for windows; also ensures
 // nmemb*size won't overflow
-void *sreallocarray(void *ptr, size_t nmemb, size_t size)
+void *sreallocarray(void *restrict ptr, size_t nmemb, size_t size)
+        __attribute__((alloc_size (2, 3)))
+        __attribute__((leaf))
         __attribute__((warn_unused_result));
 
 
 FILE *sfopen(const char *pathname, const char *mode)
+        __attribute__((access (read_only, 1)))
+        __attribute__((access (read_only, 2)))
+        __attribute__((leaf))
+        __attribute__((nonnull))
         __attribute__((returns_nonnull))
         __attribute__((warn_unused_result));
 
-void sfseek(FILE *stream, long offset, int whence);
+void sfseek(FILE *restrict stream, long offset, int whence)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
-size_t sftell(FILE *stream);
+size_t sftell(FILE *restrict stream)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
-void sfread(void *ptr, size_t size, size_t nmemb, FILE *stream);
+void sfread(void *restrict ptr, size_t size, size_t nmemb,
+            FILE *restrict stream)
+        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_write, 4)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
-void sfclose(FILE *stream);
+void sfclose(FILE *restrict stream)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
 
 /*
@@ -87,10 +115,16 @@ void sfclose(FILE *stream);
  * an OS independent way. In case it is not accessible, a suitable message is
  * also printed to stderr.
  */
-bool accessible(const char *filepath, bool read, bool write, bool execute);
+bool accessible(const char *filepath, bool read, bool write, bool execute)
+        __attribute__((access (read_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
 
 /* Join paths, like python's os.path.join, yes it's also OS independent. */
-size_t pathnjoin(size_t size, char *dest, int nargs, ...);
+size_t pathjoin(size_t size, char *dest, int nargs, ...)
+        __attribute__((access (write_only, 2, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
 #endif /* CUTIL_UTIL_H */

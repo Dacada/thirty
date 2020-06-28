@@ -26,20 +26,45 @@ struct camera {
         float movement_speed, look_sensitivity, zoom_level;
 };
 
-void camera_init(struct camera *cam, float width, float height,
+void camera_init(struct camera *restrict cam, float width, float height,
                  const vec3s *position, const vec3s *worldup,
                  const float *yaw, const float *pitch,
-                 const float *near, const float *far);
+                 const float *near, const float *far)
+        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_only, 4)))
+        __attribute__((access (read_only, 5)))
+        __attribute__((access (read_only, 6)))
+        __attribute__((access (read_only, 7)))
+        __attribute__((access (read_only, 8)))
+        __attribute__((access (read_only, 9)))
+        __attribute__((leaf))
+        __attribute__((nonnull (1)));
 
-mat4s camera_viewMatrix(const struct camera *cam);
-mat4s camera_projectionMatrix(const struct camera *cam);
+mat4s camera_viewMatrix(const struct camera *restrict cam)
+        __attribute__((access (read_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
-void camera_move(struct camera *cam, enum camera_movement mov,
-                 float deltaTime, bool freefly);
+mat4s camera_projectionMatrix(const struct camera *restrict cam)
+        __attribute__((access (read_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
-void camera_look(struct camera *cam, float xoffset, float yoffset,
-                 bool constrain_pitch);
+void camera_move(struct camera *restrict cam, enum camera_movement mov,
+                 float deltaTime, bool freefly)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
-void camera_zoom(struct camera *cam, float offset);
+void camera_look(struct camera *restrict cam, float xoffset, float yoffset,
+                 bool constrain_pitch)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void camera_zoom(struct camera *restrict cam, float offset)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
 #endif /* CAMERA_H */

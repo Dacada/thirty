@@ -22,6 +22,9 @@ struct light {
  * Update shader with light info. Probably only needs to be called once per
  * frame per shader.
  */
-void light_update_shader(const struct light *light, unsigned shader);
+void light_update_shader(const struct light *restrict light, unsigned shader)
+        __attribute__((access (read_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
 #endif /* LIGHT_H */

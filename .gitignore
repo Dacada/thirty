@@ -2,7 +2,7 @@
 bin
 
 # Exclude object files and generated dependency files (only useful for
-# continuous development
+# continuous development)
 obj
 
 # For Emacs (or Vim) C IDE and for clang-tidy. Auto generated.

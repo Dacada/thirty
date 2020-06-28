@@ -14,7 +14,9 @@ static const float defaultZoom = 45.0F;
 static const float defaultNear = 0.1F;
 static const float defaultFar = 100.0F;
 
-static void update_camera_vectors(struct camera *const cam) {
+__attribute__((access (read_write, 1)))
+__attribute__((nonnull))
+static void update_camera_vectors(struct camera *const restrict cam) {
         vec3s front;
         front.x = cosf(cam->yaw) * cosf(cam->pitch);
         front.y = sinf(cam->pitch);
@@ -25,7 +27,9 @@ static void update_camera_vectors(struct camera *const cam) {
         cam->up = glms_vec3_crossn(cam->right, cam->front);
 }
 
-static void init_defaults(struct camera *const cam) {
+__attribute__((access (write_only, 1)))
+__attribute__((nonnull))
+static void init_defaults(struct camera *const restrict cam) {
         cam->front = defaultFront;
         cam->movement_speed = defaultSpeed;
         cam->look_sensitivity = defaultSensitivity;

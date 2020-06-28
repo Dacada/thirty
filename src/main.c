@@ -1,11 +1,7 @@
 #include <scene.h>
-#include <shader.h>
-#include <camera.h>
 #include <window.h>
-#include <util.h>
 #include <cglm/cglm.h>
 #include <stdbool.h>
-#include <string.h>
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600

@@ -7,7 +7,9 @@
 #include <string.h>
 #include <limits.h>
 
-static void geometry_init(struct geometry *const geometry) {
+__attribute__((access (write_only, 1)))
+__attribute__((nonnull))
+static void geometry_init(struct geometry *const restrict geometry) {
         geometry->ntextures = 0;
         geometry->textures = NULL;
         
@@ -67,9 +69,12 @@ void geometry_initFromArray(struct geometry *const geometry,
         geometry->nindices = (const int)nindices;
 }
 
+__attribute__((access (write_only, 2, 1)))
+__attribute__((access (read_only, 3)))
+__attribute__((nonnull))
 static void buildpathTex(const size_t destsize, char *const dest,
                          const char *const file) {
-        const size_t len = pathnjoin(destsize, dest, 3, ASSETSPATH,
+        const size_t len = pathjoin(destsize, dest, 3, ASSETSPATH,
                                      "textures", file);
         if (len + 3 - 1 >= destsize) {
                 die("Path to texture file too long.\n");
@@ -108,8 +113,8 @@ void geometry_setTextures(struct geometry *const geometry,
                 int width;
                 int height;
                 int nrChannels;
-                unsigned char *const data = stbi_load(
-                        path, &width, &height, &nrChannels, 0);
+                unsigned char *const data __attribute__ ((nonstring)) =
+                        stbi_load(path, &width, &height, &nrChannels, 0);
                 if (data == NULL) {
                         bail("Can't read texture image data.\n");
                 }

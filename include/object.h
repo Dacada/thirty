@@ -16,12 +16,12 @@
 struct object {
         struct object *parent;
         unsigned nchildren;
-        struct object **children;
+        struct object **restrict children;
 
         char name[OBJECT_NAME_SIZE];
         mat4s model;
 
-        struct geometry *geometry;
+        struct geometry *restrict geometry;
         unsigned shader;
 };
 
@@ -31,16 +31,38 @@ struct object {
  * and it will read all of the header and the data then return without doing
  * anything else to the file object.
  */
-void object_init_fromFile(struct object *object, FILE *f);
+void object_init_fromFile(struct object *restrict object, FILE *restrict f)
+        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_write, 2)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
-void object_translate(struct object *object, vec3s position);
-void object_rotate(struct object *object, float angle, vec3s axis);
-void object_scale(struct object *object, vec3s scale);
+void object_translate(struct object *restrict object, vec3s position)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
-void object_draw(const struct object *object,
-                 const struct camera *camera,
-                 const struct light lights[LIGHTLIMIT]);
+void object_rotate(struct object *restrict object, float angle, vec3s axis)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
-void object_free(const struct object *object);
+void object_scale(struct object *restrict object, vec3s scale)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void object_draw(const struct object *restrict object,
+                 const struct camera *restrict camera,
+                 const struct light lights[LIGHTLIMIT])
+        __attribute__((access (read_only, 1)))
+        __attribute__((access (read_only, 2)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void object_free(const struct object *restrict object)
+        __attribute__((access (read_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
 #endif /* OBJECT_H */

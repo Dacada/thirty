@@ -1,8 +1,10 @@
-#include <cglm/struct.h>
 #include <object.h>
 #include <shader.h>
 #include <geometry.h>
+#include <camera.h>
+#include <light.h>
 #include <util.h>
+#include <cglm/struct.h>
 #include <string.h> // TODO: only temporary for strcmp
 
 static const vec4s color_shader_color = { // Only until shaders properly set up
@@ -27,25 +29,26 @@ void object_init_fromFile(struct object *const object, FILE *const f) {
 
         sfread(object->name, sizeof(char), OBJECT_NAME_SIZE, f);
 
-        struct geometry *geometry = NULL;
+        object->geometry = NULL;
         if (!skip_geometry) {
-                struct vertex *const vertices = scalloc(obj_header.vertlen,
-                                                        sizeof(*vertices));
-                unsigned *const indices = scalloc(obj_header.indlen,
-                                                  sizeof(*indices));
+                struct vertex *const restrict vertices =
+                        scalloc(obj_header.vertlen,
+                                sizeof(*vertices));
+                unsigned *const restrict indices =
+                        scalloc(obj_header.indlen,
+                                sizeof(*indices));
         
                 sfread(vertices, sizeof(*vertices), obj_header.vertlen, f);
                 sfread(indices, sizeof(*indices), obj_header.indlen, f);
 
-                geometry = smalloc(sizeof *geometry);
-                geometry_initFromArray(geometry,
+                object->geometry = smalloc(sizeof *object->geometry);
+                geometry_initFromArray(object->geometry,
                                        vertices, obj_header.vertlen,
                                        indices, obj_header.indlen);
 
                 free(vertices);
                 free(indices);
         }
-        object->geometry = geometry;
         
         vec3s translation;
         vec3s axis;
@@ -129,6 +132,10 @@ void object_scale(struct object *const object, const vec3s scale) {
         object->model = glms_scale(object->model, scale);
 }
 
+__attribute__((access (read_only, 1)))
+__attribute__((access (read_only, 2)))
+__attribute__((access (read_only, 3)))
+__attribute__((nonnull))
 static void draw_tree(const struct object *const object,
                       const struct camera *const camera,
                       const struct light lights[LIGHTLIMIT],

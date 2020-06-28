@@ -24,20 +24,38 @@ struct vertex {
 struct geometry {
         GLuint vao, vbo, ibo;
         int nindices;
-        GLuint *textures;
+        GLuint *restrict textures;
         unsigned ntextures;
 };
 
-void geometry_initFromArray(struct geometry *geometry,
-                            const struct vertex *vertices, size_t nvertices,
-                            const unsigned *indices, size_t nindices);
+void geometry_initFromArray(struct geometry *restrict geometry,
+                            const struct vertex *restrict vertices,
+                            size_t nvertices,
+                            const unsigned *restrict indices,
+                            size_t nindices)
+        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_only, 2, 3)))
+        __attribute__((access (read_only, 4, 5)))
+        __attribute__((leaf))
+        __attribute__((nonnull (1)));
 
-void geometry_setTextures(struct geometry *geometry,
-                          const char *const textures[], unsigned ntextures);
+void geometry_setTextures(struct geometry *restrict geometry,
+                          const char *const textures[], unsigned ntextures)
+        __attribute__((access (read_write, 1)))
+        __attribute__((access (read_only, 2, 3)))
+        __attribute__((leaf))
+        __attribute__((nonnull (1)));
 
-void geometry_draw(const struct geometry *geometry, mat4s model,
-                   const struct camera *camera, unsigned int shader);
+void geometry_draw(const struct geometry *restrict geometry, mat4s model,
+                   const struct camera *restrict camera, unsigned int shader)
+        __attribute__((access (read_only, 1)))
+        __attribute__((access (read_only, 3)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
-void geometry_free(const struct geometry *geometry);
+void geometry_free(const struct geometry *restrict geometry)
+        __attribute__((access (read_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
 #endif /* GEOMETRY_H */

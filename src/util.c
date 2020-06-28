@@ -1,8 +1,13 @@
 #define _DEFAULT_SOURCE
 
 #include <util.h>
+#include <unistd.h> //TODO: Only for linux
+#include <stddef.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #define BUFFER_SIZE 256
 
@@ -29,7 +34,7 @@ void die(const char *const msg, ...) {
 }
 
 void *smalloc(const size_t size) {
-        void *const ptr = malloc(size);
+        void *const restrict ptr = malloc(size);
         if (ptr == NULL) {
                 perror("malloc");
                 die(NULL);
@@ -39,7 +44,7 @@ void *smalloc(const size_t size) {
 
 // TODO: Ensure that it does what the current glibc does
 void *scalloc(const size_t nmemb, const size_t size) {
-        void *const ptr = calloc(nmemb, size);
+        void *const restrict ptr = calloc(nmemb, size);
         if (ptr == NULL) {
                 perror("calloc");
                 die(NULL);
@@ -48,7 +53,7 @@ void *scalloc(const size_t nmemb, const size_t size) {
 }
 
 void *srealloc(void *const ptr, const size_t size) {
-        void *const new_ptr = realloc(ptr, size);
+        void *const restrict new_ptr = realloc(ptr, size);
         if (new_ptr == NULL && size > 0) {
                 perror("realloc");
                 die(NULL);
@@ -58,7 +63,7 @@ void *srealloc(void *const ptr, const size_t size) {
 
 // TODO: Ensure that it does what the current glibc does
 void *sreallocarray(void *const ptr, const size_t nmemb, const size_t size) {
-        void *const new_ptr = reallocarray(ptr, nmemb, size);
+        void *const restrict new_ptr = reallocarray(ptr, nmemb, size);
         if (new_ptr == NULL && nmemb > 0 && size > 0) {
                 perror("reallocarray");
                 die(NULL);
@@ -67,7 +72,7 @@ void *sreallocarray(void *const ptr, const size_t nmemb, const size_t size) {
 }
 
 FILE *sfopen(const char *const pathname, const char *const mode) {
-        FILE *const f = fopen(pathname, mode);
+        FILE *const restrict f = fopen(pathname, mode);
         if (f == NULL) {
                 perror(pathname);
                 die("Failed to open file.");
@@ -137,7 +142,7 @@ bool accessible(const char *filepath, const bool read, const bool write,
 
 // TODO: windows version, copy from
 // https://github.com/python/cpython/blob/master/Lib/ntpath.py
-size_t pathnjoin(const size_t size, char *const dest, const int nargs, ...) {
+size_t pathjoin(const size_t size, char *const dest, const int nargs, ...) {
         size_t len = 0;
         char *pdest = dest;
         va_list ap;

@@ -1,5 +1,7 @@
 #include <scene.h>
 #include <object.h>
+#include <light.h>
+#include <camera.h>
 #include <util.h>
 #include <dsutils.h>
 #include <ctype.h>
@@ -10,9 +12,12 @@
 #define OBJECT_TREE_MAXIMUM_DEPTH 256
 #define OBJECT_TREE_NUMBER_BASE 10
 
-static void buildpathObj(const size_t destsize, char *const dest,
-                         const char *const file) {
-        const size_t len = pathnjoin(destsize, dest, 3, ASSETSPATH,
+__attribute__((access (write_only, 2, 1)))
+__attribute__((access (read_only, 3)))
+__attribute__((nonnull))
+static void buildpathObj(const size_t destsize, char *const restrict dest,
+                         const char *const restrict file) {
+        const size_t len = pathjoin(destsize, dest, 3, ASSETSPATH,
                                      "objects", file);
         if (len + 3 - 1 >= destsize) {
                 die("Path to geometry file too long.\n");
@@ -20,8 +25,11 @@ static void buildpathObj(const size_t destsize, char *const dest,
         strcpy(dest+len-2, ".bgl");
 }
 
+__attribute__((access (read_write, 2)))
+__attribute__((nonnull))
+__attribute__((returns_nonnull))
 static struct object *parse_objects(const unsigned nobjs,
-                                    FILE * const f) {
+                                    FILE *const restrict f) {
         struct object *const objects = scalloc(nobjs, sizeof(*objects));
         
         for (unsigned n=0; n<nobjs; n++) {
@@ -31,18 +39,25 @@ static struct object *parse_objects(const unsigned nobjs,
         return objects;
 }
 
-static bool assign_parent(void *const element,
-                          void *const args) {
-        struct object **child = element;
-        struct object *parent = args;
+__attribute__((access (write_only, 1)))
+__attribute__((access (read_only, 2)))
+__attribute__((nonnull))
+static bool assign_parent(void *const restrict element,
+                          void *const restrict args) {
+        struct object *restrict *restrict child = element;
+        struct object *restrict parent = args;
         (*child)->parent = parent;
         return true;
 }
 
+__attribute__((access (write_only, 1)))
+__attribute__((access (write_only, 2)))
+__attribute__((access (read_write, 4)))
+__attribute__((nonnull))
 static void parse_object_tree(struct object *const root,
                               struct object *const objects,
-                              const unsigned nobjs, FILE *const f) {
-        struct growingArray *const children =
+                              const unsigned nobjs, FILE *const restrict f) {
+        struct growingArray *const restrict children =
                 scalloc(nobjs+1, sizeof(*children));
         for (unsigned i=0; i<nobjs+1; i++) {
                 growingArray_init(&children[i], sizeof(struct object*), 1);
@@ -67,16 +82,16 @@ static void parse_object_tree(struct object *const root,
                         ungetc(c, f);
                         newObject += 1;
                         
-                        const struct object **const obj = growingArray_append(
-                                &children[currentObject]);
+                        const struct object **const restrict obj =
+                                growingArray_append(&children[currentObject]);
                         *obj = &objects[newObject-1];
                 } else if (isspace(c)) {
                 } else if (c == '{') {
-                        unsigned *const num = stack_push(&stack);
+                        unsigned *const restrict num = stack_push(&stack);
                         *num = currentObject;
                         currentObject = newObject;
                 } else if (c == '}') {
-                        const unsigned *const num = stack_pop(&stack);
+                        const unsigned *const restrict num = stack_pop(&stack);
                         newObject = currentObject;
                         currentObject = *num;
                 } else if (c == '\0') {
@@ -91,7 +106,7 @@ static void parse_object_tree(struct object *const root,
         for (unsigned i=0; i<nobjs+1; i++) {
                 growingArray_pack(&children[i]);
 
-                struct object *obj;
+                struct object *restrict obj;
                 if (i == 0) {
                         obj = root;
                 } else {
@@ -101,18 +116,25 @@ static void parse_object_tree(struct object *const root,
                 if (children[i].length > UINT_MAX) {
                         bail("Too many children.\n");
                 }
+                growingArray_foreach(&children[i], &assign_parent, obj);
+
+                // Assigning a restrict pointer to another restrict pointer is
+                // undefined behavior. But we're not accessing them anymore
+                // so...
                 obj->children = children[i].data;
                 obj->nchildren = (const unsigned int)children[i].length;
-                growingArray_foreach(&children[i], &assign_parent, obj);
         }
 
         free(children);
 }
 
-static void parse_cameras(struct camera *const camera,
+__attribute__((access (write_only, 1, 2)))
+__attribute__((access (read_write, 5)))
+__attribute__((nonnull))
+static void parse_cameras(struct camera *const restrict camera,
                           const unsigned ncams,
                           const float width, const float height,
-                          FILE *const f) {
+                          FILE *const restrict f) {
         if (ncams != 1) {
                 bail("Right now only exactly 1 camera is supported.");
         }
@@ -129,9 +151,12 @@ static void parse_cameras(struct camera *const camera,
                     NULL, &yaw, &pitch, NULL, NULL);
 }
 
-static void parse_lights(struct light *const lights,
+__attribute__((access (write_only, 1, 2)))
+__attribute__((access (read_write, 3)))
+__attribute__((nonnull))
+static void parse_lights(struct light *const restrict lights,
                          const unsigned nlights,
-                         FILE *const f) {
+                         FILE *const restrict f) {
         for (unsigned n=0; n<nlights; n++) {
                 sfread(&lights[n].position, 4, 3, f);
                 sfread(&lights[n].ambientColor, 4, 4, f);
@@ -154,7 +179,7 @@ unsigned scene_initFromFile(struct scene *const scene,
 
         FILE *const f = sfopen(path, "rb");
         struct {
-                char magic[BOGLE_MAGIC_SIZE];
+                char magic[BOGLE_MAGIC_SIZE] __attribute__ ((nonstring));
                 char version;
                 unsigned nobjs;
                 unsigned ncams;
@@ -176,7 +201,7 @@ unsigned scene_initFromFile(struct scene *const scene,
         sfread(&header.ncams, 4, 1, f);
         sfread(&header.nlights, 4, 1, f);
 
-        struct object *const objects = parse_objects(header.nobjs, f);
+        struct object *const restrict objects = parse_objects(header.nobjs, f);
         parse_object_tree(&scene->root, objects, header.nobjs, f);
         parse_cameras(&scene->camera, header.ncams, width, height, f);
         parse_lights(scene->lights, header.nlights, f);

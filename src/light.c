@@ -1,5 +1,6 @@
 #include <light.h>
 #include <shader.h>
+#include <cglm/struct.h>
 
 void light_update_shader(const struct light *const light,
                          const unsigned shader) {
