@@ -30,7 +30,7 @@ __attribute__((nonnull))
 __attribute__((returns_nonnull))
 static struct object *parse_objects(const unsigned nobjs,
                                     FILE *const restrict f) {
-        struct object *const objects = scalloc(nobjs, sizeof(*objects));
+        struct object *const objects = smallocarray(nobjs, sizeof(*objects));
         
         for (unsigned n=0; n<nobjs; n++) {
                 object_init_fromFile(&objects[n], f);
@@ -58,7 +58,7 @@ static void parse_object_tree(struct object *const root,
                               struct object *const objects,
                               const unsigned nobjs, FILE *const restrict f) {
         struct growingArray *const restrict children =
-                scalloc(nobjs+1, sizeof(*children));
+                smallocarray(nobjs+1, sizeof(*children));
         for (unsigned i=0; i<nobjs+1; i++) {
                 growingArray_init(&children[i], sizeof(struct object*), 1);
         }

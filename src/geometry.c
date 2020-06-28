@@ -88,8 +88,8 @@ void geometry_setTextures(struct geometry *const geometry,
         stbi_set_flip_vertically_on_load(true);
         
         geometry->ntextures = ntextures;
-        geometry->textures = scalloc((const size_t)geometry->ntextures,
-                                   sizeof(*geometry->textures));
+        geometry->textures = smallocarray((const size_t)geometry->ntextures,
+                                          sizeof(*geometry->textures));
         glGenTextures((const int)ntextures, geometry->textures);
 
         for (unsigned i=0; i<ntextures; i++) {

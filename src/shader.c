@@ -22,7 +22,7 @@ static char *readall(const char *const restrict filename) {
         size_t size = sftell(f);
         fseek(f, 0L, SEEK_SET);
 
-        char *const restrict buff = scalloc(size+1, sizeof(char));
+        char *const restrict buff = smallocarray(size+1, sizeof(char));
         sfread(buff, sizeof(char), size, f);
         sfclose(f);
 
@@ -51,8 +51,8 @@ static void handle_compile_infolog(const unsigned int shader) {
         if (success == 0) {
                 int length;
                 glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
-                char *const restrict info_log = scalloc((const size_t)length,
-                                                        sizeof(char));
+                char *const restrict info_log =
+                        smallocarray((const size_t)length, sizeof(char));
                 glGetShaderInfoLog(shader, length, NULL, info_log);
                 fprintf(stderr, "Error compiling shaders:\n%s\n", info_log);
                 free(info_log);
@@ -66,8 +66,8 @@ static void handle_link_infolog(const unsigned int program) {
         if (success == 0) {
                 int length;
                 glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-                char *const restrict info_log = scalloc((const size_t)length,
-                                                        sizeof(char));
+                char *const restrict info_log =
+                        smallocarray((const size_t)length, sizeof(char));
                 glGetProgramInfoLog(program, length, NULL, info_log);
                 fprintf(stderr, "Error linking shaders:\n%s\n", info_log);
                 free(info_log);
@@ -113,7 +113,7 @@ unsigned int shader_new(const char *const vertfile,
         static const char *const restrict frag_ext = ".frag";
         static const size_t frag_ext_len = strlen(frag_ext);
         
-        char *const restrict path = scalloc(PATH_MAX, sizeof(char));
+        char *const restrict path = smallocarray(PATH_MAX, sizeof(char));
         const unsigned int vert = compile_shader(
                 path, fragfile, vert_ext_len, vert_ext, GL_VERTEX_SHADER);
         const unsigned int frag = compile_shader(

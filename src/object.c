@@ -32,11 +32,11 @@ void object_init_fromFile(struct object *const object, FILE *const f) {
         object->geometry = NULL;
         if (!skip_geometry) {
                 struct vertex *const restrict vertices =
-                        scalloc(obj_header.vertlen,
-                                sizeof(*vertices));
+                        smallocarray(obj_header.vertlen,
+                                     sizeof(*vertices));
                 unsigned *const restrict indices =
-                        scalloc(obj_header.indlen,
-                                sizeof(*indices));
+                        smallocarray(obj_header.indlen,
+                                     sizeof(*indices));
         
                 sfread(vertices, sizeof(*vertices), obj_header.vertlen, f);
                 sfread(indices, sizeof(*indices), obj_header.indlen, f);

@@ -9,7 +9,7 @@ void growingArray_init(struct growingArray *const ga,
         ga->capacity = initialCapacity;
         ga->length = 0;
         ga->itemSize = itemSize;
-        ga->data = scalloc(initialCapacity, itemSize);
+        ga->data = smallocarray(initialCapacity, itemSize);
 }
 
 void *growingArray_append(struct growingArray *const ga) {
@@ -56,7 +56,7 @@ void stack_init(struct stack *const s,
         s->capacity = capacity;
         s->itemSize = itemSize;
         s->ptr = 0;
-        s->data = scalloc(capacity, itemSize);
+        s->data = smallocarray(capacity, itemSize);
 }
 
 void *stack_push(struct stack *const s) {
