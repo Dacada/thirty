@@ -18,7 +18,7 @@ __attribute__((nonnull))
 static void buildpathObj(const size_t destsize, char *const restrict dest,
                          const char *const restrict file) {
         const size_t len = pathjoin(destsize, dest, 3, ASSETSPATH,
-                                     "objects", file);
+                                     "scenes", file);
         if (len + 3 - 1 >= destsize) {
                 die("Path to geometry file too long.\n");
         }
@@ -157,6 +157,7 @@ __attribute__((nonnull))
 static void parse_lights(struct light *const restrict lights,
                          const unsigned nlights,
                          FILE *const restrict f) {
+        // TODO: set global ambient light
         for (unsigned n=0; n<nlights; n++) {
                 sfread(&lights[n].position, 4, 3, f);
                 sfread(&lights[n].ambientColor, 4, 4, f);
@@ -205,6 +206,8 @@ unsigned scene_initFromFile(struct scene *const scene,
         parse_object_tree(&scene->root, objects, header.nobjs, f);
         parse_cameras(&scene->camera, header.ncams, width, height, f);
         parse_lights(scene->lights, header.nlights, f);
+        // TODO: when parsing materials, after its done, call the function to
+        // update the global ambient light to the shader of each material found
 
         scene->nobjs = header.nobjs;
         scene->objs = objects;

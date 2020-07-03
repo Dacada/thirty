@@ -1,8 +1,11 @@
+#define _GNU_SOURCE  // qsort_r
+
 #include <dsutils.h>
 #include <util.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 void growingArray_init(struct growingArray *const ga,
                        const size_t itemSize, const size_t initialCapacity) {
@@ -32,21 +35,26 @@ void growingArray_pack(struct growingArray *const ga) {
         ga->data = sreallocarray(ga->data, ga->length, ga->itemSize);
 }
 
+void growingArray_foreach(const struct growingArray *const ga,
+                          const foreach_cb fun, void *const args) {
+        for (size_t i=0; i<ga->length; i++) {
+                if (!fun((void*)((char*)ga->data + i * ga->itemSize), args)) {
+                        break;
+                }
+        }
+}
+
+void growingArray_sort(struct growingArray *const ga,
+                       const cmp_cb cmp, void *const args) {
+        qsort_r(ga->data, ga->length, ga->itemSize, cmp, args);
+}
+
 void growingArray_destroy(struct growingArray *const ga) {
         free(ga->data);
         ga->capacity = 0;
         ga->length = 0;
         ga->itemSize = 0;
         ga->data = NULL;
-}
-
-void growingArray_foreach(const struct growingArray *const ga,
-                          const growingArray_foreach_cb fun, void *const args) {
-        for (size_t i=0; i<ga->length; i++) {
-                if (!fun((void*)((char*)ga->data + i * ga->itemSize), args)) {
-                        break;
-                }
-        }
 }
 
 

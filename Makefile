@@ -41,19 +41,19 @@ TARGETS := $(BIN_DIR)/main_dbg $(BIN_DIR)/main_rel $(BIN_DIR)/main_dev
 CC := gcc
 
 # Common flags
-CFLAGS := -DASSETSPATH=\"$(realpath assets)\" -DLIGHTLIMIT=5 -DCAMERA_PITCH_LIMIT_OFFSET=0.1F -DCAMERA_MINIMUM_ZOOM=1.0F -DCAMERA_MAXIMUM_ZOOM=45.0F -I$(realpath $(INCLUDE_DIR)) `pkg-config --cflags glfw3` `pkg-config --cflags cglm` -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wmissing-prototypes -Wwrite-strings -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wimplicit-fallthrough -Wstringop-overflow=4 -std=c11 -MMD
+CFLAGS := -DASSETSPATH=\"$(realpath assets)\" -DCAMERA_PITCH_LIMIT_OFFSET=0.1F -DCAMERA_MINIMUM_ZOOM=1.0F -DCAMERA_MAXIMUM_ZOOM=45.0F -I$(realpath $(INCLUDE_DIR)) `pkg-config --cflags glfw3` `pkg-config --cflags cglm` -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wmissing-prototypes -Wwrite-strings -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wimplicit-fallthrough -Wstringop-overflow=4 -std=c11
 LDFLAGS := `pkg-config --libs glfw3` `pkg-config --libs cglm` -lm -ldl -std=c11
 
 # Flags for generating glad files (also common)
 GLAD_FLAGS := --profile=core --api=gl=3.3 --spec=gl --extensions= --out-path=$$tmpdir
 
 
-CFLAGS_DEBUG := -Og -g
+CFLAGS_DEBUG := -MMD -Og -g
 LDFLAGS_DEBUG := $(CFLAGS_DEBUG)
-CFLAGS_RELEASE := -DNDEBUG -flto -O2
+CFLAGS_RELEASE := -MMD -DNDEBUG -flto -O2
 LDFLAGS_RELEASE := $(CFLAGS_RELEASE)
 LDFLAGS_DEVELOP := -fsanitize=address -fsanitize=undefined -Og
-CFLAGS_DEVELOP := $(LDFLAGS_DEVELOP) -Werror
+CFLAGS_DEVELOP := -MMD $(LDFLAGS_DEVELOP) -Werror
 
 GLAD_FLAGS_DEBUG := --generator=c-debug
 GLAD_FLAGS_RELEASE := --generator=c

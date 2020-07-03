@@ -6,6 +6,7 @@
 #include <geometry.h>
 #include <camera.h>
 #include <light.h>
+#include <shader.h>
 
 /*
  * This module offers an implementation of an object. Objects follow a tree
@@ -16,13 +17,13 @@
 struct object {
         struct object *parent;
         unsigned nchildren;
-        struct object **restrict children;
+        struct object **children;
 
         char name[OBJECT_NAME_SIZE];
         mat4s model;
 
-        struct geometry *restrict geometry;
-        unsigned shader;
+        struct geometry *geometry;
+        struct material *material;
 };
 
 /*
@@ -54,11 +55,15 @@ void object_scale(struct object *restrict object, vec3s scale)
 
 void object_draw(const struct object *restrict object,
                  const struct camera *restrict camera,
-                 const struct light lights[LIGHTLIMIT])
+                 size_t nlights, size_t nshaders,
+                 const struct light *lights,\
+                 const enum shaders *shaders)
         __attribute__((access (read_only, 1)))
         __attribute__((access (read_only, 2)))
+        __attribute__((access (read_only, 5, 3)))
+        __attribute__((access (read_only, 6, 4)))
         __attribute__((leaf))
-        __attribute__((nonnull));
+        __attribute__((nonnull (1, 2)));
 
 void object_free(const struct object *restrict object)
         __attribute__((access (read_only, 1)))

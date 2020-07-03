@@ -19,13 +19,13 @@ struct vertex {
         vec3s vert;
         vec2s tex;
         vec3s norm;
+        vec3s tang;
+        vec3s binorm;
 };
 
 struct geometry {
         GLuint vao, vbo, ibo;
         int nindices;
-        GLuint *restrict textures;
-        unsigned ntextures;
 };
 
 void geometry_initFromArray(struct geometry *restrict geometry,
@@ -39,17 +39,8 @@ void geometry_initFromArray(struct geometry *restrict geometry,
         __attribute__((leaf))
         __attribute__((nonnull (1)));
 
-void geometry_setTextures(struct geometry *restrict geometry,
-                          const char *const textures[], unsigned ntextures)
-        __attribute__((access (read_write, 1)))
-        __attribute__((access (read_only, 2, 3)))
-        __attribute__((leaf))
-        __attribute__((nonnull (1)));
-
-void geometry_draw(const struct geometry *restrict geometry, mat4s model,
-                   const struct camera *restrict camera, unsigned int shader)
+void geometry_draw(const struct geometry *restrict geometry, mat4s model)
         __attribute__((access (read_only, 1)))
-        __attribute__((access (read_only, 3)))
         __attribute__((leaf))
         __attribute__((nonnull));
 

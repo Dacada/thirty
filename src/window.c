@@ -124,6 +124,8 @@ void window_run(void) {
                 glfwPollEvents();
                 window_onKeyboardInput();
         }
+
+        // Clean up
         onTearDown();
         glfwTerminate();
 }

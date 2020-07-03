@@ -2,6 +2,7 @@
 #define CAMERA_H
 
 #include <cglm/struct.h>
+#include <shader.h>
 
 /*
  * FPS camera functions. Passing NULL to any parameter (except the first three)

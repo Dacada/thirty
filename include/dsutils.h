@@ -5,6 +5,18 @@
 #include <stddef.h>
 
 /*
+ * Callback for various foreach functions declared here.
+ */
+typedef bool (*foreach_cb)(const void *, void *);
+
+
+/*
+ * Callback for various sorting functions declared here.
+ */
+typedef int (*cmp_cb)(const void *, const void *, void *);
+
+
+/*
  * A generic growing array. Can add and remove elements from the end.
  *
  * The "data" field is a restrict pointer. Accessing it directly (while holding
@@ -15,10 +27,8 @@ struct growingArray {
         size_t capacity;
         size_t length;
         size_t itemSize;
-        void *restrict data;
+        void *data;
 };
-
-typedef bool (*const growingArray_foreach_cb)(void *const, void *const);
 
 void growingArray_init(struct growingArray *restrict ga,
                        size_t itemSize, size_t initialCapacity)
@@ -61,15 +71,6 @@ void growingArray_pack(struct growingArray *restrict ga)
         __attribute__((nonnull));
 
 /*
- * Deallocate everything in the growing array, reducing capacity to 0. Should
- * be reinitialized if it's going to be reused.
- */
-void growingArray_destroy(struct growingArray *restrict ga)
-        __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
-        __attribute__((nonnull));
-
-/*
  * Run the given function for each element in the growing array. The function
  * will be called with the element for each element in the array. The args
  * parameter is also passed to the function. If the function returns false, the
@@ -79,9 +80,32 @@ void growingArray_destroy(struct growingArray *restrict ga)
  * looking at elements is allowed by passing in the array with args.
  */
 void growingArray_foreach(const struct growingArray *ga,
-                          growingArray_foreach_cb fun, void *args)
+                          foreach_cb fun, void *args)
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull (1)));
+
+/*
+ * Sort in place the contents of the growing array. The cmp function acts
+ * similar to strcmp: A pointer to an element, a pointer to a second element,
+ * and a third pointer to "args"; return an integer. Negative if the first
+ * element is smaller, positive if the second is smaller and zero if they're
+ * equal. The "args" argument is the third argument to this function, which can
+ * be used to avoid having to use global variables and such.
+ */
+void growingArray_sort(struct growingArray *ga, cmp_cb cmp, void *args)
+        __attribute__((access (read_write, 1)))
+        __attribute__((access (read_write, 3)))
+        __attribute__((nonnull (1)))
+        __attribute__((pure));
+
+/*
+ * Deallocate everything in the growing array, reducing capacity to 0. Should
+ * be reinitialized if it's going to be reused.
+ */
+void growingArray_destroy(struct growingArray *restrict ga)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
 ///////////////////////////////////////////////////////////////////////////////
 
