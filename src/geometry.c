@@ -1,17 +1,14 @@
 #include <geometry.h>
 #include <camera.h>
-#include <shader.h>
 #include <util.h>
 #include <glad/glad.h>
 #include <string.h>
 #include <limits.h>
+#include <assert.h>
 
 __attribute__((access (write_only, 1)))
 __attribute__((nonnull))
-static void geometry_init(struct geometry *const restrict geometry) {
-        geometry->ntextures = 0;
-        geometry->textures = NULL;
-        
+static void geometry_init(struct geometry *const geometry) {
         geometry->vao = 0;
         geometry->vbo = 0;
         geometry->ibo = 0;
@@ -38,6 +35,16 @@ void geometry_initFromArray(struct geometry *const geometry,
         glBufferData(GL_ARRAY_BUFFER,
                      (GLsizeiptr)(nvertices * sizeof(*vertices)),
                      vertices, GL_STATIC_DRAW);
+
+#ifndef NDEBUG
+        // Sanity check texture coordinates
+        for (size_t i=0; i<nvertices; i++) {
+                assert(vertices[i].tex.x >= 0.0F &&
+                       vertices[i].tex.x <= 1.0F &&
+                       vertices[i].tex.y >= 0.0F &&
+                       vertices[i].tex.y <= 1.0F);
+        }
+#endif
         
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
@@ -80,7 +87,26 @@ void geometry_initFromArray(struct geometry *const geometry,
         geometry->nindices = (const int)nindices;
 }
 
-void geometry_draw(const struct geometry *const geometry, const mat4s model) {
+void geometry_initFromFile(struct geometry *const geometry,
+                           const size_t nvertices, const size_t nindices,
+                           FILE *const f) {
+        struct vertex *const vertices =
+                smallocarray(nvertices, sizeof(*vertices));
+        unsigned *const indices =
+                smallocarray(nindices, sizeof(*indices));
+
+        sfread(vertices, sizeof(*vertices), nvertices, f);
+        sfread(indices, sizeof(*indices), nindices, f);
+        
+        geometry_initFromArray(geometry,
+                               vertices, nvertices,
+                               indices, nindices);
+        
+        free(vertices);
+        free(indices);
+}
+
+void geometry_draw(const struct geometry *const geometry) {
         glBindVertexArray(geometry->vao);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geometry->ibo);
         glDrawElements(GL_TRIANGLES, geometry->nindices, GL_UNSIGNED_INT, 0);
@@ -90,5 +116,4 @@ void geometry_free(const struct geometry *const geometry) {
         glDeleteBuffers(1, &geometry->vbo);
         glDeleteBuffers(1, &geometry->ibo);
         glDeleteVertexArrays(1, &geometry->vao);
-        free(geometry->textures);
 }

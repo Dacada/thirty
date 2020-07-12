@@ -17,12 +17,12 @@ __attribute__((const))
 static bool is_safe_multiply(const size_t a, const size_t b) {
         if (a == 0 || b == 0) {
                 return true;
-        } else {
-                static const int sizet_size_bits = sizeof(size_t) * 8;
-                const int a_size_bits = sizet_size_bits - __builtin_clzl(a);
-                const int b_size_bits = sizet_size_bits - __builtin_clzl(b);
-                return a_size_bits + b_size_bits <= sizet_size_bits;
         }
+        
+        static const int sizet_size_bits = sizeof(size_t) * 8;
+        const int a_size_bits = sizet_size_bits - __builtin_clzl(a);
+        const int b_size_bits = sizet_size_bits - __builtin_clzl(b);
+        return a_size_bits + b_size_bits <= sizet_size_bits;
 }
 
 void bail(const char *const msg, ...) {
@@ -48,7 +48,11 @@ void die(const char *const msg, ...) {
 }
 
 void *smalloc(const size_t size) {
-        void *const restrict ptr = malloc(size);
+        if (size == 0) {
+                return NULL;
+        }
+        
+        void *const ptr = malloc(size);
         if (ptr == NULL) {
                 perror("malloc");
                 die(NULL);
@@ -59,14 +63,12 @@ void *smalloc(const size_t size) {
 void *smallocarray(const size_t nmemb, const size_t size) {
         if (is_safe_multiply(nmemb, size)) {
                 return smalloc(nmemb * size);
-        } else {
-                die("calloc would overflow (%lu elements of size %lu)",
-                    nmemb, size);
         }
+        die("calloc would overflow (%lu elements of size %lu)", nmemb, size);
 }
 
 void *srealloc(void *const ptr, const size_t size) {
-        void *const restrict new_ptr = realloc(ptr, size);
+        void *const new_ptr = realloc(ptr, size);
         if (new_ptr == NULL && size > 0) {
                 perror("realloc");
                 die(NULL);
@@ -75,7 +77,7 @@ void *srealloc(void *const ptr, const size_t size) {
 }
 
 void *sreallocarray(void *const ptr, const size_t nmemb, const size_t size) {
-        void *const restrict new_ptr = reallocarray(ptr, nmemb, size);
+        void *const new_ptr = reallocarray(ptr, nmemb, size);
         if (new_ptr == NULL && nmemb > 0 && size > 0) {
                 perror("reallocarray");
                 die(NULL);
@@ -84,7 +86,7 @@ void *sreallocarray(void *const ptr, const size_t nmemb, const size_t size) {
 }
 
 FILE *sfopen(const char *const pathname, const char *const mode) {
-        FILE *const restrict f = fopen(pathname, mode);
+        FILE *const f = fopen(pathname, mode);
         if (f == NULL) {
                 perror(pathname);
                 die("Failed to open file.");
@@ -110,6 +112,11 @@ size_t sftell(FILE *const stream) {
 
 void sfread(void *const ptr, const size_t size, const size_t nmemb,
             FILE *const stream) {
+        if (!is_safe_multiply(nmemb, size)) {
+                die("sfread would overflow (%lu elements of size %lu)",
+                    nmemb, size);
+        }
+        
         if (fread(ptr, size, nmemb, stream) != size &&
             ferror(stream) != 0) {
                 perror("fread");

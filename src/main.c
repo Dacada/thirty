@@ -77,7 +77,7 @@ static void draw(void) {
         static unsigned count = 0;
         if (count == FRAME_PERIOD_FPS_REFRESH) {
                 const int fps = (const int)(1.0F/window_timeDelta());
-                snprintf(title, TITLE_BUFFER_SIZE, "[%d] Boxes (%s)", fps,
+                snprintf(title, TITLE_BUFFER_SIZE, "[%d] Temple (%s)", fps,
                          freefly ? "Freefly camera" : "FPS camera");
                 window_updateTitle();
                 count = 0;

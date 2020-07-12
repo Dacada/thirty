@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdlib.h>
 
 void growingArray_init(struct growingArray *const ga,
                        const size_t itemSize, const size_t initialCapacity) {
@@ -47,6 +46,36 @@ void growingArray_foreach(const struct growingArray *const ga,
 void growingArray_sort(struct growingArray *const ga,
                        const cmp_cb cmp, void *const args) {
         qsort_r(ga->data, ga->length, ga->itemSize, cmp, args);
+}
+
+struct contain_args {
+        cmp_cb cmp;
+        const void *element;
+        bool found;
+};
+__attribute__((access (read_only, 1)))
+__attribute__((access (read_only, 2)))
+static bool contains(void *item, void *args) {
+        struct contain_args *cont_args = args;
+        if (cont_args->cmp(cont_args->element, item, NULL) == 0) {
+                cont_args->found = true;
+                return false;
+        }
+        return true;
+}
+bool growingArray_contains(const struct growingArray *const ga,
+                           const cmp_cb cmp, const void *const element) {
+        struct contain_args args = {
+                .cmp = cmp,
+                .element = element,
+                .found = false,
+        };
+        growingArray_foreach(ga, contains, &args);
+        return args.found;
+}
+
+void growingArray_clear(struct growingArray *const ga) {
+        ga->length = 0;
 }
 
 void growingArray_destroy(struct growingArray *const ga) {

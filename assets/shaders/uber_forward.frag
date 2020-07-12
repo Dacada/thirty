@@ -1,18 +1,9 @@
 #version 330 core
 
-#define LIGHTTYPE_SPOT 0
-#define LIGHTTYPE_DIRECTION 1
-#define LIGHTTYPE_POINT 2
+#define LIGHTTYPE_SPOT uint(0)
+#define LIGHTTYPE_DIRECTION uint(1)
+#define LIGHTTYPE_POINT uint(2)
 #define NUM_LIGHTS 20
-
-struct VertOutput {
-        vec3 texCoord;
-        vec4 position;
-        vec3 position_vs;
-        vec3 tangent_vs;
-        vec3 binormal_vs;
-        vec3 normal_vs;
-};
 
 struct Material {
         vec4 globalAmbient;
@@ -62,9 +53,13 @@ struct Light {
 struct LightingResult {
         vec4 diffuse;
         vec4 specular;
-}
+};
 
-in VertOutput vertOutput;
+in vec2 texCoord;
+in vec3 position_vs;
+in vec3 tangent_vs;
+in vec3 binormal_vs;
+in vec3 normal_vs;
 
 out vec4 FragColor;
 
@@ -94,12 +89,12 @@ vec4 doNormalMapping(mat3 TBN, sampler2D tex, vec2 uv) {
 // Might be incorrect way to do bump mapping
 vec4 doBumpMapping(mat3 TBN, sampler2D tex, vec2 uv, float bumpScale) {
         float height = texture(tex, uv).x * bumpScale;
-        float heightU = textureOffset(tex, uv, vec2(1, 0)).x * bumpScale;
-        float heightV = textureOffset(tex, uv, vec2(0, 1)).x * bumpScale;
+        float heightU = textureOffset(tex, uv, ivec2(1, 0)).x * bumpScale;
+        float heightV = textureOffset(tex, uv, ivec2(0, 1)).x * bumpScale;
 
         vec3 p = vec3(0, 0, height);
         vec3 pU = vec3(1, 0, heightU);
-        vec4 pV = vec3(0, 1, heightV);
+        vec3 pV = vec3(0, 1, heightV);
 
         vec3 normal = cross(normalize(pU-p), normalize(pV-p));
         normal *= TBN;
@@ -110,13 +105,14 @@ vec4 doDiffuse(Light light, vec4 L, vec4 N) {
         return light.color * max(dot(N, L), 0);
 }
 
-vec4 doSpecular(Light light, Material mat, vec4 L, vec4 N) {
+vec4 doSpecular(Light light, Material mat, vec4 V, vec4 L, vec4 N) {
         vec4 R = normalize(reflect(-L, N));
-        return light.color * pow(max(dot(R, V), 0), material.SpecularPower);
+        return light.color * pow(max(dot(R, V), 0), material.specularPower);
 }
 
 float doAttenuation(Light light, float d) {
-        return 1.0f - smoothstep(light.range * 0.75f, light.range, d);
+        float c = 1.0f - smoothstep(light.range * 0.75f, light.range, d);
+        return c / (1.0f + 0.0f*d + 0.0f*d*d);
 }
 
 LightingResult doPointLight(Light light, Material mat,
@@ -135,7 +131,7 @@ LightingResult doPointLight(Light light, Material mat,
         return result;
 }
 
-float doSpotCone(Light light, float4 L) {
+float doSpotCone(Light light, vec4 L) {
         float minCos = cos(radians(light.angle));
         float maxCos = mix(minCos, 1, 0.5f);
         float cosAngle = dot(light.direction_vs, -L);
@@ -171,8 +167,8 @@ LightingResult doDirectionalLight(Light light, Material mat,
 
 LightingResult doLighting(Material mat, vec4 eyePos, vec4 P, vec4 N) {
         LightingResult totalResult;
-        totalResult.difuse = 0;
-        totalResult.specular = 0;
+        totalResult.diffuse = vec4(0, 0, 0, 0);
+        totalResult.specular = vec4(0, 0, 0, 0);
         
         vec4 V = normalize(eyePos - P);
 
@@ -189,25 +185,28 @@ LightingResult doLighting(Material mat, vec4 eyePos, vec4 P, vec4 N) {
                 
                 switch (lights[i].type) {
                 case LIGHTTYPE_SPOT:
-                        result = DoSpotLight(lights[i], mat, V, P, N);
+                        result = doSpotLight(lights[i], mat, V, P, N);
                         break;
                 case LIGHTTYPE_DIRECTION:
-                        result = DoDirectionalLight(lights[i], mat, V, P, N);
+                        result = doDirectionalLight(lights[i], mat, V, P, N);
                         break;
                 case LIGHTTYPE_POINT:
-                        result = DoPointLight(lights[i], mat, V, P, N);
+                        result = doPointLight(lights[i], mat, V, P, N);
                         break;
                 default:
-                        result.diffuse = 0;
-                        result.specular = 0;
+                        result.diffuse = vec4(0, 0, 0, 0);
+                        result.specular = vec4(0, 0, 0, 0);
                         break;
                 }
 
-                totalResults.diffuse += result.diffuse;
-                totalResults.specular += result.specular;
+                totalResult.diffuse += result.diffuse;
+                totalResult.specular += result.specular;
         }
 
-        return totalResults;
+        totalResult.diffuse = clamp(totalResult.diffuse, 0.0f, 1.0f);
+        totalResult.specular = clamp(totalResult.specular, 0.0f, 1.0f);
+
+        return totalResult;
 }
 
 void main() {
@@ -216,67 +215,49 @@ void main() {
 
         vec4 diffuse = mat.diffuseColor;
         if (mat.hasDiffuseTexture) {
-                vec4 diffuseTexture =
-                        texture(diffuseTexture, vertOutput.texCoord);
-                if (diffuse.xyz == vec3(0, 0, 0)) {
-                        diffuse = diffuseTexture;
-                } else {
-                        diffuse *= diffuseTexture;
-                }
+                diffuse *= texture(diffuseTexture, texCoord);
         }
 
         float alpha = diffuse.w;
         if (mat.hasOpacityTexture) {
-                alpha = texture(opacityTexture, vertOutput.texCoord).x;
+                alpha = texture(opacityTexture, texCoord).x;
         }
 
         vec4 ambient = mat.ambientColor;
         if (mat.hasAmbientTexture) {
-                vec4 ambientTexture =
-                        texture(ambientTexture, vertOutput.texCoord);
-                if (ambient.xyz == vec3(0, 0, 0)) {
-                        ambient = ambientTexture;
-                } else {
-                        ambient *= ambientTexture;
-                }
+                ambient *= texture(ambientTexture, texCoord);
         }
         ambient *= mat.globalAmbient;
 
         vec4 emissive = mat.emissiveColor;
         if (mat.hasEmissiveTexture) {
-                vec4 emissiveTexture =
-                        texture(emissiveTexture, vertOutput.texCoord);
-                if (emissive.xyz == vec3(0, 0, 0)) {
-                        emissive = emissiveTexture;
-                } else {
-                        emissive *= emissiveTexture;
-                }
+                emissive *= texture(emissiveTexture, texCoord);
         }
 
         if (mat.hasSpecularPowerTexture) {
                 mat.specularPower =
-                        texture(specularPowerTexture, vertOutput.texCoord).x
+                        texture(specularPowerTexture, texCoord).x
                         * mat.specularScale;
         }
 
         vec4 N;
         if (mat.hasNormalTexture) {
-                mat3 TBN = mat3(normalize(vertOutput.tangent_vs),
-                                normalize(vertOutput.binormal_vs),
-                                normalize(vertOutput.normal_vs));
-                N = doNormalMapping(TBN, normalTexture, vertOutput.texCoord);
+                mat3 TBN = mat3(normalize(tangent_vs),
+                                normalize(binormal_vs),
+                                normalize(normal_vs));
+                N = doNormalMapping(TBN, normalTexture, texCoord);
         } else if (mat.hasBumpTexture) {
-                mat3 TBN = mat3(normalize(vertOutput.tangent_vs),
-                                normalize(-vertOutput.binormal_vs),
-                                normalize(vertOuput.normal_vs));
-                N = doBumpMapping(TBN, bumpTexture, vertOutput.texCoord,
+                mat3 TBN = mat3(normalize(tangent_vs),
+                                normalize(-binormal_vs),
+                                normalize(normal_vs));
+                N = doBumpMapping(TBN, bumpTexture, texCoord,
                                   mat.bumpIntensity);
         } else {
-                N = normalize(vec4(vertOutput.normal_vs, 0));
+                N = normalize(vec4(normal_vs, 0));
         }
 
-        vec4 P = vec4(vertOutput.position_vs, 1);
-        LightingResult lit = doLighting(lights, mat, eyePos, P, N);
+        vec4 P = vec4(position_vs, 1);
+        LightingResult lit = doLighting(mat, eyePos, P, N);
 
         diffuse *= vec4(lit.diffuse.xyz, 1.0f);
 
@@ -284,17 +265,12 @@ void main() {
         if (mat.specularPower > 1.0f) {
                 specular = mat.specularColor;
                 if (mat.hasSpecularTexture) {
-                        vec4 specularTex =
-                                texture(specularTexture, vertOutput.texCoord);
-                        if (specular.xyz == vec3(0, 0, 0)) {
-                                specular = specularTex;
-                        } else {
-                                specular *= specularTex;
-                        }
+                        specular *=
+                                texture(specularTexture, texCoord);
                 }
                 specular *= lit.specular;
         }
 
         FragColor = vec4((ambient + emissive + diffuse + specular).xyz,
-                         alpha * mat.opacity)
+                         alpha * mat.opacity);
 }

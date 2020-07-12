@@ -46,8 +46,6 @@
  */
 
 #include <cglm/struct.h>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include <stdbool.h>
 
 extern void(*window_onKeyboardEvent)(const int, const int, const int);

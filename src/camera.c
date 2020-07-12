@@ -16,7 +16,7 @@ static const float defaultFar = 100.0F;
 
 __attribute__((access (read_write, 1)))
 __attribute__((nonnull))
-static void update_camera_vectors(struct camera *const restrict cam) {
+static void update_camera_vectors(struct camera *const cam) {
         vec3s front;
         front.x = cosf(cam->yaw) * cosf(cam->pitch);
         front.y = sinf(cam->pitch);
@@ -29,7 +29,7 @@ static void update_camera_vectors(struct camera *const restrict cam) {
 
 __attribute__((access (write_only, 1)))
 __attribute__((nonnull))
-static void init_defaults(struct camera *const restrict cam) {
+static void init_defaults(struct camera *const cam) {
         cam->front = defaultFront;
         cam->movement_speed = defaultSpeed;
         cam->look_sensitivity = defaultSensitivity;
@@ -51,6 +51,21 @@ void camera_init(struct camera *const cam,
         cam->near = NULLDEFAULT(near, defaultNear);
         cam->far = NULLDEFAULT(far, defaultFar);
         update_camera_vectors(cam);
+}
+
+void camera_initFromFile(struct camera *const cam,
+                         const float width, const float height,
+                         FILE *const f) {
+        vec3s position;
+        float yaw;
+        float pitch;
+
+        sfread(&position, 4, 3, f);
+        sfread(&yaw, 4, 1, f);
+        sfread(&pitch, 4, 1, f);
+
+        camera_init(cam, width, height, &position,
+                    NULL, &yaw, &pitch, NULL, NULL);
 }
 
 mat4s camera_viewMatrix(const struct camera *const cam) {

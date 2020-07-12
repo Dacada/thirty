@@ -22,3 +22,7 @@ venv
 # TAGS files
 TAGS
 sysh_TAGS
+
+# Generated files
+assets/textures/*.png
+assets/scenes/*.bgl

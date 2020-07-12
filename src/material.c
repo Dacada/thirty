@@ -1,8 +1,25 @@
 #include <material.h>
 #include <util.h>
+#include <shader.h>
 #include <stb_image.h>
 #include <glad/glad.h>
+#include <cglm/struct.h>
+#include <stdbool.h>
 #include <string.h>
+#include <assert.h>
+
+__attribute__((access (write_only, 1)))
+__attribute__((nonnull))
+static void initTexturesZero(struct material *const material) {
+        material->ambientTexture = 0;
+        material->emissiveTexture = 0;
+        material->diffuseTexture = 0;
+        material->specularTexture = 0;
+        material->specularPowerTexture = 0;
+        material->normalTexture = 0;
+        material->bumpTexture = 0;
+        material->opacityTexture = 0;
+}
 
 void material_initDefaults(struct material *const material,
                            const enum shaders shader) {
@@ -19,50 +36,110 @@ void material_initDefaults(struct material *const material,
         material->specularPower = 100.0F;
         material->indexOfRefraction = 0.0F;
 
-        material->ambientTexture = 0;
-        material->emissiveTexture = 0;
-        material->diffuseTexture = 0;
-        material->specularTexture = 0;
-        material->specularPowerTexture = 0;
-        material->normalTexture = 0;
-        material->bumpTexture = 0;
-        material->opacityTexture = 0;
-
         material->bumpIntensity = 1.0F;
         material->specularScale = 1.0F;
-        material->alphaThreshold = 0.95F;
+        material->alphaThreshold = 1.0F;
+
+        initTexturesZero(material);
 }
 
-static unsigned *getTexPtrAndSlot(struct material *const material,
-                                  const enum material_textureType tex,
-                                  GLenum *const gltexture) {
-        switch (tex) {
-        case MATERIAL_TEXTURE_AMBIENT:
-                *gltexture = GL_TEXTURE0;
-                return &material->ambientTexture;
-        case MATERIAL_TEXTURE_EMISSIVE:
-                *gltexture = GL_TEXTURE1;
-                return &material->emissiveTexture;
-        case MATERIAL_TEXTURE_DIFFUSE:
-                *gltexture = GL_TEXTURE2;
-                return &material->diffuseTexture;
-        case MATERIAL_TEXTURE_SPECULAR:
-                *gltexture = GL_TEXTURE3;
-                return &material->specularTexture;
-        case MATERIAL_TEXTURE_SPECULARPOWER:
-                *gltexture = GL_TEXTURE4;
-                return &material->specularPowerTexture;
-        case MATERIAL_TEXTURE_NORMAL:
-                *gltexture = GL_TEXTURE5;
-                return &material->normalTexture;
-        case MATERIAL_TEXTURE_BUMP:
-                *gltexture = GL_TEXTURE6;
-                return &material->bumpTexture;
-        case MATERIAL_TEXTURE_OPACITY:
-                *gltexture = GL_TEXTURE7;
-                return &material->opacityTexture;
+void material_initFromFile(struct material *const material, FILE *const f) {
+        unsigned mat_type;
+        sfread(&mat_type, 4, 1, f);
+        if (mat_type != 0) {
+                bail("Error parsing scene: Nonzero material.");
+        }
+
+        unsigned shader_type;
+        sfread(&shader_type, 4, 1, f);
+        if (shader_type != SHADER_UBER) {
+                bail("Error parsing scene: Unknown shader.");
+        }
+        material->shader = SHADER_UBER;
+
+        sfread(material->ambientColor.raw, 4, 4, f);
+        sfread(material->emissiveColor.raw, 4, 4, f);
+        sfread(material->diffuseColor.raw, 4, 4, f);
+        sfread(material->specularColor.raw, 4, 4, f);
+        sfread(material->reflectance.raw, 4, 4, f);
+        
+        sfread(&material->opacity, 4, 1, f);
+        sfread(&material->specularPower, 4, 1, f);
+        sfread(&material->indexOfRefraction, 4, 1, f);
+        
+        sfread(&material->bumpIntensity, 4, 1, f);
+        sfread(&material->specularScale, 4, 1, f);
+        sfread(&material->alphaThreshold, 4, 1, f);
+        
+        initTexturesZero(material);
+
+        for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
+             tex <= MATERIAL_TEXTURE_OPACITY; tex++) {
+                unsigned nchars;
+                sfread(&nchars, 4, 1, f);
+                if (nchars > 0) {
+                        char *const name =
+                                smallocarray(nchars+1, sizeof(*name));
+                        sfread(name, nchars, sizeof(*name), f);
+                        name[nchars] = '\0';
+                        material_setTexture(material, tex, name);
+                        free(name);
+                }
         }
 }
+
+#define TEXANDSLOT(ptr)                                                 \
+        do {                                                            \
+                switch (tex) {                                          \
+                case MATERIAL_TEXTURE_AMBIENT:                          \
+                        *gltexture = GL_TEXTURE0;                       \
+                        return ptr material->ambientTexture;            \
+                case MATERIAL_TEXTURE_EMISSIVE:                         \
+                        *gltexture = GL_TEXTURE1;                       \
+                        return ptr material->emissiveTexture;           \
+                case MATERIAL_TEXTURE_DIFFUSE:                          \
+                        *gltexture = GL_TEXTURE2;                       \
+                        return ptr material->diffuseTexture;            \
+                case MATERIAL_TEXTURE_SPECULAR:                         \
+                        *gltexture = GL_TEXTURE3;                       \
+                        return ptr material->specularTexture;           \
+                case MATERIAL_TEXTURE_SPECULARPOWER:                    \
+                        *gltexture = GL_TEXTURE4;                       \
+                        return ptr material->specularPowerTexture;      \
+                case MATERIAL_TEXTURE_NORMAL:                           \
+                        *gltexture = GL_TEXTURE5;                       \
+                        return ptr material->normalTexture;             \
+                case MATERIAL_TEXTURE_BUMP:                             \
+                        *gltexture = GL_TEXTURE6;                       \
+                        return ptr material->bumpTexture;               \
+                case MATERIAL_TEXTURE_OPACITY:                          \
+                        *gltexture = GL_TEXTURE7;                       \
+                        return ptr material->opacityTexture;            \
+                default:                                                \
+                        assert(false);                                  \
+                        break;                                          \
+                }                                                       \
+        } while (0)
+__attribute__((access (read_only, 1)))
+__attribute__((access (write_only, 3)))
+__attribute__((nonnull))
+static unsigned *getTexPtrAndSlot(
+        struct material *const material,
+        const enum material_textureType tex,
+        GLenum *const gltexture) {
+        TEXANDSLOT(&);
+        return NULL;
+}
+__attribute__((access (read_only, 1)))
+__attribute__((access (write_only, 3)))
+__attribute__((nonnull))
+static unsigned getTexAndSlot(const struct material *const material,
+                                 const enum material_textureType tex,
+                                 GLenum *const gltexture) {
+        TEXANDSLOT();
+        return 0;
+}
+#undef TEXANDSLOT
 
 __attribute__((access (write_only, 2, 1)))
 __attribute__((access (read_only, 3)))
@@ -124,7 +201,7 @@ void material_setTexture(struct material *const material,
         }
         
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0,
-                             internalFormat, GL_UNSIGNED_BYTE, data);
+                     internalFormat, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
         
         stbi_image_free(data);
@@ -145,8 +222,6 @@ bool material_isTransparent(const struct material *const material) {
 }
 
 void material_updateShader(const struct material *const material) {
-        shader_use(material->shader);
-        
         shader_setVec4(material->shader, "material.ambientColor",
                        material->ambientColor);
         shader_setVec4(material->shader, "material.emissiveColor",
@@ -189,10 +264,20 @@ void material_updateShader(const struct material *const material) {
 }
 
 void material_bindTextures(const struct material *const material) {
-        /* TODO: This goes in another place now
-        for (unsigned i=0; i<geometry->ntextures; i++) {
-                glActiveTexture(GL_TEXTURE0+i);
-                glBindTexture(GL_TEXTURE_2D, geometry->textures[i]);
+        for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
+             tex <= MATERIAL_TEXTURE_OPACITY; tex++) {
+                GLenum gltexture;
+                unsigned texture = getTexAndSlot(material, tex, &gltexture);
+                if (texture != 0) {
+                        glActiveTexture(gltexture);
+                        glBindTexture(GL_TEXTURE_2D, texture);
+                }
         }
-        */
+}
+
+void material_free(struct material *const material) {
+        for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
+             tex <= MATERIAL_TEXTURE_OPACITY; tex++) {
+                material_unsetTexture(material, tex);
+        }
 }

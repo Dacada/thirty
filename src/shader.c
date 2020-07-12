@@ -8,6 +8,15 @@
 #include <string.h>
 #include <limits.h>
 
+static const int ambientTextureSampler = 0;
+static const int emissiveTextureSampler = 1;
+static const int diffuseTextureSampler = 2;
+static const int specularTextureSampler = 3;
+static const int specularPowerTextureSampler = 4;
+static const int normalTextureSampler = 5;
+static const int bumpTextureSampler = 6;
+static const int opacityTextureSampler = 7;
+
 // Holds currently created shaders, or 0 if the shader hasn't been created yet.
 static unsigned shaders[SHADERS_TOTAL];
 
@@ -15,13 +24,12 @@ __attribute__((access (read_only, 3, 1)))
 __attribute__((access (read_only, 4, 2)))
 __attribute__((access (write_only, 5)))
 __attribute__((nonnull (5)))
-__attribute__((malloc))
 __attribute__((returns_nonnull))
 static char *strcat_new(const size_t lena, const size_t lenb,
-                        char *const restrict a,
-                        char *const restrict b,
-                        size_t *const restrict lenc) {
-        char *const restrict c = smallocarray(lena + lenb + 1, sizeof(char));
+                        char *const a,
+                        char *const b,
+                        size_t *const lenc) {
+        char *const c = smallocarray(lena + lenb + 1, sizeof(char));
         if (a != NULL) {
                 strncpy(c, a, lena);
         }
@@ -38,21 +46,20 @@ static char *strcat_new(const size_t lena, const size_t lenb,
 __attribute__((access (read_only, 1)))
 __attribute__((access (write_only, 2)))
 __attribute__((nonnull))
-__attribute__((malloc))
 __attribute__((returns_nonnull))
-static char *readall(const char *const restrict filename,
-                     size_t *const restrict len) {
+static char *readall(const char *const filename,
+                     size_t *const len) {
         if (!accessible(filename, true, false, false)) {
                 bail("Failed to access shader file.\n");
         }
         
-        FILE *const restrict f = sfopen(filename, "rb");
+        FILE *const f = sfopen(filename, "rb");
 
         sfseek(f, 0L, SEEK_END);
         size_t size = sftell(f);
         fseek(f, 0L, SEEK_SET);
 
-        char *const restrict buff = smallocarray(size+1, sizeof(char));
+        char *const buff = smallocarray(size+1, sizeof(char));
         sfread(buff, sizeof(char), size, f);
         sfclose(f);
 
@@ -65,9 +72,9 @@ __attribute__((access (write_only, 2, 1)))
 __attribute__((access (read_only, 3)))
 __attribute__((access (read_only, 5, 4)))
 __attribute__((nonnull))
-static void buildpath(const size_t destsize, char *const restrict dest,
-                      const char *const restrict file, const size_t extsize,
-                      const char *const restrict extension) {
+static void buildpath(const size_t destsize, char *const dest,
+                      const char *const file, const size_t extsize,
+                      const char *const extension) {
         const size_t len = pathjoin(destsize, dest, 3, ASSETSPATH,
                                      "shaders", file);
         if (len + extsize - 1 >= destsize) {
@@ -82,7 +89,7 @@ static void handle_compile_infolog(const unsigned int shader) {
         if (success == 0) {
                 int length;
                 glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
-                char *const restrict info_log =
+                char *const info_log =
                         smallocarray((const size_t)length, sizeof(char));
                 glGetShaderInfoLog(shader, length, NULL, info_log);
                 fprintf(stderr, "Error compiling shaders:\n%s\n", info_log);
@@ -97,7 +104,7 @@ static void handle_link_infolog(const unsigned int program) {
         if (success == 0) {
                 int length;
                 glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-                char *const restrict info_log =
+                char *const info_log =
                         smallocarray((const size_t)length, sizeof(char));
                 glGetProgramInfoLog(program, length, NULL, info_log);
                 fprintf(stderr, "Error linking shaders:\n%s\n", info_log);
@@ -110,11 +117,11 @@ __attribute__((access (write_only, 1)))
 __attribute__((access (read_only, 3)))
 __attribute__((access (read_only, 5, 4)))
 __attribute__((nonnull))
-static unsigned int compile_shader(char *const restrict path,
+static unsigned int compile_shader(char *const path,
                                    const size_t nfilenames,
                                    const char *const filenames[],
                                    const size_t ext_len,
-                                   const char *const restrict ext,
+                                   const char *const ext,
                                    const GLenum shader_type) {
         char *totalsrc = NULL;
         size_t totalsrc_len = 0;
@@ -122,7 +129,7 @@ static unsigned int compile_shader(char *const restrict path,
                 const char *const filename = filenames[i];
                 buildpath(PATH_MAX, path, filename, ext_len, ext);
                 size_t fragsrc_len;
-                char *const restrict fragsrc = readall(path, &fragsrc_len);
+                char *const fragsrc = readall(path, &fragsrc_len);
                 size_t newlen;
                 totalsrc = strcat_new(
                         fragsrc_len, totalsrc_len, fragsrc, totalsrc, &newlen);
@@ -153,12 +160,12 @@ static unsigned int shader_new(const size_t nvertfiles,
                                const size_t nfragfiles,
                                const char *const vertfiles[nvertfiles],
                                const char *const fragfiles[nfragfiles]) {
-        static const char *const restrict vert_ext = ".vert";
-        static const char *const restrict frag_ext = ".frag";
+        static const char *const vert_ext = ".vert";
+        static const char *const frag_ext = ".frag";
         static const size_t vert_ext_len = strlen(vert_ext);
         static const size_t frag_ext_len = strlen(frag_ext);
 
-        char *const restrict path = smallocarray(PATH_MAX, sizeof(char));
+        char *const path = smallocarray(PATH_MAX, sizeof(char));
         const unsigned int vert = compile_shader(
                 path, nfragfiles, fragfiles, vert_ext_len, vert_ext,
                 GL_VERTEX_SHADER);
@@ -179,14 +186,14 @@ static void init_shader(const enum shaders shader) {
 
         switch (shader) {
         case SHADER_UBER:
-                shader_setInt(shader, "ambientTexture", 0);
-                shader_setInt(shader, "emissiveTexture", 1);
-                shader_setInt(shader, "diffuseTexture", 2);
-                shader_setInt(shader, "specularTexture", 3);
-                shader_setInt(shader, "specularPowerTexture", 4);
-                shader_setInt(shader, "normalTexture", 5);
-                shader_setInt(shader, "bumpTexture", 6);
-                shader_setInt(shader, "opacityTexture", 7);
+                shader_setInt(shader, "ambientTexture", ambientTextureSampler);
+                shader_setInt(shader, "emissiveTexture", emissiveTextureSampler);
+                shader_setInt(shader, "diffuseTexture", diffuseTextureSampler);
+                shader_setInt(shader, "specularTexture", specularTextureSampler);
+                shader_setInt(shader, "specularPowerTexture", specularPowerTextureSampler);
+                shader_setInt(shader, "normalTexture", normalTextureSampler);
+                shader_setInt(shader, "bumpTexture", bumpTextureSampler);
+                shader_setInt(shader, "opacityTexture", opacityTextureSampler);
                 break;
         default:
                 die("Unexpected Shader");
@@ -246,15 +253,15 @@ void shader_setBool(const enum shaders shader, const char *const name,
 }
 void shader_setInt(const enum shaders shader, const char *const name,
 		   const int value) {
-        glUniform1i(getloc(shader, name), value); 
+        glUniform1i(getloc(shader, name), value);
 }
 void shader_setUInt(const enum shaders shader, const char *const name,
                     const unsigned value) {
-        glUniform1ui(getloc(shader, name), value); 
+        glUniform1ui(getloc(shader, name), value);
 }
 void shader_setFloat(const enum shaders shader, const char *const name,
 		     const float value) {
-        glUniform1f(getloc(shader, name), value); 
+        glUniform1f(getloc(shader, name), value);
 }
 void shader_setVec3(const enum shaders shader, const char *const name,
                     const vec3s value) {

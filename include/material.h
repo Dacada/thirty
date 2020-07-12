@@ -2,7 +2,7 @@
 #define MATERIAL_H
 
 #include <shader.h>
-#include <cglm/types-struct.h>
+#include <cglm/struct.h>
 #include <stdbool.h>
 
 /*
@@ -56,9 +56,15 @@ enum material_textureType {
  * Initialize a material with default values: All colors black and no
  * associated textures. Must pass in the shader.
  */
-void material_initDefaults(struct material *restrict material,
+void material_initDefaults(struct material *material,
                            enum shaders shader)
         __attribute__((access (write_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void material_initFromFile(struct material *material, FILE *f)
+        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_write, 2)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
@@ -69,7 +75,7 @@ void material_initDefaults(struct material *restrict material,
  */
 void material_setTexture(struct material *material,
                          enum material_textureType tex,
-                         const char *restrict name)
+                         const char *name)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 3)))
         __attribute__((leaf))
@@ -80,7 +86,7 @@ void material_setTexture(struct material *material,
  * way. This is already called automatically by setTexture if it's replacing a
  * texture.
  */
-void material_unsetTexture(struct material *restrict material,
+void material_unsetTexture(struct material *material,
                            enum material_textureType tex)
         __attribute__((access (write_only, 1)))
         __attribute__((leaf))
@@ -89,7 +95,7 @@ void material_unsetTexture(struct material *restrict material,
 /*
  * Return whether the material contains any transparencies.
  */
-bool material_isTransparent(const struct material *restrict material)
+bool material_isTransparent(const struct material *material)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
@@ -100,7 +106,7 @@ bool material_isTransparent(const struct material *restrict material)
  * textures or calling the init function, so that the changes can reflect on
  * the shader (can also make multiple changes and then call this function).
  */
-void material_updateShader(const struct material *restrict material)
+void material_updateShader(const struct material *material)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
@@ -108,7 +114,7 @@ void material_updateShader(const struct material *restrict material)
 /*
  * Bind the material's textures to the shader previous to drawing.
  */
-void material_bindTextures(const struct material *restrict material)
+void material_bindTextures(const struct material *material)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
@@ -116,7 +122,7 @@ void material_bindTextures(const struct material *restrict material)
 /*
  * Free any resources used by the material, specifically all textures.
  */
-void material_free(struct material *restrict material)
+void material_free(struct material *material)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));

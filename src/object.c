@@ -7,13 +7,9 @@
 #include <dsutils.h>
 #include <util.h>
 #include <cglm/struct.h>
-#include <string.h> // TODO: only temporary for strcmp
+#include <assert.h>
 
 #define STARTING_OBJECT_COUNT 16
-
-static const vec4s color_shader_color = { // Only until shaders properly set up
-        .x = 0.4F, .y = 0.3F, .z = 0.1F, .w = 1.0F
-};
 
 void object_init_fromFile(struct object *const object, FILE *const f) {
         struct {
@@ -33,25 +29,13 @@ void object_init_fromFile(struct object *const object, FILE *const f) {
 
         sfread(object->name, sizeof(char), OBJECT_NAME_SIZE, f);
 
-        object->geometry = NULL;
-        if (!skip_geometry) {
-                struct vertex *const restrict vertices =
-                        smallocarray(obj_header.vertlen,
-                                     sizeof(*vertices));
-                unsigned *const restrict indices =
-                        smallocarray(obj_header.indlen,
-                                     sizeof(*indices));
-        
-                sfread(vertices, sizeof(*vertices), obj_header.vertlen, f);
-                sfread(indices, sizeof(*indices), obj_header.indlen, f);
-
+        if (skip_geometry) {
+                object->geometry = NULL;
+        } else {
                 object->geometry = smalloc(sizeof *object->geometry);
-                geometry_initFromArray(object->geometry,
-                                       vertices, obj_header.vertlen,
-                                       indices, obj_header.indlen);
-
-                free(vertices);
-                free(indices);
+                geometry_initFromFile(object->geometry,
+                                      obj_header.vertlen, obj_header.indlen,
+                                      f);
         }
         
         vec3s translation;
@@ -76,89 +60,6 @@ void object_init_fromFile(struct object *const object, FILE *const f) {
 
         if (skip_geometry) {
                 return;
-        }
-        
-        // TODO: This should be also in the file but for now it's hard coded
-        // depending on the object name.
-        static bool first = true;
-        static struct material diagonalCeilingMaterial;
-        static struct material diagonalFloorMaterial;
-        static struct material diagonalWallMaterial;
-        static struct material highStraightWallMaterial;
-        static struct material straightCeilingMaterial;
-        static struct material straightCeilingWithLightMaterial;
-        static struct material straightFloorMaterial;
-        static struct material straightWallMaterial;
-        if (first) {
-                material_initDefaults(&diagonalCeilingMaterial);
-                material_setTexture(
-                        &diagonalCeilingMaterial,
-                        MATERIAL_TEXTURE_DIFFUSE, "DiagonalCeiling");
-                material_updateShader(&diagonalCeilingMaterial);
-                
-                material_initDefaults(&diagonalFloorMaterial);
-                material_setTexture(
-                        &diagonalFloorMaterial,
-                        MATERIAL_TEXTURE_DIFFUSE, "DiagonalFloor");
-                material_updateShader(&diagonalFloorMaterial);
-                
-                material_initDefaults(&diagonalWallMaterial);
-                material_setTexture(
-                        &diagonalWallMaterial,
-                        MATERIAL_TEXTURE_DIFFUSE, "DiagonalWall");
-                material_updateShader(&diagonalWallMaterial);
-                
-                material_initDefaults(&highStraightWallMaterial);
-                material_setTexture(
-                        &highStraightWallMaterial,
-                        MATERIAL_TEXTURE_DIFFUSE, "HighStraightWall");
-                material_updateShader(&highStraightWallMaterial);
-                
-                material_initDefaults(&straightCeilingMaterial);
-                material_setTexture(
-                        &straightCeilingMaterial,
-                        MATERIAL_TEXTURE_DIFFUSE, "StraightCeiling");
-                material_updateShader(&straightCeilingMaterial);
-                
-                material_initDefaults(&straightCeilingWithLightMaterial);
-                material_setTexture(
-                        &straightCeilingWithLightMaterial,
-                        MATERIAL_TEXTURE_DIFFUSE, "StraightCeilingWithLight");
-                material_updateShader(&straightCeilingWithLightMaterial);
-                
-                material_initDefaults(&straightFloorMaterial);
-                material_setTexture(
-                        &straightFloorMaterial,
-                        MATERIAL_TEXTURE_DIFFUSE, "StraightFloor");
-                material_updateShader(&straightFloorMaterial);
-                
-                material_initDefaults(&straightWallMaterial);
-                material_setTexture(
-                        &straightWallMaterial,
-                        MATERIAL_TEXTURE_DIFFUSE, "StraightWall");
-                material_updateShader(&straightWallMaterial);
-                
-                first = false;
-        }
-        
-        if (strncmp(object->name, "DiagonalCeiling.", 16) == 0) {
-                object->material = &diagonalCeilingMaterial;
-        } else if (strncmp(object->name, "DiagonalFloor.", 14) == 0) {
-                object->material = &diagonalFloorMaterial;
-        } else if (strncmp(object->name, "DiagonalWall.", 13) == 0) {
-                object->material = &diagonalWallMaterial;
-        } else if (strncmp(object->name, "HighStraightWall.", 17) == 0) {
-                object->material = &highStraightWallMaterial;
-        } else if (strncmp(object->name, "StraightCeiling.", 16) == 0) {
-                object->material = &straightCeilingMaterial;
-        } else if (strncmp(object->name,"StraightCeilingWithLight.",26) == 0) {
-                object->material = &straightCeilingWithLightMaterial;
-        } else if (strncmp(object->name, "StraightFloor.", 14) == 0) {
-                object->material = &straightFloorMaterial;
-        } else if (strncmp(object->name, "StraightWall.", 13) == 0) {
-                object->material = &straightWallMaterial;
-        } else {
-                bail("Got an unexpected geometry name! %s\n", object->name);
         }
 }
 
@@ -190,9 +91,9 @@ __attribute__((access (read_write, 1)))
 __attribute__((access (read_only, 2)))
 __attribute__((access (read_only, 3)))
 __attribute__((nonnull))
-static void gather_object_tree(struct growingArray *const restrict objects,
+static void gather_object_tree(struct growingArray *const objects,
                                const struct object *const object,
-                               const struct camera *const restrict camera,
+                               const struct camera *const camera,
                                const mat4s parent_model) {
         const mat4s model = glms_mat4_mul(parent_model, object->model);
         if (object->geometry != NULL) {
@@ -212,7 +113,7 @@ static void gather_object_tree(struct growingArray *const restrict objects,
                 const float distance = glms_vec4_distance(
                         object_position, camera_position);
                 
-                struct objectModelAndDistance *const restrict obj_mod =
+                struct objectModelAndDistance *const obj_mod =
                         growingArray_append(objects);
                 obj_mod->object = object;
                 obj_mod->model = model;
@@ -225,110 +126,160 @@ static void gather_object_tree(struct growingArray *const restrict objects,
         }  
 }
 
-struct renderTypeShaderCamera {
+struct renderArgs {
         enum renderType renderType;
         enum shaders shader;
+        const struct material *material;
         const mat4s *projection;
         const mat4s *view;
+        const struct light *lights;
+        size_t nlights;
 };
 
 __attribute__((access (read_only, 1)))
 __attribute__((access (read_only, 2)))
 __attribute__((nonnull))
-static bool render_object(const void *const restrict item,
-                          void *const restrict args) {
+static bool render_object(void *const item,
+                          void *const vargs) {
         const struct objectModelAndDistance *const obj_mod = item;
-        const struct renderTypeShaderCamera *const type_shader_cam = args;
-        const enum shaders shader = type_shader_cam->shader;
+        struct renderArgs *const args = vargs;
 
-        if (obj_mod->object->material->shader != shader) {
-                return true;
+        if (obj_mod->object->material->shader != args->shader) {
+                shader_use(obj_mod->object->material->shader);
+                args->shader = obj_mod->object->material->shader;
+                light_updateShaderView(args->lights, args->nlights,
+                                       *(args->view),
+                                       obj_mod->object->material->shader);
+        }
+        if (obj_mod->object->material != args->material) {
+                material_updateShader(obj_mod->object->material);
+                material_bindTextures(obj_mod->object->material);
+                args->material = obj_mod->object->material;
+        }
+
+        if (args->renderType == RENDER_OPAQUE_OBJECTS &&
+            material_isTransparent(obj_mod->object->material)) {
+                args->renderType = RENDER_TRANSPARENT_OBJECTS;
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        } else if (args->renderType == RENDER_TRANSPARENT_OBJECTS) {
+                assert(material_isTransparent(obj_mod->object->material));
         }
         
-        switch (type_shader_cam->renderType) {
-        case RENDER_OPAQUE_OBJECTS:
-                if (material_isTransparent(obj_mod->object->material)) {
-                        return true;
-                }
-                break;
-        case RENDER_TRANSPARENT_OBJECTS:
-                if (!material_isTransparent(obj_mod->object->material)) {
-                        return true;
-                }
-                break;
-        default:
-                bail("Unexpected render mode.\n");
-        }
-        
-        const mat4s modelView = glms_mat4_mul(
-                obj_mod->model, *(type_shader_cam->view));
-        const mat4s modelViewProjection = glms_mat4_mul(
-                modelView, *(type_shader_cam->projection));
-        shader_setMat4(shader, "modelView", modelView);
-        shader_setMat4(shader, "modelViewProjection", modelViewProjection);
+        const mat4s modelView = glms_mat4_mul(*(args->view), obj_mod->model);
+        const mat4s modelViewProjection =
+                glms_mat4_mul(*(args->projection), modelView);
+        shader_setMat4(obj_mod->object->material->shader,
+                       "modelView", modelView);
+        shader_setMat4(obj_mod->object->material->shader,
+                       "modelViewProjection", modelViewProjection);
 
-        // Check geometry_draw, but more stuff needs to be added
-        material_bindTextures(obj_mod->object->material);
-        geometry_draw(obj_mod->object->geometry, obj_mod->model);
+        geometry_draw(obj_mod->object->geometry);
 
         return true;
 }
 
+
+// TODO: Sort by material first or by shader first?
+// Sort by:
+//  * Transparency (opaque objects first)
+//  * then by Shader (all objects with the same shader grouped)
+//  * then by Material (all objects with the same material grouped)
+//  * then by Distance to Camera (objects closer to the camera first)
 __attribute__((access (read_only, 1)))
 __attribute__((access (read_only, 2)))
 __attribute__((nonnull (1, 2)))
 __attribute__((pure))
 static int cmp_objs(const void *const item1, const void *const item2,
-                    void *const restrict args) {
+                    void *const args) {
+        (void)args;
+        
         const struct objectModelAndDistance *const obj1 = item1;
         const struct objectModelAndDistance *const obj2 = item2;
-        (void)args;
+        
+        const struct material *mat1 = obj1->object->material;
+        const struct material *mat2 = obj2->object->material;
 
-        if (obj1->distanceToCamera < obj2->distanceToCamera) {
+        const enum shaders shader1 = mat1->shader;
+        const enum shaders shader2 = mat2->shader;
+
+        const float dist1 = obj1->distanceToCamera;
+        const float dist2 = obj2->distanceToCamera;
+
+        const bool trans1 = material_isTransparent(mat1);
+        const bool trans2 = material_isTransparent(mat2);
+
+        // Non transparent objects first
+        if (!trans1 && trans2) {
                 return -1;
-        } else if (obj1->distanceToCamera > obj2->distanceToCamera) {
-                return 1;
-        } else {
-                return 0;
         }
+        if (trans1 && !trans2) {
+                return 1;
+        }
+
+        // Group by shader
+        if (shader1 < shader2) {
+                return -1;
+        }
+        if (shader1 > shader2) {
+                return 1;
+        }
+
+        // Group by material
+        if (mat1 < mat2) {
+                return -1;
+        }
+        if (mat1 > mat2) {
+                return 1;
+        }
+
+        // Objects closer to the camera first
+        if (dist1 < dist2) {
+                return -1;
+        }
+        if (dist1 > dist2) {
+                return 1;
+        }
+        
+        return 0;
 }
 
-void object_draw(const struct object *const restrict object,
-                 const struct camera *const restrict camera,
-                 const size_t nlights, const size_t nshaders,
-                 const struct light *const lights,
-                 const enum shaders *const shaders) {
+void object_draw(const struct object *const object,
+                 const struct camera *const camera,
+                 const size_t nlights, const struct light *const lights) {
         const mat4s projection = camera_projectionMatrix(camera);
         const mat4s view = camera_viewMatrix(camera);
+
+        // Each time an object is rendered it checks this structure.
+        // Projection and view are just passed to the shader. Material and
+        // shader are the last rendered object's. So that it knows if it needs
+        // to change material/shader. Lights and nlights are used to
+        // recalculate the light positions and directions in viewspace for each
+        // shader.
+        struct renderArgs args;
+        args.projection = &projection;
+        args.view = &view;
+        args.renderType = RENDER_OPAQUE_OBJECTS;
+        args.material = NULL;
+        args.shader = SHADERS_TOTAL;
+        args.lights = lights;
+        args.nlights = nlights;
+
+        static bool first = true;
+        static struct growingArray objects;
+        if (first) {
+                growingArray_init(&objects,
+                                  sizeof(struct objectModelAndDistance),
+                                  STARTING_OBJECT_COUNT);
+                first = false;
+        }
         
-        struct renderTypeShaderCamera type_shader_cam;
-        type_shader_cam.projection = &projection;
-        type_shader_cam.view = &view;
-        
-        struct growingArray objects;
-        growingArray_init(&objects, sizeof(struct objectModelAndDistance),
-                          STARTING_OBJECT_COUNT);
         gather_object_tree(&objects, object, camera, GLMS_MAT4_IDENTITY);
         growingArray_sort(&objects, cmp_objs, NULL);
-
-        for (size_t i=0; i<nshaders; i++) {
-                shader_use(shaders[i]); // TODO: Remove any other shader_use
-                
-                light_updateShader(lights, nlights, shaders[i]);
-
-                type_shader_cam.shader = shaders[i];
+        growingArray_foreach(&objects, render_object, &args);
+        growingArray_clear(&objects);
         
-                type_shader_cam.renderType = RENDER_OPAQUE_OBJECTS;
-                growingArray_foreach(&objects, render_object,
-                                     &type_shader_cam);
-
-                // TODO: First check one pass opaque only is ok
-                //type_shader_cam.renderType = RENDER_TRANSPARENT_OBJECTS;
-                //growingArray_foreach(&objects, render_object,
-                //                     &type_shader_cam);
-        }
-
-        growingArray_destroy(&objects);
+        glDisable(GL_BLEND);
 }
 
 void object_free(const struct object *object) {

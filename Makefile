@@ -50,7 +50,7 @@ GLAD_FLAGS := --profile=core --api=gl=3.3 --spec=gl --extensions= --out-path=$$t
 
 CFLAGS_DEBUG := -MMD -Og -g
 LDFLAGS_DEBUG := $(CFLAGS_DEBUG)
-CFLAGS_RELEASE := -MMD -DNDEBUG -flto -O2
+CFLAGS_RELEASE := -MMD -DNDEBUG -flto -O2 -g
 LDFLAGS_RELEASE := $(CFLAGS_RELEASE)
 LDFLAGS_DEVELOP := -fsanitize=address -fsanitize=undefined -Og
 CFLAGS_DEVELOP := -MMD $(LDFLAGS_DEVELOP) -Werror
@@ -73,7 +73,7 @@ define FIND_SYSHEADERS_CMD
 )
 endef
 
-.PHONY: dbg dev rel generated clean veryclean purify impolute etags valgrind static-analysis tidy_src tidy_include
+.PHONY: dbg dev rel clean veryclean purify impolute etags valgrind static-analysis tidy_src tidy_include line-count
 
 rel: $(BIN_DIR)/main
 dev: etags $(BIN_DIR)/main_dev
@@ -97,11 +97,11 @@ etags: sysh_TAGS
 	$(FIND_HEADERS_CMD) | etags --include=$< -
 
 valgrind: $(BIN_DIR)/main_dbg
-	valgrind --leak-check=full           \
-                 --show-leak-kinds=all       \
-	         --track-origins=yes         \
-	         --verbose                   \
-	         --log-file=valgrind-out.txt \
+	valgrind --leak-check=full           			\
+                 --show-leak-kinds=definite,indirect,possible	\
+	         --track-origins=yes         			\
+	         --verbose                   			\
+	         --log-file=valgrind-out.txt 			\
 	         $(BIN_DIR)/main_dbg
 
 static-analysis: clean
@@ -125,6 +125,9 @@ tidy_src: $(SRC_DIR)/.clang_complete
 	cd $(SRC_DIR) && clang-tidy $(TIDY_SOURCES) $(TIDY_CHECKS) -- $$(<.clang_complete)
 tidy_include: $(INCLUDE_DIR)/.clang_complete
 	cd $(INCLUDE_DIR) && clang-tidy $(TIDY_INCLUDES) $(TIDY_CHECKS) -- $$(<.clang_complete)
+
+line-count:
+	wc -l $(addprefix $(SRC_DIR)/,$(TIDY_SOURCES)) $(addprefix $(INCLUDE_DIR)/,$(TIDY_INCLUDES))
 
 sysh_TAGS:
 	$(FIND_SYSHEADERS_CMD) | etags -o $@ -

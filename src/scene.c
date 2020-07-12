@@ -1,12 +1,13 @@
 #include <scene.h>
 #include <object.h>
+#include <material.h>
 #include <light.h>
 #include <camera.h>
 #include <util.h>
 #include <dsutils.h>
-#include <ctype.h>
 #include <string.h>
 #include <limits.h>
+#include <assert.h>
 
 #define BOGLE_MAGIC_SIZE 5
 #define OBJECT_TREE_MAXIMUM_DEPTH 256
@@ -15,8 +16,8 @@
 __attribute__((access (write_only, 2, 1)))
 __attribute__((access (read_only, 3)))
 __attribute__((nonnull))
-static void buildpathObj(const size_t destsize, char *const restrict dest,
-                         const char *const restrict file) {
+static void buildpathObj(const size_t destsize, char *const dest,
+                         const char *const file) {
         const size_t len = pathjoin(destsize, dest, 3, ASSETSPATH,
                                      "scenes", file);
         if (len + 3 - 1 >= destsize) {
@@ -29,7 +30,7 @@ __attribute__((access (read_write, 2)))
 __attribute__((nonnull))
 __attribute__((returns_nonnull))
 static struct object *parse_objects(const unsigned nobjs,
-                                    FILE *const restrict f) {
+                                    FILE *const f) {
         struct object *const objects = smallocarray(nobjs, sizeof(*objects));
         
         for (unsigned n=0; n<nobjs; n++) {
@@ -42,10 +43,10 @@ static struct object *parse_objects(const unsigned nobjs,
 __attribute__((access (write_only, 1)))
 __attribute__((access (read_only, 2)))
 __attribute__((nonnull))
-static bool assign_parent(void *const restrict element,
-                          void *const restrict args) {
-        struct object *restrict *restrict child = element;
-        struct object *restrict parent = args;
+static bool assign_parent(void *const element,
+                          void *const args) {
+        struct object **child = element;
+        struct object *parent = args;
         (*child)->parent = parent;
         return true;
 }
@@ -56,8 +57,8 @@ __attribute__((access (read_write, 4)))
 __attribute__((nonnull))
 static void parse_object_tree(struct object *const root,
                               struct object *const objects,
-                              const unsigned nobjs, FILE *const restrict f) {
-        struct growingArray *const restrict children =
+                              const unsigned nobjs, FILE *const f) {
+        struct growingArray *const children =
                 smallocarray(nobjs+1, sizeof(*children));
         for (unsigned i=0; i<nobjs+1; i++) {
                 growingArray_init(&children[i], sizeof(struct object*), 1);
@@ -82,16 +83,16 @@ static void parse_object_tree(struct object *const root,
                         ungetc(c, f);
                         newObject += 1;
                         
-                        const struct object **const restrict obj =
+                        const struct object **const obj =
                                 growingArray_append(&children[currentObject]);
                         *obj = &objects[newObject-1];
                 } else if (isspace(c)) {
                 } else if (c == '{') {
-                        unsigned *const restrict num = stack_push(&stack);
+                        unsigned *const num = stack_push(&stack);
                         *num = currentObject;
                         currentObject = newObject;
                 } else if (c == '}') {
-                        const unsigned *const restrict num = stack_pop(&stack);
+                        const unsigned *const num = stack_pop(&stack);
                         newObject = currentObject;
                         currentObject = *num;
                 } else if (c == '\0') {
@@ -106,7 +107,7 @@ static void parse_object_tree(struct object *const root,
         for (unsigned i=0; i<nobjs+1; i++) {
                 growingArray_pack(&children[i]);
 
-                struct object *restrict obj;
+                struct object *obj;
                 if (i == 0) {
                         obj = root;
                 } else {
@@ -117,10 +118,6 @@ static void parse_object_tree(struct object *const root,
                         bail("Too many children.\n");
                 }
                 growingArray_foreach(&children[i], &assign_parent, obj);
-
-                // Assigning a restrict pointer to another restrict pointer is
-                // undefined behavior. But we're not accessing them anymore
-                // so...
                 obj->children = children[i].data;
                 obj->nchildren = (const unsigned int)children[i].length;
         }
@@ -128,45 +125,62 @@ static void parse_object_tree(struct object *const root,
         free(children);
 }
 
-__attribute__((access (write_only, 1, 2)))
-__attribute__((access (read_write, 5)))
+__attribute__((access (read_write, 2)))
 __attribute__((nonnull))
-static void parse_cameras(struct camera *const restrict camera,
-                          const unsigned ncams,
-                          const float width, const float height,
-                          FILE *const restrict f) {
-        if (ncams != 1) {
-                bail("Right now only exactly 1 camera is supported.");
+__attribute__((returns_nonnull))
+static struct material *parse_materials(const size_t nmaterials,
+                                 FILE *const f) {
+        struct material *const materials =
+                smallocarray(nmaterials, sizeof(*materials));
+
+        for (size_t i=0; i<nmaterials; i++) {
+                material_initFromFile(&materials[i], f);
+                shader_use(materials[i].shader);
         }
 
-        vec3s position;
-        float yaw;
-        float pitch;
-
-        sfread(&position, 4, 3, f);
-        sfread(&yaw, 4, 1, f);
-        sfread(&pitch, 4, 1, f);
-
-        camera_init(camera, width, height, &position,
-                    NULL, &yaw, &pitch, NULL, NULL);
+        return materials;
 }
 
 __attribute__((access (write_only, 1, 2)))
-__attribute__((access (read_write, 3)))
+__attribute__((access (write_only, 3)))
+__attribute__((access (read_write, 4)))
 __attribute__((nonnull))
-static void parse_lights(struct light *const restrict lights,
+static void parse_lights(struct light *const lights,
                          const unsigned nlights,
-                         FILE *const restrict f) {
-        // TODO: set global ambient light
+                         vec4s *const globalAmbientLight,
+                         FILE *const f) {
+        assert(nlights <= NUM_LIGHTS);
+        
         for (unsigned n=0; n<nlights; n++) {
-                sfread(&lights[n].position, 4, 3, f);
-                sfread(&lights[n].ambientColor, 4, 4, f);
-                sfread(&lights[n].difuseColor, 4, 4, f);
-                sfread(&lights[n].specularColor, 4, 4, f);
-                sfread(&lights[n].ambientPower, 4, 4, f);
-                sfread(&lights[n].difusePower, 4, 4, f);
-                sfread(&lights[n].specularPower, 4, 4, f);
+                light_initFromFile(&lights[n], f);
         }
+        sfread(globalAmbientLight->raw, 4, 4, f);
+}
+
+__attribute__((access (read_only, 1)))
+__attribute__((access (write_only, 2, 3)))
+__attribute__((access (read_write, 4)))
+__attribute__((nonnull))
+static void assign_materials(struct material *const materials,
+                             struct object *const objects,
+                             const size_t nobjs,
+                             FILE *const f) {
+        for (size_t obj=0; obj<nobjs; obj++) {
+                unsigned i;
+                sfread(&i, 4, 1, f);
+                objects[obj].material = &materials[i];
+        }
+}
+
+__attribute__((access (read_only, 1)))
+__attribute__((access (read_only, 2)))
+__attribute__((nonnull))
+static int shdreq(const void *const v1, const void *const v2,
+                  void *const args) {
+        (void)args;
+        const enum shaders *const s1 = v1;
+        const enum shaders *const s2 = v2;
+        return (int)*s1 - (int)*s2;
 }
 
 unsigned scene_initFromFile(struct scene *const scene,
@@ -183,8 +197,8 @@ unsigned scene_initFromFile(struct scene *const scene,
                 char magic[BOGLE_MAGIC_SIZE] __attribute__ ((nonstring));
                 char version;
                 unsigned nobjs;
-                unsigned ncams;
                 unsigned nlights;
+                unsigned nmaterials;
         } header;
 
         sfread(&header.magic, 1, BOGLE_MAGIC_SIZE, f);
@@ -199,18 +213,44 @@ unsigned scene_initFromFile(struct scene *const scene,
         }
 
         sfread(&header.nobjs, 4, 1, f);
-        sfread(&header.ncams, 4, 1, f);
         sfread(&header.nlights, 4, 1, f);
+        sfread(&header.nmaterials, 4, 1, f);
 
-        struct object *const restrict objects = parse_objects(header.nobjs, f);
+        struct object *const objects = parse_objects(header.nobjs, f);
         parse_object_tree(&scene->root, objects, header.nobjs, f);
-        parse_cameras(&scene->camera, header.ncams, width, height, f);
-        parse_lights(scene->lights, header.nlights, f);
-        // TODO: when parsing materials, after its done, call the function to
-        // update the global ambient light to the shader of each material found
-
         scene->nobjs = header.nobjs;
         scene->objs = objects;
+
+        camera_initFromFile(&scene->camera, width, height, f);
+
+        scene->lights = smallocarray(header.nlights, sizeof(*(scene->lights)));
+        scene->nlights = header.nlights;
+        parse_lights(scene->lights, header.nlights,
+                     &scene->globalAmbientLight, f);
+        
+        struct material *materials = parse_materials(header.nmaterials, f);
+        assign_materials(materials, objects, header.nobjs, f);
+        scene->nmats = header.nmaterials;
+        scene->mats = materials;
+
+        struct growingArray totalShaders;
+        growingArray_init(&totalShaders, sizeof(enum shaders), 2);
+        for (size_t i=0; i<header.nmaterials; i++) {
+                const enum shaders shader = materials[i].shader;
+                if (!growingArray_contains(&totalShaders, shdreq, &shader)) {
+                        enum shaders *ptr = growingArray_append(&totalShaders);
+                        *ptr = shader;
+                        
+                        shader_use(shader);
+                        light_updateGlobalAmbient(shader,
+                                                  scene->globalAmbientLight);
+                        light_updateShaderAll(scene->lights, scene->nlights,
+                                              shader);
+                }
+        }
+        growingArray_pack(&totalShaders);
+        scene->nshaders = (unsigned)totalShaders.length;
+        scene->shaders = totalShaders.data;
         
         scene->root.geometry = NULL;
         scene->root.model = glms_mat4_identity();
@@ -228,8 +268,18 @@ unsigned scene_initFromFile(struct scene *const scene,
         return header.nobjs;
 }
 
+void scene_updateAllLighting(const struct scene *scene) {
+        for (unsigned i=0; i<scene->nshaders; i++) {
+                light_updateShaderAll(scene->lights, scene->nlights,
+                                      scene->shaders[i]);
+                light_updateGlobalAmbient(scene->shaders[i],
+                                          scene->globalAmbientLight);
+        }
+}
+
 void scene_draw(const struct scene *const scene) {
-        object_draw(&scene->root, &scene->camera, scene->lights);
+        object_draw(&scene->root, &scene->camera,
+                    scene->nlights, scene->lights);
 }
 
 void scene_free(const struct scene *const scene) {
@@ -239,4 +289,6 @@ void scene_free(const struct scene *const scene) {
                 object_free(scene->objs + i);
         }
         free(scene->objs);
+        free(scene->mats);
+        free(scene->shaders);
 }

@@ -17,11 +17,12 @@ from bpy.types import Operator
 
 # useful math imports
 from mathutils import Vector, Matrix
-from math import pi
+from math import pi, degrees
 
 # useful imports from Python's stdlib
 import struct
 import array
+import os.path  # remove extension from file name
 
 
 bl_info = {
@@ -36,6 +37,13 @@ bl_info = {
 }
 
 
+def clamp(value, min, max):
+    if isinstance(value, Vector):
+        return Vector(clamp(n, min, max) for n in value)
+    else:
+        return min if value < min else max if value > max else value
+
+
 class BOGLEConversionError(Exception):
     pass
 
@@ -46,6 +54,7 @@ class BOGLEConfig:
         self.only_selected_objects = other.only_selected_objects
         self.convert_coordinates = other.convert_coordinates
         self.winding_order = other.winding_order
+        self.export_materials = other.export_materials
 
 
 class BOGLEBaseObject:
@@ -79,32 +88,34 @@ class BOGLEBaseObject:
         if self.config.convert_coordinates:
             return vec @ _change_basis_matrix
         else:
-            return Vector(vec)
+            return vec.copy()
 
 
 class BOGLEVertex(BOGLEBaseObject):
-    """Represents vertex data for OpenGL: vertex coordinates (3D) and texture
-coordinates (2D)."""
+    """Represents vertex data for OpenGL"""
 
-    def __init__(self, config, vx, vy, vz, tx, ty, nx, ny, nz):
+    def __init__(self, config, vert, tex, norm, tang, binorm):
         super().__init__(config)
-        self.vert = Vector((vx, vy, vz))
-        self.uv = Vector((tx, ty))
-        self.norm = Vector((nx, ny, nz))
+        self.vert = vert
+        self.uv = tex
+        self.norm = norm
+        self.tang = tang
+        self.binorm = binorm
+        
+    def __repr__(self):
+        return f"BOGLEVertex(vert={self.vert}, uv={self.uv}, norm={self.norm}, tang={self.tang}, binorm={self.binorm})"
 
     def export(self, f):
         """Write vertex data to file"""
-        vertex_fmt = '<8f'
+        vertex_fmt = '<14f'
         vertex_data = (
-            self.vert.x,
-            self.vert.y,
-            self.vert.z,
-            self.uv.x,
-            self.uv.y,
-            self.norm.x,
-            self.norm.y,
-            self.norm.z
+            *self.vert,
+            *clamp(self.uv, 0.0, 1.0),
+            *self.norm,
+            *self.tang,
+            *self.binorm,
         )
+        
         vertex = struct.pack(vertex_fmt, *vertex_data)
         f.write(vertex)
 
@@ -117,6 +128,7 @@ class BOGLEObject(BOGLEBaseObject):
 
         self.name = ""
         self.parent_name = None
+        self.material_name = None
 
         self.vertices = []
         self.indices = []
@@ -139,6 +151,8 @@ class BOGLEObject(BOGLEBaseObject):
             self.name = object.original.name.encode('ascii')
             if object.parent is not None:
                 self.parent_name = object.parent.name.encode('ascii')
+                
+            self.material_name = BOGLEMaterial.get_name(object)
 
             if len(self.name) > 31:
                 raise BOGLEConversionError(
@@ -165,15 +179,18 @@ class BOGLEObject(BOGLEBaseObject):
         finally:
             self._cleanup()
 
-    def export(self, f):
+    def export(self, f, material_keys=None):
         """Export the converted data"""
-        print(f"Writing {len(self.vertices)} vertices and "
-              f"{len(self.indices)} indices to file.")
-        self._export_header(f)
-        self._export_name(f)
-        self._export_vertices(f)
-        self._export_indices(f)
-        self._export_transforms(f)
+        if material_keys is None:
+            print(f"Writing {len(self.vertices)} vertices and "
+                  f"{len(self.indices)} indices to file.")
+            self._export_header(f)
+            self._export_name(f)
+            self._export_vertices(f)
+            self._export_indices(f)
+            self._export_transforms(f)
+        else:
+            self._export_material_association(f, material_keys)
 
     def _export_header(self, f):
         header_fmt = "<LL"
@@ -209,12 +226,23 @@ class BOGLEObject(BOGLEBaseObject):
         )
         matrix = struct.pack(matrix_fmt, *transforms)
         f.write(matrix)
+        
+    def _export_material_association(self, f, material_keys):
+        if self.material_name is None:
+            material_index = 0
+        else:
+            material_index = material_keys[self.material_name]
+            
+        index_fmt = '<L'
+        index = struct.pack(index_fmt, material_index)
+        f.write(index)
 
     def _obtain_mesh(self):
         if self.config.apply_modifiers:
             self._mesh = self._object.to_mesh()
         else:
             self._mesh = self._object.original.to_mesh()
+        self._mesh.calc_tangents()
         self._uv_data = self._mesh.uv_layers.active.data
 
     def _index_mesh(self):
@@ -231,7 +259,7 @@ class BOGLEObject(BOGLEBaseObject):
         for triangle_index, triangle in enumerate(self._mesh.polygons):
             if triangle.loop_total != 3:
                 raise BOGLEConversionError(
-                    "Mesh is not made entirely out of triangles!")
+                    f"Mesh is not made entirely out of triangles! ({self._object.name})")
             for loop_index in triangle.loop_indices:
                 vertex_index = self._mesh.loops[loop_index].vertex_index
                 indices = (vertex_index, loop_index, [triangle_index])
@@ -379,12 +407,15 @@ class BOGLEObject(BOGLEBaseObject):
             vertex_index, loop_index = reverse_index_map[gl_index]
             vertex = self._mesh.vertices[vertex_index].co
             uv = self._uv_data[loop_index].uv
-            normal = self._mesh.vertices[vertex_index].normal
-            gl_vertex = BOGLEVertex(
-                self.config,
-                *self._convert_vec(vertex),
-                *uv,
-                *self._convert_vec(normal))
+            normal = self._mesh.loops[loop_index].normal
+            tangent = self._mesh.loops[loop_index].tangent
+            binormal = self._mesh.loops[loop_index].bitangent
+            gl_vertex = BOGLEVertex(self.config,
+                self._convert_vec(vertex),
+                uv.copy(),
+                self._convert_vec(normal),
+                self._convert_vec(tangent),
+                self._convert_vec(binormal))
             self.vertices.append(gl_vertex)
 
     def _get_transforms(self):
@@ -397,8 +428,13 @@ class BOGLEObject(BOGLEBaseObject):
         self._transforms = (convert_trans, convert_rota, convert_scale)
 
     def _cleanup(self):
-        self._object.to_mesh_clear()
-        self._object.original.to_mesh_clear()
+        if self._mesh is not None:
+            self._mesh.free_tangents()
+            
+        if self._object is not None:
+            self._object.to_mesh_clear()
+            self._object.original.to_mesh_clear()
+        
         self._object = None
         self._mesh = None
         self._indexed_mesh = []
@@ -416,17 +452,18 @@ class BOGLECamera(BOGLEBaseObject):
         self.pitch = None
 
     def convert(self, object):
-        position, rotation, scale = object.matrix_local.decompose()
+        # TODO: No parenting in camera yet: so matrix world instead of local
+        position, rotation, scale = object.matrix_world.decompose()
 
         self.position = self._convert_vec(position)
 
         # Adjust rotation angles between Blender's and our systems
         x, y, z = rotation.to_euler()
         self.pitch = x - pi/2
-        self.yaw = z + pi/2
+        self.yaw = z - pi/2
 
     def export(self, f):
-        fmt = '<fffff'
+        fmt = '<3fff'
         camera = struct.pack(fmt, *self.position, self.yaw, self.pitch)
         f.write(camera)
 
@@ -436,32 +473,276 @@ class BOGLELight(BOGLEBaseObject):
 
     def __init__(self, config):
         super().__init__(config)
+        self.color = None
+        self.range = None
+        self.intensity = None
+        self.type = None
         self.position = None
-        self.ambient = None
-        self.diffuse = None
-        self.specular = None
-        self.ambient_power = None
-        self.diffuse_power = None
-        self.specular_power = None
+        self.direction = None
+        self.angle = None
 
     def convert(self, object):
-        position, _, _ = object.matrix_local.decompose()
         light = object.data
+        
+        self.color = Vector((*light.color, 1.0))
+        self.range = light.cutoff_distance
+        self.intensity = light.energy
+        
+        if light.type == 'SPOT':
+            self.type = 0
+            self.intensity *= 0.005
+        elif light.type == 'SUN':
+            self.type = 1
+        elif light.type == 'POINT':
+            self.type = 2
+            self.intensity *= 0.005
+        else:
+            raise BOGLEConversionError(f"Unsupported light type: {light.type}")
 
-        self.position = self._convert_vec(position)
-
-        self.ambient = self.diffuse = self.specular = Vector(
-            tuple(light.color) + (1,))
-        self.ambient_power = light.energy * 5
-        self.diffuse_power = self.specular_power = self.ambient_power
-        self.ambient_power *= 0.003
+        # TODO: No parenting in lights yet: so matrix world instead of local
+        position, rotation, _ = object.matrix_world.decompose()
+        
+        self.position = Vector((*self._convert_vec(position), 1))
+        
+        self.direction = Vector((0, 0, -1, 0))
+        self.direction.rotate(rotation)
+        self.direction = self._convert_vec(self.direction)
+        
+        if light.type == 'SPOT':
+            self.angle = degrees(light.spot_size)
+        else:
+            self.angle = 0
 
     def export(self, f):
-        fmt = '<ffffffffffffffffff'
-        light = struct.pack(fmt, *self.position, *self.ambient,
-                            *self.diffuse, *self.specular, self.ambient_power,
-                            self.diffuse_power, self.specular_power)
+        fmt = '<4fffI4f4ff'
+        light = struct.pack(fmt, *self.color, self.range, self.intensity, self.type, *self.position, *self.direction, self.angle)
         f.write(light)
+        
+        
+class BOGLEAmbientLight(BOGLEBaseObject):
+    def __init__(self, config, color):
+        super().__init__(config)
+        self.color = color
+        
+    def export(self, f):
+        fmt = '<4f'
+        light = struct.pack(fmt, *self.color)
+        f.write(light)
+        
+        
+class BOGLEMaterial(BOGLEBaseObject):
+    """Blender material export to BOGLE file"""
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.type = None
+        self.shader = None
+        
+        self.ambient_color = None
+        self.emissive_color = None
+        self.diffuse_color = None
+        self.specular_color = None
+        self.reflectance = None
+        
+        self.opacity = None
+        self.specular_power = None
+        self.index_of_refraction = None
+        self.bump_intensity = None
+        self.specular_scale = None
+        self.alpha_threshold = None
+        
+        self.texture_ambient = None
+        self.texture_emission = None
+        self.texture_diffuse = None
+        self.texture_specular = None
+        self.texture_specular_power = None
+        self.texture_normal = None
+        self.texture_bump = None
+        self.texture_opacity = None
+                
+    def __repr__(self):
+        return f"BOGLEMaterial(type={self.type}, shader={self.shader}, ambient_color={self.ambient_color}, emissive_color={self.emissive_color}, diffuse_color={self.diffuse_color}, specular_color={self.specular_color}, reflectance={self.reflectance}, opacity={self.opacity}, specular_power={self.specular_power}, index_of_refraction={self.index_of_refraction}, bump_intensity={self.bump_intensity}, specular_scale={self.specular_scale}, alpha_threshold={self.alpha_threshold}, texture_ambient={self.texture_ambient}, texture_emission={self.texture_emission}, texture_diffuse={self.texture_diffuse}, texture_specular={self.texture_specular}, texture_specular_power={self.texture_specular_power}, texture_normal={self.texture_normal}, texture_bump={self.texture_bump}. texture_opacity={self.texture_opacity}"
+
+    def convert(self, object):
+        if not self.config.export_materials:
+            self._set_default_values()
+            return
+        
+        try:
+            out_node = object.material_slots[0].material.node_tree.get_output_node('ALL')
+        except Exception as e:
+            raise BOGLEConversionError("Failed to get material output node: " + str(e))
+            
+        if out_node.name != 'Material Output':
+            raise BOGLEConversionError("Unexpected material out node: " + str(out_node.name))
+        
+        if len(out_node.outputs) != 0:
+            raise BOGLEConversionError("Unexpected number of outputs in material out node")
+        if len(out_node.inputs) != 3:
+            raise BOGLEConversionError("Unexpected number of inputs in material out node")
+            
+        try:
+            if not out_node.inputs['Surface'].is_linked:
+                raise BOGLEConversionError("Surface value from shader nodes is not linked")
+            if out_node.inputs['Displacement'].is_linked:
+                print("Ignoring displacement value from shader nodes")
+            if out_node.inputs['Volume'].is_linked:
+                print("Ignoring volume value from shader nodes")
+        except KeyError as e:
+            raise BOGLEConversionError("Shader did not have expected input: " + str(e))
+
+        links = out_node.inputs['Surface'].links
+        if len(links) > 1:
+            raise BOGLEConversionError("Shader output is connected to more than one node")
+            
+        uber_node = links[0].from_node
+        if len(uber_node.inputs) != 31 or len(uber_node.outputs) != 1:
+            raise BOGLEConversionError("Unexpected node connected to shader output")
+                
+        self.type = 0
+        self.shader = 0
+        
+        try:
+            inputs = uber_node.inputs
+            
+            use_geometry_normals = self._get_float_value(inputs, 'Use Geometry Normals')
+            use_bumpmap_normals = self._get_float_value(inputs, 'Use BumpMap Normals')
+            
+            if use_geometry_normals != 0 and use_geometry_normals != 1:
+                raise BOGLEConversionError("Use Geometry Normals should be 1 or 0")
+            if use_bumpmap_normals != 0 and use_bumpmap_normals != 1:
+                raise BOGLEConversionError("Use BumpMap Normals should be 1 or 0")
+            
+            self.ambient_color = self._get_color_value(inputs, 'Ambient')
+            self.emissive_color = self._get_color_value(inputs, 'Emissive')
+            self.diffuse_color = self._get_color_value(inputs, 'Diffuse')
+            self.specular_color = self._get_color_value(inputs, 'Specular')
+            self.reflectance = Vector((0.0, 0.0, 0.0, 0.0))
+            self.opacity = self._get_float_value(inputs, 'Opacity')
+            self.specular_power = self._get_float_value(inputs, 'Specular Power')
+            self.index_of_refraction = 0.0
+            self.bump_intensity = self._get_float_value(inputs, 'Bump Intensity')
+            self.specular_scale = self._get_float_value(inputs, 'Specular Scale')
+            self.alpha_threshold = 0.0
+            
+            self.texture_ambient = self._get_texture_name(inputs, 'Ambient')
+            self.texture_emission = self._get_texture_name(inputs, 'Emissive')
+            self.texture_diffuse = self._get_texture_name(inputs, 'Diffuse')
+            self.texture_specular = self._get_texture_name(inputs, 'Specular')
+            self.texture_specular_power = self._get_texture_name(inputs, 'Specular Power')
+            self.texture_opacity = self._get_texture_name(inputs, 'Opacity')
+            
+            if use_geometry_normals == 0:
+                if use_bumpmap_normals == 1:
+                    self.texture_normal = ""
+                    self.texture_bump = self._get_texture_name(inputs, 'Bump')
+                    if self.texture_bump == "":
+                        raise BOGLEConversionError("Bumpmap normals are enabled but no texture is linked")
+                else:
+                    self.texture_normal = self._get_texture_name(inputs, 'Normal')
+                    self.texture_bump = ""
+                    if self.texture_normal == "":
+                        raise BOGLEConversionError("Normalmap normals are enabled but no texture is linked")
+            else:
+                self.texture_normal = ""
+                self.texture_bump = ""
+        except KeyError as e:
+            raise BOGLEConversionError("Unexpected node connected to shader output, missing input: " + str(e))
+        
+    def _get_color_value(self, inputs, base_name):
+        socket_color = inputs['Base ' + base_name]
+        socket_alpha = inputs['Base ' + base_name + ' Alpha']
+        
+        if not isinstance(socket_color, bpy.types.NodeSocketColor):
+            raise BOGLEConversionError("Unexpected socket type: " + str(type(socket_color)) + " for " + str(socket_color.name))
+        if not isinstance(socket_alpha, bpy.types.NodeSocketFloatFactor):
+            raise BOGLEConversionError("Unexpected socket type: " + str(type(socket_alpha)) + " for " + str(socket_alpha.name))
+        
+        color = self._get_vec3_from_socket(socket_color)
+        alpha = self._get_float_from_socket(socket_alpha)
+        return Vector((*color, alpha))
+    
+    def _get_texture_name(self, inputs, base_name):
+        socket = inputs['Texture ' + base_name]
+        if not socket.is_linked:
+            return ''
+        links = socket.links
+        if len(links) > 1:
+            raise BOGLEConversionError("Too many links")
+        node = links[0].from_node
+        return node.image.name
+            
+    def _get_float_value(self, inputs, name):
+        socket = inputs[name]
+        return self._get_float_from_socket(socket)
+    
+    def _get_float_from_socket(self, socket):
+        if socket.is_linked:
+            raise BOGLEConversionError("Socket should not be linked: " + socket.name)
+        else:
+            return socket.default_value
+    
+    def _get_vec3_from_socket(self, socket):
+        if socket.is_linked:
+            raise BOGLEConversionError("Socket should not be linked: " + socket.name)
+        else:
+            return Vector(socket.default_value).xyz
+        
+    def _set_default_values(self):
+        self.type = 0
+        self.shader = 0
+        
+        self.ambient_color = Vector((0.02, 0.02, 0.02, 1.0))
+        self.emissive_color = Vector((0.0, 0.0, 0.0, 1.0))
+        self.diffuse_color = Vector((0.8, 0.8, 0.8, 1.0))
+        self.specular_color = Vector((0.2, 0.2, 0.2, 0.2))
+        self.reflectance = Vector((0.0, 0.0, 0.0, 1.0))
+        
+        self.opacity = 1.0
+        self.specular_power = 50.0
+        self.index_of_refraction = 0.0
+        self.bump_intensity = 0.0
+        self.specular_scale = 0.0
+        self.alpha_threshold = 0.0
+        
+        self.texture_ambient = ''
+        self.texture_emission = ''
+        self.texture_diffuse = ''
+        self.texture_specular = ''
+        self.texture_specular_power = ''
+        self.texture_normal = ''
+        self.texture_bump = ''
+        self.texture_opacity = ''
+
+    @classmethod
+    def get_name(cls, object):
+        if len(object.material_slots) == 0:
+            return None
+        elif len(object.material_slots) > 1:
+            print("More than one material slot, using only first")
+        return object.material_slots[0].material.name
+
+    def export(self, f):
+        fmt = '<II4f4f4f4f4fffffff'
+        material = struct.pack(fmt, self.type, self.shader, *self.ambient_color, *self.emissive_color, *self.diffuse_color, *self.specular_color, *self.reflectance, self.opacity, self.specular_power, self.index_of_refraction, self.bump_intensity, self.specular_scale, self.alpha_threshold)
+        f.write(material)
+        
+        self._export_texture(self.texture_ambient, f)
+        self._export_texture(self.texture_emission, f)
+        self._export_texture(self.texture_diffuse, f)
+        self._export_texture(self.texture_specular, f)
+        self._export_texture(self.texture_specular_power, f)
+        self._export_texture(self.texture_normal, f)
+        self._export_texture(self.texture_bump, f)
+        self._export_texture(self.texture_opacity, f)
+        
+    def _export_texture(self, name, f):
+        if name:
+            name, ext = os.path.splitext(name)
+            if ext != '.png':
+                print("WARNING: Texture file name doesn't have a png extension")
+        f.write(struct.pack('<L', len(name)))
+        f.write(array.array('B', name.encode('ascii')).tobytes())
 
 
 class BOGLExporter(BOGLEBaseObject):
@@ -472,6 +753,8 @@ class BOGLExporter(BOGLEBaseObject):
         self.objects = []
         self.cameras = []
         self.lights = []
+        self.globalAmbientLight = BOGLEAmbientLight(config, Vector((0.1, 0.1, 0.1, 1.0)))
+        self.materials = {}
         self.object_tree = None
 
     def convert(self, context):
@@ -480,22 +763,23 @@ class BOGLExporter(BOGLEBaseObject):
             type = object.original.type
 
             if type == 'MESH':
-                list = self.objects
-                bogle_entity = self._convert(BOGLEObject, object, empty=False)
+                if self.config.export_materials:
+                    material_name = BOGLEMaterial.get_name(object)
+                    if material_name is not None and material_name not in self.materials:
+                        self.materials[material_name] = self._convert(BOGLEMaterial, object)
+                self.objects.append(self._convert(BOGLEObject, object, empty=False))
             elif type == 'EMPTY':
-                list = self.objects
-                bogle_entity = self._convert(BOGLEObject, object, empty=True)
+                self.objects.append(self._convert(BOGLEObject, object, empty=True))
             elif type == 'CAMERA':
-                list = self.cameras
-                bogle_entity = self._convert(BOGLECamera, object)
+                self.cameras.append(self._convert(BOGLECamera, object))
             elif type == 'LIGHT':
-                list = self.lights
-                bogle_entity = self._convert(BOGLELight, object)
+                self.lights.append(self._convert(BOGLELight, object))
             else:
                 print(f"Not converting object type: {type}")
                 continue
-
-            list.append(bogle_entity)
+            
+        if not self.config.export_materials:
+            self.materials['default'] = self._convert(BOGLEMaterial, None)
 
         self._convert_object_tree()
 
@@ -503,13 +787,30 @@ class BOGLExporter(BOGLEBaseObject):
         """Export converted data to file"""
         with open(filepath, 'wb') as f:
             self._export_header(f)
+            
             for object in self.objects:
                 object.export(f)
+                
             self._export_object_tree(f)
+            
             for camera in self.cameras:
                 camera.export(f)
+                
             for light in self.lights:
                 light.export(f)
+                
+            self.globalAmbientLight.export(f)
+            
+            material_keys, materials = zip(*(((k,i),v) for i,(k,v) in enumerate(self.materials.items())))
+            material_keys = dict(material_keys)
+            for material in materials:
+                material.export(f)
+            
+            for object in self.objects:
+                if self.config.export_materials:
+                    object.export(f, material_keys=material_keys)
+                else:
+                    f.write(struct.pack('<L', 0))
 
     def _iterate_objects(self, context):
         depsgraph = context.evaluated_depsgraph_get()
@@ -564,8 +865,8 @@ class BOGLExporter(BOGLEBaseObject):
             b'B', b'O', b'G', b'L', b'E',  # Magic
             0,  # Version
             len(self.objects),  # Number of objects
-            len(self.cameras),  # Number of cameras
             len(self.lights),  # Number of lights
+            len(self.materials),  # Number of materials
         )
         header = struct.pack(header_fmt, *header_data)
         f.write(header)
@@ -615,6 +916,12 @@ class BogleExportData(Operator, ExportHelper):
             ('CW', "Clockwise", ""),
         ),
         default='CCW',
+    )
+
+    export_materials: BoolProperty(
+        name="Export textures",
+        description="If not checked, instead of transforming specially crafted shader node trees into BOGLE textures, use the same default texture for every object",
+        default=True,
     )
 
     def execute(self, context):

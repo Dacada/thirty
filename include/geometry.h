@@ -7,12 +7,9 @@
 /*
  * This module encapsulates OpenGL geometry. Given the geometric data, a 3D
  * geometry is initialized. Its model matrix is also tracked. The draw method
- * uses a camera and a shader to draw the geometry. The module should be
- * initialized before doing anything else. Tearing down a geometry frees any
- * data used in the struct geometry as well as by OpenGL. Geometries can be
- * initialized from arrays with all the 3D coordinates but they'll usuallt be
- * initialized automatically by a scene processing a file containing this
- * information.
+ * uses the model matrix to draw the geometry. Tearing down a geometry frees
+ * any data used in the struct geometry as well as by OpenGL. Geometries can be
+ * initialized from arrays with all the 3D coordinates.
  */
 
 struct vertex {
@@ -28,10 +25,10 @@ struct geometry {
         int nindices;
 };
 
-void geometry_initFromArray(struct geometry *restrict geometry,
-                            const struct vertex *restrict vertices,
+void geometry_initFromArray(struct geometry *geometry,
+                            const struct vertex *vertices,
                             size_t nvertices,
-                            const unsigned *restrict indices,
+                            const unsigned *indices,
                             size_t nindices)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2, 3)))
@@ -39,12 +36,20 @@ void geometry_initFromArray(struct geometry *restrict geometry,
         __attribute__((leaf))
         __attribute__((nonnull (1)));
 
-void geometry_draw(const struct geometry *restrict geometry, mat4s model)
+void geometry_initFromFile(struct geometry *geometry,
+                           size_t nvertices, size_t nindices,
+                           FILE *f)
+        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_write, 4)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void geometry_draw(const struct geometry *geometry)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
-void geometry_free(const struct geometry *restrict geometry)
+void geometry_free(const struct geometry *geometry)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));

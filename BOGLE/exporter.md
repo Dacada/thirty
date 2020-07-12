@@ -19,8 +19,11 @@ OBJECT 2 DATA
 OBJECT N HEADER
 OBJECT N DATA
 OBJECT TREE
-CAMERAS
+CAMERA
 LIGHTS
+GLOBAL AMBIENT LIGHT
+MATERIALS
+OBJECT'S MATERIALS
 ```
 
 ## Header
@@ -31,9 +34,9 @@ LIGHTS
 
 * `4` bytes -> Number of objects defined. Unsigned.
 
-* `4` bytes -> Number of cameras defined. Unsigned.
-
 * `4` bytes -> Number of lights defined. Unsigned.
+
+* `4` bytes -> Number of materials defined. Unsigned.
 
 ## Object header
 
@@ -50,7 +53,7 @@ LIGHTS
   `THIS_IS_A_VEERY_VEERY_LOONG_NAME\0`. Characters after the 0 if any can be
   whatever.
 
-* `vertlen*8*4` bytes -> The vertex data, more on that below. Floats. Can be
+* `vertlen*14*4` bytes -> The vertex data, more on that below. Floats. Can be
   empty if `vertlen` is 0.
 
 * `indlen*4` bytes -> The index data. Unsigned integers. Can be empty is
@@ -66,8 +69,11 @@ LIGHTS
 
 ### Vertices
 
-Vertices are outlined in the typical OpenGL fashion: 3 floats for the vertex
-coordinate, 2 floats for the texture coordinate, 3 floats for the normal.
+Vertices are outlined as follows: 3 floats for the vertex coordinate, 2 floats
+for the texture coordinate, 3 floats for the normal, 3 floats for the tangent
+and 3 floats for the binormal.
+
+The texture coordinates will always be in the range [0, 1.0].
 
 ## Object tree
 
@@ -102,9 +108,9 @@ and 3 haven't been defined.
 Maximum 256 levels of depth. A 0 character marks the end of the string (as in
 the example).
 
-## Cameras
+## Camera
 
-For each camera, this structure repeats:
+Only one camera:
 
 * `12` bytes -> Position vector of the camera.
 
@@ -116,16 +122,101 @@ For each camera, this structure repeats:
 
 For each light, this structure repeats:
 
-* `12` bytes -> Position vector of the light.
+* `16` bytes -> Color of the light.
 
-* `16` bytes -> Ambient color of the light.
+* `4` bytes -> Range of the light.
 
-* `16` bytes -> Diffuse color of the light.
+* `4` bytes -> Intensity of the light.
 
-* `16` bytes -> Specular color of the light.
+* `4` bytes -> Type of light:
 
-* `4` bytes -> Ambient power of the light.
+  - 0 means Spot Light
+  
+  - 1 means Directional Light
+  
+  - 2 means Point Light
+  
+* `16` bytes -> Position of the light (only meaningful for point and spot
+  lights)
+  
+* `16` bytes -> Direction of the light (only meaningful for spot and
+  directional lights)
+  
+* `4` bytes -> Angle of the light in degrees (only meaningful for spot lights)
 
-* `4` bytes -> Diffuse power of the light.
+Non meaningful fields like angle for a non spot light must still be present
+with any valid value.
 
-* `4` bytes -> Specular power of the light.
+## Global Ambient Light
+
+For now, this is hard coded in the exporter script to be <0.1, 0.1, 0.1, 1.0>.
+
+* `16` bytes -> Color to add as global ambient light when shading.
+
+## Materials
+
+For now only one kind of material exists, this section might need to be
+expanded if more materials are added.
+
+* `4` bytes -> Material type. Reserved in case there's more than one material. Should be 0.
+
+* `4` bytes -> Shader type. Reserved in case there's more than one shader. Should be 0.
+
+* `16` bytes -> Ambient color.
+
+* `16` bytes -> Emissive color.
+
+* `16` bytes -> Diffuse color.
+
+* `16` bytes -> Specular color.
+
+* `16` bytes -> Reflectance. Unused for now.
+
+* `4` bytes -> Opacity. The entire object will be applied this alpha. 1 for completely opaque.
+
+* `4` bytes -> Specular power. Shininess.
+
+* `4` bytes -> Index of refraction. Unused for now.
+
+* `4` bytes -> Bump intensity. Scale values of a bump map, if there's any.
+
+* `4` bytes -> Specular scale. Scale values from the specular power map, if there's any.
+
+* `4` bytes -> Alpha threshold. Unused for now.
+
+Next, each texture is defined. It's defined as simply the name of the texture
+file, without extension (will look for a png). Before each name comes the
+number of characters in the name, or 0 if there's no texture. In which case
+there should be 0 characters (nothing) and then continue to define the next
+texture.
+
+* `4` bytes -> Number of characters in the texture name. `nchars`
+
+* `nchars` bytes -> The name of the png file with the texture.
+
+The supported textures are:
+
+* Ambient
+
+* Emissive
+
+* Diffuse
+
+* Specular
+
+* Specular Power
+
+* Normal
+
+* Bump
+
+* Opacity
+
+Normal and bump textures are mutually exclusive.
+
+## Object's Materials
+
+As many entries as there are objects. Objects without geometry can have any
+material as long as it's a valid one. They won't be rendered.
+
+* `4` bytes -> Material index
