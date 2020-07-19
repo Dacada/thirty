@@ -8,7 +8,6 @@
 #include <util.h>
 #include <cglm/struct.h>
 #include <stdint.h>
-#include <assert.h>
 
 #define STARTING_OBJECT_COUNT 16
 #define STARTING_LIGHT_COUNT 8

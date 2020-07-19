@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <assert.h>
 
 void growingArray_init(struct growingArray *const ga,
                        const size_t itemSize, const size_t initialCapacity) {

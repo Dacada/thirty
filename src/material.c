@@ -6,7 +6,6 @@
 #include <cglm/struct.h>
 #include <stdbool.h>
 #include <string.h>
-#include <assert.h>
 
 __attribute__((access (write_only, 1)))
 __attribute__((nonnull))
@@ -116,7 +115,7 @@ void material_initFromFile(struct material *const material, FILE *const f) {
                         *gltexture = GL_TEXTURE7;                       \
                         return ptr material->opacityTexture;            \
                 default:                                                \
-                        assert(false);                                  \
+                        assert_fail();                                  \
                         break;                                          \
                 }                                                       \
         } while (0)

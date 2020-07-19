@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <limits.h>
-#include <assert.h>
 
 __attribute__((access (write_only, 1)))
 __attribute__((nonnull))

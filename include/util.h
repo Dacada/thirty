@@ -17,6 +17,33 @@
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #define max(a,b) ((a) > (b) ? (a) : (b))
 
+#ifdef NDEBUG
+
+#define assert(condition)                               \
+        do {                                            \
+                if (!(condition)) {                     \
+                        __builtin_unreachable();        \
+                }                                       \
+        } while (0)
+#define assert_fail() __builtin_unreachable();
+
+#else
+
+#define assert(condition)                                       \
+        do {                                                    \
+                if (!(condition)) {                             \
+                        die("Assertion failed: " #condition     \
+                            " on " __FILE__ ": %d", __LINE__);  \
+                }                                               \
+        } while (0)
+#define assert_fail()                                           \
+        do {                                                    \
+                die("Inconditional assertion falure on "        \
+                    __FILE__ ": %d", __LINE__);                 \
+        } while (0)
+
+#endif
+
 float clamp_angle(float angle, float min, float max)
         __attribute__((const));
 

@@ -8,7 +8,6 @@
 #include <ctype.h>
 #include <string.h>
 #include <limits.h>
-#include <assert.h>
 
 #define BOGLE_MAGIC_SIZE 5
 #define OBJECT_TREE_NUMBER_BASE 10

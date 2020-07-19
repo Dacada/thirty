@@ -2,7 +2,6 @@
 #include <util.h>
 #include <shader.h>
 #include <cglm/struct.h>
-#include <assert.h>
 
 #define BUFFER_SIZE 256
 
@@ -79,7 +78,7 @@ void light_updateShader(const struct light *light,
                                    shader_setVec4, direction_vs);
                         break;
                 default:
-                        assert(false);
+                        assert_fail();
                         break;
                 }
         }
