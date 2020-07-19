@@ -36,11 +36,9 @@ void geometry_initFromArray(struct geometry *geometry,
         __attribute__((leaf))
         __attribute__((nonnull (1)));
 
-void geometry_initFromFile(struct geometry *geometry,
-                           size_t nvertices, size_t nindices,
-                           FILE *f)
+void geometry_initFromFile(struct geometry *geometry, FILE *f)
         __attribute__((access (write_only, 1)))
-        __attribute__((access (read_write, 4)))
+        __attribute__((access (read_write, 2)))
         __attribute__((leaf))
         __attribute__((nonnull));
 

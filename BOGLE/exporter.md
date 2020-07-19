@@ -1,71 +1,94 @@
 # Format of my custom data format: BOGLE (version 0)
 
-BOGLE meaning Blender to OpenGL Exporter.
+BOGLE meaning Blender to OpenGL Exporter. The extension is .bgl
 
-The extension is .bgl :)
+All data is little-endian encoded. All matrices are in column-major order.
 
-All numbers are little-endian encoded. All matrices are in column-major order.
-
-There's one header, then for each object an object header and object data. And
-then the object tree. Then information about the lights and cameras.
+The following shows the overall structure of the file:
 
 ```
-HEADER
-OBJECT 1 HEADER
-OBJECT 1 DATA
-OBJECT 2 HEADER
-OBJECT 2 DATA
-...
-OBJECT N HEADER
-OBJECT N DATA
-OBJECT TREE
-CAMERA
-LIGHTS
+FILE HEADER
+
+CAMERA DATA
 GLOBAL AMBIENT LIGHT
-MATERIALS
-OBJECT'S MATERIALS
+
+GEOMETRY 1 HEADER
+GEOMETRY 1 DATA
+...
+GEOMETRY N HEADER
+GEOMETRY N DATA
+
+MATERIAL 1 DATA
+...
+MATERIAL N DATA
+
+LIGHT 1 DATA
+...
+LIGHT N DATA
+
+INSTANCE DEFINITIONS
+SCENE TREE
 ```
+
+## Nomenclature
+
+Type sizes are given in C, similar to the `stdint.h` header file. Floating
+point numbers are always 4 byte floats.
+
+For example, an unsigned 8 bit integer would be given as `uint8`, and `float`
+always stands for a 4 byte floating point number.
+
+As specified above, everything is little-endian encoded.
 
 ## Header
 
-* `5` bytes -> File Signature ("BOGLE" 0x42 0x4f 0x47 0x4c 0x45)
+* `5 uint8` -> File Signature ("BOGLE" 0x42 0x4f 0x47 0x4c 0x45)
 
-* `1` byte -> Version number (Version 0, so zero). Unsigned.
+* `1 uint8` -> Version number. Unsigned.
 
-* `4` bytes -> Number of objects defined. Unsigned.
+* `1 uint32` -> Number of geometries defined.
 
-* `4` bytes -> Number of lights defined. Unsigned.
+* `1 uint32` -> Number of materials defined.
 
-* `4` bytes -> Number of materials defined. Unsigned.
+* `1 uint32` -> Number of lights defined.
 
-## Object header
+* `1 uint32` -> Number of object instances defined.
 
-* `4` bytes -> The number of vertices in the object. `vertlen` Unsigned. Can be
-  0 for objects with no geometry.
+## Camera
 
-* `4` bytes -> The number of indices in the object. `indlen` Unsigned. Can be 0
-  for objects with no geometry.
+One and only one object instance should be assigned as the camera.
 
-## Object data
+* `1 uint32` -> Screen width. (Blender: Output properties -> Resolution X)
 
-* `32` bytes -> The name of the object. 31 characters at most for the name,
-  with the last being a 0 to mark end of string. Examples: `SOME_NAME\0 ` or
-  `THIS_IS_A_VEERY_VEERY_LOONG_NAME\0`. Characters after the 0 if any can be
-  whatever.
+* `1 uint32` -> Screen height. (Blender: Output properties -> Resolution Y)
 
-* `vertlen*14*4` bytes -> The vertex data, more on that below. Floats. Can be
-  empty if `vertlen` is 0.
+* `1 float` -> Near clip. (Blender: Camera's Object Data Properties -> Clip
+  Start)
 
-* `indlen*4` bytes -> The index data. Unsigned integers. Can be empty is
-  `indlen` is 0.
+* `1 float` -> Far clip. (Blender: Camera's Object Data Properties -> Clip End)
 
-* `12` bytes -> Translation vector of the object.
+* `1 floar` -> Field of View (radians) (Blender: Camera's Object Data
+  Properties -> Field of View)
 
-* `12` bytes -> Rotation axis of the object.
+## Global Ambient Light
 
-* `4` bytes -> Rotation angle of the object.
+In Blender, this is the world's color.
 
-* `12` bytes -> Scale vector of the object.
+* `4 float` -> Color to add as global ambient light when shading.
+
+## Geometry header
+
+Each geometry should be assigned to one or more objects.
+
+* `1 uint32` -> `vertlen` The number of vertices in the object.
+
+* `1 uint32` -> `indlen` The number of indices in the object.
+
+## Geometry data
+
+* `vertlen vertices` -> The vertex data, more on that below.
+
+* `indlen uint32` -> The index data.
 
 ### Vertices
 
@@ -73,17 +96,149 @@ Vertices are outlined as follows: 3 floats for the vertex coordinate, 2 floats
 for the texture coordinate, 3 floats for the normal, 3 floats for the tangent
 and 3 floats for the binormal.
 
-The texture coordinates will always be in the range [0, 1.0].
+Therefore the vertex data structure consists of `14 float`.
 
-## Object tree
+## Materials
 
-This is a string of characters (one byte each) specifying how the object tree
-should be formed.
+Each material should be assigned to one or more object instances. Special
+grouped shaders exist which represent the material. These shaders should be
+used in the material, since they make it easy to gather these values.
+
+* `1 uint32` -> Material type. Reserved in case there's more than one
+  material. Should be 0.
+
+* `1 uint32` -> Shader type. Reserved in case there's more than one
+  shader. Should be 0.
+
+The following fields would then depend on the kind of material.
+
+* `4 float` -> Ambient color.
+
+* `4 float` -> Emissive color.
+
+* `4 float` -> Diffuse color.
+
+* `4 float` -> Specular color.
+
+* `4 float` -> Reflectance. Unused for now.
+
+* `1 float` -> Opacity. The entire object will be applied this alpha. 1 for
+  completely opaque.
+
+* `1 float` -> Specular power. Shininess.
+
+* `1 float` -> Index of refraction. Unused for now.
+
+* `1 float` -> Bump intensity. Scale values of a bump map, if there's any.
+
+* `1 float` -> Specular scale. Scale values from the specular power map, if
+  there's any.
+
+* `1 float` -> Alpha threshold. Unused for now.
+
+Next, each texture is defined. It's defined as simply the name of the texture
+file, without extension (will look for a png). Before each name comes the
+number of characters in the name, or 0 if there's no texture. In which case
+there should be 0 characters (nothing) and then continue to define the next
+texture.
+
+* `1 uint32` -> Number of characters in the texture name. `nchars`
+
+* `nchars uint8` -> The name of the png file with the texture.
+
+The supported textures are:
+
+* Ambient
+
+* Emissive
+
+* Diffuse
+
+* Specular
+
+* Specular Power
+
+* Normal
+
+* Bump
+
+* Opacity
+
+Normal and bump textures are mutually exclusive.
+
+## Lights
+
+Each light should be assigned to one or more object instances.
+
+* `4 float` -> Color of the light. Found in the light object's data.
+
+* `1 float` -> Range of the light. Found in the light object's data as the
+  Distance (use custom distance).
+
+* `1 float` -> Intensity of the light. Found in the light object's data as the
+  power.
+
+* `1 uint8` -> Type of light:
+
+  - 0 means Spot Light
+  
+  - 1 means Directional (Sun) Light
+  
+  - 2 means Point Light
+  
+* `1 float` -> Angle of the light in radians (only meaningful for spot
+  lights). Found in the light object's data, under Spot Shape.
+
+Non meaningful fields like angle for a non spot light must still be present
+with any valid value.
+
+## Instance definitions
+
+Here each object instance is defined and assigned a position, rotation and
+scale (relative to their parent). They are also possibly assigned a geometry, a
+material, a light and to exactly one of them the camera. For the camera
+instance and the light instances, the meaning of position, rotation and scale
+is different:
+
+The camera object's position is the camera position. Whatever euclidean
+rotation results from the rotation axis and angle, the X axis is the pitch and
+Y the yaw. Z is ignored (this camera can't roll). The camera's scale is
+ignored.
+
+A light's position is the light's position for point and spot lights and
+ignored for directional lights. The rotation is the rotation of the default
+direction vector, which is beaming straight down (0, 0, -1) for directional and
+spot lights. And ignored for point lights. The scale is always ignored.
+
+* `1 uint8` -> Whether it is the camera. 0 if it isn't, any other value if it
+  is. One and only one object should be the camera.
+  
+* `1 uint32` -> Geometry index: The first geometry defined in the file is
+  index 1. Index 0 means no geometry.
+  
+* `1 uint32` -> Material index: Same strategy as the geometry index, 0 means no
+  material. All objects with a geometry must have a material, otherwise crashes
+  may occur.
+  
+* `1 uint32` -> Light index: Same strategy as with geometry and
+  material. Generally, a light object doesn't have a geometry or material.
+  
+* `3 floats` -> Translation vector.
+
+* `3 floats` -> Rotation axis.
+
+* `1 float` -> Rotation angle.
+
+* `3 floats` -> Scale vector.
+
+## Scene tree
+
+This is a string of characters (one `uint8` each) specifying how the object
+tree should be formed.
 
 An example:
 
 ```
-
 implied root
    /  |  \
   0   1   2
@@ -107,116 +262,3 @@ and 3 haven't been defined.
 
 Maximum 256 levels of depth. A 0 character marks the end of the string (as in
 the example).
-
-## Camera
-
-Only one camera:
-
-* `12` bytes -> Position vector of the camera.
-
-* `4` bytes -> Yaw. Float.
-
-* `4` bytes -> Pitch. Float.
-
-## Lights
-
-For each light, this structure repeats:
-
-* `16` bytes -> Color of the light.
-
-* `4` bytes -> Range of the light.
-
-* `4` bytes -> Intensity of the light.
-
-* `4` bytes -> Type of light:
-
-  - 0 means Spot Light
-  
-  - 1 means Directional Light
-  
-  - 2 means Point Light
-  
-* `16` bytes -> Position of the light (only meaningful for point and spot
-  lights)
-  
-* `16` bytes -> Direction of the light (only meaningful for spot and
-  directional lights)
-  
-* `4` bytes -> Angle of the light in degrees (only meaningful for spot lights)
-
-Non meaningful fields like angle for a non spot light must still be present
-with any valid value.
-
-## Global Ambient Light
-
-For now, this is hard coded in the exporter script to be <0.1, 0.1, 0.1, 1.0>.
-
-* `16` bytes -> Color to add as global ambient light when shading.
-
-## Materials
-
-For now only one kind of material exists, this section might need to be
-expanded if more materials are added.
-
-* `4` bytes -> Material type. Reserved in case there's more than one material. Should be 0.
-
-* `4` bytes -> Shader type. Reserved in case there's more than one shader. Should be 0.
-
-* `16` bytes -> Ambient color.
-
-* `16` bytes -> Emissive color.
-
-* `16` bytes -> Diffuse color.
-
-* `16` bytes -> Specular color.
-
-* `16` bytes -> Reflectance. Unused for now.
-
-* `4` bytes -> Opacity. The entire object will be applied this alpha. 1 for completely opaque.
-
-* `4` bytes -> Specular power. Shininess.
-
-* `4` bytes -> Index of refraction. Unused for now.
-
-* `4` bytes -> Bump intensity. Scale values of a bump map, if there's any.
-
-* `4` bytes -> Specular scale. Scale values from the specular power map, if there's any.
-
-* `4` bytes -> Alpha threshold. Unused for now.
-
-Next, each texture is defined. It's defined as simply the name of the texture
-file, without extension (will look for a png). Before each name comes the
-number of characters in the name, or 0 if there's no texture. In which case
-there should be 0 characters (nothing) and then continue to define the next
-texture.
-
-* `4` bytes -> Number of characters in the texture name. `nchars`
-
-* `nchars` bytes -> The name of the png file with the texture.
-
-The supported textures are:
-
-* Ambient
-
-* Emissive
-
-* Diffuse
-
-* Specular
-
-* Specular Power
-
-* Normal
-
-* Bump
-
-* Opacity
-
-Normal and bump textures are mutually exclusive.
-
-## Object's Materials
-
-As many entries as there are objects. Objects without geometry can have any
-material as long as it's a valid one. They won't be rendered.
-
-* `4` bytes -> Material index

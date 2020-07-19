@@ -132,7 +132,7 @@ LightingResult doPointLight(Light light, Material mat,
 }
 
 float doSpotCone(Light light, vec4 L) {
-        float minCos = cos(radians(light.angle));
+        float minCos = cos(light.angle);
         float maxCos = mix(minCos, 1, 0.5f);
         float cosAngle = dot(light.direction_vs, -L);
         return smoothstep(minCos, maxCos, cosAngle);

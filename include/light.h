@@ -28,12 +28,6 @@ struct light {
         float range;
         float intensity;
         enum lightType type;
-        
-        // Only point and spot lights
-        vec4s position;
-
-        // Only spot and directional lights
-        vec4s direction;
 
         // Only spot light
         float angle;
@@ -47,21 +41,19 @@ void light_initFromFile(struct light *light, FILE *f)
         __attribute__((nonnull));
 
 /*
- * Update shader with all light info.
+ * Update shader with light info. Which is the index of the light in the shader.
  */
-void light_updateShaderAll(const struct light *lights,
-                           size_t nlights, enum shaders shader)
-        __attribute__((access (read_only, 1, 2)))
+void light_updateShader(const struct light *light,
+                        size_t which, mat4s view, mat4s model,
+                        enum shaders shader)
+        __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
- * Update shader with viewspace information for lights.
+ * Set all lights in the shader starting with the given which as disabled.
  */
-void light_updateShaderView(const struct light *lights,
-                            size_t nlights, mat4s viewMatrix,
-                            enum shaders shader)
-        __attribute__((access (read_only, 1, 2)))
+void light_updateShaderDisabled(size_t which, enum shaders shader)
         __attribute__((leaf))
         __attribute__((nonnull));
 

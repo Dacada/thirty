@@ -6,44 +6,38 @@
 #include <camera.h>
 
 /*
- * A scene contains a collection of objects (children of 'root'), a camera to
- * be used to render them, and a collection of lights that act on them. Drawing
- * a scene means drawing the objects taking into account all of this, and their
- * tree structure.
+ * A scene contains a collection of objects (children of 'root'). One of these
+ * objects is the camera. And some of them may be lights. The scene also
+ * contains pointers to camera, light, material shader and object data which
+ * are only held for easy freeing later.  Drawing a scene means drawing the
+ * objects taking into account and their tree structure, using the light and
+ * camera objects appropiately.
  */
 
 struct scene {
         struct object root;
-        struct camera camera;
-        vec4s globalAmbientLight;
         
-        struct light *lights;
+        vec4s globalAmbientLight;
         size_t nlights;
+        struct light *lights;
+
+        unsigned nmats;
+        struct material *mats;
         
         unsigned nobjs;
         struct object *objs;
 
-        unsigned nmats;
-        struct material *mats;
+        unsigned ngeos;
+        struct geometry *geos;
 
-        unsigned nshaders;
-        enum shaders *shaders;
+        struct camera *cam;
 };
 
-/*
- * Must also pass the width and height of the screen for correct camera
- * initialization.
- */
-unsigned scene_initFromFile(struct scene *scene, 
-                            float width, float height,
-                            const char *filename)
+void scene_initFromFile(struct scene *scene, const char *filename)
         __attribute__((access (write_only, 1)))
-        __attribute__((access (read_only, 4)))
+        __attribute__((access (read_only, 2)))
         __attribute__((leaf))
         __attribute__((nonnull));
-
-void scene_updateAllLighting(const struct scene *scene)
-        __attribute__((access (read_only, 1)));
 
 void scene_draw(const struct scene *scene)
         __attribute__((access (read_only, 1)))

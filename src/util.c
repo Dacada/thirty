@@ -1,6 +1,7 @@
 #define _DEFAULT_SOURCE
 
 #include <util.h>
+#include <cglm/cglm.h>
 #include <unistd.h> //TODO: Only for linux
 #include <stddef.h>
 #include <stdarg.h>
@@ -23,6 +24,16 @@ static bool is_safe_multiply(const size_t a, const size_t b) {
         const int a_size_bits = sizet_size_bits - __builtin_clzl(a);
         const int b_size_bits = sizet_size_bits - __builtin_clzl(b);
         return a_size_bits + b_size_bits <= sizet_size_bits;
+}
+
+float clamp_angle(float angle, float minVal, float maxVal) {
+        if (angle < -GLM_2_PIf) {
+                angle += GLM_2_PIf * (-angle/GLM_2_PIf);
+        }
+        if (angle > GLM_2_PIf) {
+                angle -= GLM_2_PIf * (angle/GLM_2_PIf);
+        }
+        return glm_clamp(angle, minVal, maxVal);
 }
 
 void bail(const char *const msg, ...) {

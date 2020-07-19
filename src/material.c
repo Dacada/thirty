@@ -44,39 +44,39 @@ void material_initDefaults(struct material *const material,
 }
 
 void material_initFromFile(struct material *const material, FILE *const f) {
-        unsigned mat_type;
-        sfread(&mat_type, 4, 1, f);
+        uint32_t mat_type;
+        sfread(&mat_type, sizeof(mat_type), 1, f);
         if (mat_type != 0) {
                 bail("Error parsing scene: Nonzero material.");
         }
 
-        unsigned shader_type;
-        sfread(&shader_type, 4, 1, f);
+        uint32_t shader_type;
+        sfread(&shader_type, sizeof(shader_type), 1, f);
         if (shader_type != SHADER_UBER) {
                 bail("Error parsing scene: Unknown shader.");
         }
         material->shader = SHADER_UBER;
 
-        sfread(material->ambientColor.raw, 4, 4, f);
-        sfread(material->emissiveColor.raw, 4, 4, f);
-        sfread(material->diffuseColor.raw, 4, 4, f);
-        sfread(material->specularColor.raw, 4, 4, f);
-        sfread(material->reflectance.raw, 4, 4, f);
+        sfread(material->ambientColor.raw, sizeof(float), 4, f);
+        sfread(material->emissiveColor.raw, sizeof(float), 4, f);
+        sfread(material->diffuseColor.raw, sizeof(float), 4, f);
+        sfread(material->specularColor.raw, sizeof(float), 4, f);
+        sfread(material->reflectance.raw, sizeof(float), 4, f);
         
-        sfread(&material->opacity, 4, 1, f);
-        sfread(&material->specularPower, 4, 1, f);
-        sfread(&material->indexOfRefraction, 4, 1, f);
+        sfread(&material->opacity, sizeof(float), 1, f);
+        sfread(&material->specularPower, sizeof(float), 1, f);
+        sfread(&material->indexOfRefraction, sizeof(float), 1, f);
         
-        sfread(&material->bumpIntensity, 4, 1, f);
-        sfread(&material->specularScale, 4, 1, f);
-        sfread(&material->alphaThreshold, 4, 1, f);
+        sfread(&material->bumpIntensity, sizeof(float), 1, f);
+        sfread(&material->specularScale, sizeof(float), 1, f);
+        sfread(&material->alphaThreshold, sizeof(float), 1, f);
         
         initTexturesZero(material);
 
         for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
              tex <= MATERIAL_TEXTURE_OPACITY; tex++) {
-                unsigned nchars;
-                sfread(&nchars, 4, 1, f);
+                uint32_t nchars;
+                sfread(&nchars, sizeof(nchars), 1, f);
                 if (nchars > 0) {
                         char *const name =
                                 smallocarray(nchars+1, sizeof(*name));

@@ -48,13 +48,13 @@ void *growingArray_append(struct growingArray *ga)
         __attribute__((returns_nonnull));
 
 /*
- * Remove the last element from the growing array. Will not deallocate memory
- * in any case.
+ * Return the address of the nth element in the array.
  */
-void growingArray_pop(struct growingArray *ga)
-        __attribute__((access (read_write, 1)))
+void *growingArray_get(const struct growingArray *ga, size_t n)
+        __attribute__((access (read_only, 1)))
         __attribute__((leaf))
-        __attribute__((nonnull));
+        __attribute__((nonnull))
+        __attribute__((returns_nonnull));
 
 /*
  * Deallocate all the memory from the growing array that isn't being used so
@@ -179,8 +179,27 @@ void *stack_pop(struct stack *s)
 const void *stack_peek(const struct stack *s)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
+        __attribute__((pure))
         __attribute__((nonnull))
         __attribute__((returns_nonnull));
+
+/*
+ * Returns whether the stack is full.
+ */
+bool stack_full(const struct stack *s)
+        __attribute__((access (read_only, 1)))
+        __attribute__((leaf))
+        __attribute__((pure))
+        __attribute__((nonnull));
+
+/*
+ * Returns whether the stack is empty.
+ */
+bool stack_empty(const struct stack *s)
+        __attribute__((access (read_only, 1)))
+        __attribute__((leaf))
+        __attribute__((pure))
+        __attribute__((nonnull));
 
 /*
  * Destroy stack and free memory. Should be reinitialized if reused.

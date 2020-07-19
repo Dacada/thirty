@@ -17,7 +17,8 @@
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #define max(a,b) ((a) > (b) ? (a) : (b))
 
-#define NULLDEFAULT(ptr, dflt) (((ptr) == NULL) ? (dflt) : (*(ptr)))
+float clamp_angle(float angle, float min, float max)
+        __attribute__((const));
 
 /*
  * Exit program.

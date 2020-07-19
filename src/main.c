@@ -1,37 +1,101 @@
 #include <scene.h>
 #include <window.h>
+#include <util.h>
 #include <cglm/cglm.h>
+#include <GLFW/glfw3.h>
 #include <stdbool.h>
+#include <assert.h>
+#include <math.h>
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 #define TITLE_BUFFER_SIZE 256
 #define FRAME_PERIOD_FPS_REFRESH 10
-#define CAMERA_SENSITIVITY 0.01F
+#define CAMERA_PITCH_LIMIT_OFFSET 0.1F
 
-static struct scene scene;
+static const float movement_speed = 10.0F;
+static const float look_sensitivity = 2.0F;
+
+static struct scene *scene;
 
 static char title[TITLE_BUFFER_SIZE];
 static bool freefly = false;
 
+enum direction {
+        FORWARD,
+        BACKWARD,
+        LEFT,
+        RIGHT
+};
+
+static struct object *find_camera(struct object *const object) {
+        if (object->camera != NULL) {
+                return object;
+        }
+
+        for (unsigned i=0; i<object->nchildren; i++) {
+                struct object *ret = find_camera(object->children[i]);
+                if (ret != NULL) {
+                        return ret;
+                }
+        }
+
+        return NULL;
+}
+
+static struct object *get_camera(void) {
+        static bool first = true;
+        static struct object *camera;
+        if (first) {
+                camera = find_camera(&scene->root);
+                first = false;
+        }
+        return camera;
+}
+
 static void processKeyboardInput(void) {
-        const float deltaTime = window_timeDelta();
+        struct object *const camera = get_camera();
+        const float timeDelta = window_timeDelta();
+
+        const float look = look_sensitivity * timeDelta;
+        const float move = movement_speed * timeDelta;
         
         if (window_keyPressed(GLFW_KEY_W)) {
-                camera_move(&scene.camera, camera_FORWARD,
-                            deltaTime, freefly);
+                object_rotateX(camera, look);
         }
         if (window_keyPressed(GLFW_KEY_S)) {
-                camera_move(&scene.camera, camera_BACKWARD,
-                            deltaTime, freefly);
+                object_rotateX(camera, -look);
         }
         if (window_keyPressed(GLFW_KEY_A)) {
-                camera_move(&scene.camera, camera_LEFT,
-                            deltaTime, freefly);
+                object_rotateY(camera, look);
         }
         if (window_keyPressed(GLFW_KEY_D)) {
-                camera_move(&scene.camera, camera_RIGHT,
-                            deltaTime, freefly);
+                object_rotateY(camera, -look);
+        }
+        if (window_keyPressed(GLFW_KEY_Q)) {
+                object_rotateZ(camera, look);
+        }
+        if (window_keyPressed(GLFW_KEY_E)) {
+                object_rotateZ(camera, -look);
+        }
+        
+        if (window_keyPressed(GLFW_KEY_LEFT)) {
+                object_translateX(camera, -move);
+        }
+        if (window_keyPressed(GLFW_KEY_RIGHT)) {
+                object_translateX(camera, move);
+        }
+        if (window_keyPressed(GLFW_KEY_PAGE_UP)) {
+                object_translateY(camera, move);
+        }
+        if (window_keyPressed(GLFW_KEY_PAGE_DOWN)) {
+                object_translateY(camera, -move);
+        }
+        if (window_keyPressed(GLFW_KEY_UP)) {
+                object_translateZ(camera, -move);
+        }
+        if (window_keyPressed(GLFW_KEY_DOWN)) {
+                object_translateZ(camera, move);
         }
 }
 
@@ -47,32 +111,6 @@ static void processKeyboardEvent(const int key, const int action,
         }
 }
 
-static void processMousePosition(const double xpos, const double ypos) {
-        static bool first = true;
-        static vec2s last;
-
-        vec2s pos = {
-                .x=(const float)xpos,
-                .y=(const float)ypos
-        };
-
-        if (first) {
-                last = pos;
-                first = false;
-        } else {
-                const vec2s offset = {
-                        .x=pos.x - last.x,
-                        .y=last.y - pos.y
-                };
-                last = pos;
-                camera_look(&scene.camera, offset.x, offset.y, true);
-        }
-}
-
-static void processMouseScroll(const double offset) {
-        camera_zoom(&scene.camera, (const float)offset);
-}
-
 static void draw(void) {
         static unsigned count = 0;
         if (count == FRAME_PERIOD_FPS_REFRESH) {
@@ -85,7 +123,7 @@ static void draw(void) {
                 count++;
         }
 
-        scene_draw(&scene);
+        scene_draw(scene);
 
 #ifndef NDEBUG
         const GLenum error = glGetError();
@@ -96,20 +134,19 @@ static void draw(void) {
 }
 
 static void freeScene(void) {
-        scene_free(&scene);
+        scene_free(scene);
+        free(scene);
 }
 
 int main(void) {
         window_init(SCREEN_WIDTH, SCREEN_HEIGHT);
         window_title = title;
-        
-        scene_initFromFile(&scene, SCREEN_WIDTH, SCREEN_HEIGHT, "scene");
-        scene.camera.look_sensitivity = CAMERA_SENSITIVITY;
+
+        scene = smalloc(sizeof(*scene));
+        scene_initFromFile(scene, "scene");
 
         window_onKeyboardInput = processKeyboardInput;
         window_onKeyboardEvent = processKeyboardEvent;
-        window_onMousePosition = processMousePosition;
-        window_onMouseScroll = processMouseScroll;
         window_onDraw = draw;
         window_onTearDown = freeScene;
         

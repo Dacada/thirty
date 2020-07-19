@@ -2,6 +2,7 @@
 #include <camera.h>
 #include <util.h>
 #include <glad/glad.h>
+#include <stdint.h>
 #include <string.h>
 #include <limits.h>
 #include <assert.h>
@@ -35,16 +36,6 @@ void geometry_initFromArray(struct geometry *const geometry,
         glBufferData(GL_ARRAY_BUFFER,
                      (GLsizeiptr)(nvertices * sizeof(*vertices)),
                      vertices, GL_STATIC_DRAW);
-
-#ifndef NDEBUG
-        // Sanity check texture coordinates
-        for (size_t i=0; i<nvertices; i++) {
-                assert(vertices[i].tex.x >= 0.0F &&
-                       vertices[i].tex.x <= 1.0F &&
-                       vertices[i].tex.y >= 0.0F &&
-                       vertices[i].tex.y <= 1.0F);
-        }
-#endif
         
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
@@ -87,20 +78,26 @@ void geometry_initFromArray(struct geometry *const geometry,
         geometry->nindices = (const int)nindices;
 }
 
-void geometry_initFromFile(struct geometry *const geometry,
-                           const size_t nvertices, const size_t nindices,
-                           FILE *const f) {
-        struct vertex *const vertices =
-                smallocarray(nvertices, sizeof(*vertices));
-        unsigned *const indices =
-                smallocarray(nindices, sizeof(*indices));
+void geometry_initFromFile(struct geometry *const geometry, FILE *const f) {
+        struct {
+                uint32_t vertlen;
+                uint32_t indlen;
+        } header;
 
-        sfread(vertices, sizeof(*vertices), nvertices, f);
-        sfread(indices, sizeof(*indices), nindices, f);
+        sfread(&header.vertlen, sizeof(header.vertlen), 1, f);
+        sfread(&header.indlen, sizeof(header.indlen), 1, f);
+        
+        struct vertex *const vertices =
+                smallocarray(header.vertlen, sizeof(*vertices));
+        unsigned *const indices =
+                smallocarray(header.indlen, sizeof(*indices));
+
+        sfread(vertices, sizeof(*vertices), header.vertlen, f);
+        sfread(indices, sizeof(*indices), header.indlen, f);
         
         geometry_initFromArray(geometry,
-                               vertices, nvertices,
-                               indices, nindices);
+                               vertices, header.vertlen,
+                               indices, header.indlen);
         
         free(vertices);
         free(indices);

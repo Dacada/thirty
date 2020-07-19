@@ -5,12 +5,12 @@
 #include <camera.h>
 #include <util.h>
 #include <dsutils.h>
+#include <ctype.h>
 #include <string.h>
 #include <limits.h>
 #include <assert.h>
 
 #define BOGLE_MAGIC_SIZE 5
-#define OBJECT_TREE_MAXIMUM_DEPTH 256
 #define OBJECT_TREE_NUMBER_BASE 10
 
 __attribute__((access (write_only, 2, 1)))
@@ -26,18 +26,24 @@ static void buildpathObj(const size_t destsize, char *const dest,
         strcpy(dest+len-2, ".bgl");
 }
 
-__attribute__((access (read_write, 2)))
+__attribute__((access (write_only, 1, 2)))
+__attribute__((access (read_only, 3)))
+__attribute__((access (read_only, 4)))
+__attribute__((access (read_only, 5)))
+__attribute__((access (read_only, 6)))
+__attribute__((access (read_write, 7)))
 __attribute__((nonnull))
-__attribute__((returns_nonnull))
-static struct object *parse_objects(const unsigned nobjs,
-                                    FILE *const f) {
-        struct object *const objects = smallocarray(nobjs, sizeof(*objects));
-        
-        for (unsigned n=0; n<nobjs; n++) {
-                object_init_fromFile(&objects[n], f);
+static void parse_objects(struct object *const objects, unsigned nobjs,
+                          struct geometry *const geometries,
+                          struct material *const materials,
+                          struct light *const lights,
+                          struct camera *const camera,
+                          FILE *const f) {
+        for (unsigned i=0; i<nobjs; i++) {
+                object_initFromFile(objects+i,
+                                    geometries, materials, lights, camera,
+                                    f);
         }
-
-        return objects;
 }
 
 __attribute__((access (write_only, 1)))
@@ -125,67 +131,8 @@ static void parse_object_tree(struct object *const root,
         free(children);
 }
 
-__attribute__((access (read_write, 2)))
-__attribute__((nonnull))
-__attribute__((returns_nonnull))
-static struct material *parse_materials(const size_t nmaterials,
-                                 FILE *const f) {
-        struct material *const materials =
-                smallocarray(nmaterials, sizeof(*materials));
-
-        for (size_t i=0; i<nmaterials; i++) {
-                material_initFromFile(&materials[i], f);
-                shader_use(materials[i].shader);
-        }
-
-        return materials;
-}
-
-__attribute__((access (write_only, 1, 2)))
-__attribute__((access (write_only, 3)))
-__attribute__((access (read_write, 4)))
-__attribute__((nonnull))
-static void parse_lights(struct light *const lights,
-                         const unsigned nlights,
-                         vec4s *const globalAmbientLight,
-                         FILE *const f) {
-        assert(nlights <= NUM_LIGHTS);
-        
-        for (unsigned n=0; n<nlights; n++) {
-                light_initFromFile(&lights[n], f);
-        }
-        sfread(globalAmbientLight->raw, 4, 4, f);
-}
-
-__attribute__((access (read_only, 1)))
-__attribute__((access (write_only, 2, 3)))
-__attribute__((access (read_write, 4)))
-__attribute__((nonnull))
-static void assign_materials(struct material *const materials,
-                             struct object *const objects,
-                             const size_t nobjs,
-                             FILE *const f) {
-        for (size_t obj=0; obj<nobjs; obj++) {
-                unsigned i;
-                sfread(&i, 4, 1, f);
-                objects[obj].material = &materials[i];
-        }
-}
-
-__attribute__((access (read_only, 1)))
-__attribute__((access (read_only, 2)))
-__attribute__((nonnull))
-static int shdreq(const void *const v1, const void *const v2,
-                  void *const args) {
-        (void)args;
-        const enum shaders *const s1 = v1;
-        const enum shaders *const s2 = v2;
-        return (int)*s1 - (int)*s2;
-}
-
-unsigned scene_initFromFile(struct scene *const scene,
-                            const float width, const float height,
-                            const char *const filename) {
+void scene_initFromFile(struct scene *const scene,
+                        const char *const filename) {
         char path[PATH_MAX];
         buildpathObj(PATH_MAX, path, filename);
         if (!accessible(path, true, false, false)) {
@@ -194,92 +141,88 @@ unsigned scene_initFromFile(struct scene *const scene,
 
         FILE *const f = sfopen(path, "rb");
         struct {
-                char magic[BOGLE_MAGIC_SIZE] __attribute__ ((nonstring));
-                char version;
-                unsigned nobjs;
-                unsigned nlights;
-                unsigned nmaterials;
+                uint8_t magic[BOGLE_MAGIC_SIZE];
+                uint8_t version;
+                uint32_t ngeos;
+                uint32_t nmats;
+                uint32_t nlights;
+                uint32_t nobjs;
         } header;
 
-        sfread(&header.magic, 1, BOGLE_MAGIC_SIZE, f);
-        if (strncmp(header.magic, "BOGLE", BOGLE_MAGIC_SIZE) != 0) {
+        sfread(&header.magic, sizeof(uint8_t), BOGLE_MAGIC_SIZE, f);
+        if (strncmp((char*)(header.magic), "BOGLE", BOGLE_MAGIC_SIZE) != 0) {
                 bail("Malformatted scene file: %s\n", path);
         }
 
-        sfread(&header.version, 1, 1, f);
+        sfread(&header.version, sizeof(header.version), 1, f);
         if (header.version != 0) {
                 bail("Unsupported scene file version: %d "
                      "(support only 0)\n", header.version);
         }
 
-        sfread(&header.nobjs, 4, 1, f);
-        sfread(&header.nlights, 4, 1, f);
-        sfread(&header.nmaterials, 4, 1, f);
+        sfread(&header.ngeos, sizeof(header.ngeos), 1, f);
+        sfread(&header.nmats, sizeof(header.nmats), 1, f);
+        sfread(&header.nlights, sizeof(header.nlights), 1, f);
+        sfread(&header.nobjs, sizeof(header.nobjs), 1, f);
 
-        struct object *const objects = parse_objects(header.nobjs, f);
-        parse_object_tree(&scene->root, objects, header.nobjs, f);
-        scene->nobjs = header.nobjs;
-        scene->objs = objects;
-
-        camera_initFromFile(&scene->camera, width, height, f);
-
-        scene->lights = smallocarray(header.nlights, sizeof(*(scene->lights)));
-        scene->nlights = header.nlights;
-        parse_lights(scene->lights, header.nlights,
-                     &scene->globalAmbientLight, f);
+        struct camera *camera_data = smalloc(sizeof(*camera_data));
+        camera_initFromFile(camera_data, f);
         
-        struct material *materials = parse_materials(header.nmaterials, f);
-        assign_materials(materials, objects, header.nobjs, f);
-        scene->nmats = header.nmaterials;
-        scene->mats = materials;
-
-        struct growingArray totalShaders;
-        growingArray_init(&totalShaders, sizeof(enum shaders), 2);
-        for (size_t i=0; i<header.nmaterials; i++) {
-                const enum shaders shader = materials[i].shader;
-                if (!growingArray_contains(&totalShaders, shdreq, &shader)) {
-                        enum shaders *ptr = growingArray_append(&totalShaders);
-                        *ptr = shader;
-                        
-                        shader_use(shader);
-                        light_updateGlobalAmbient(shader,
-                                                  scene->globalAmbientLight);
-                        light_updateShaderAll(scene->lights, scene->nlights,
-                                              shader);
-                }
+        sfread(scene->globalAmbientLight.raw,
+               sizeof(*(scene->globalAmbientLight.raw)), 4, f);
+        
+#define PARSE(what, amount, f)                                          \
+        struct what *what##_data = smallocarray(amount,                 \
+                                                sizeof(*what##_data));  \
+        for (unsigned i=0; i<(amount); i++) {                           \
+                what##_initFromFile(what##_data + i, f);                \
         }
-        growingArray_pack(&totalShaders);
-        scene->nshaders = (unsigned)totalShaders.length;
-        scene->shaders = totalShaders.data;
+
+        PARSE(geometry, header.ngeos, f);
+        PARSE(material, header.nmats, f);
+        PARSE(light, header.nlights, f);
+#undef PARSE
         
+        struct object *object_data = smallocarray(header.nobjs,
+                                                  sizeof(*object_data));
+        
+        parse_objects(object_data, header.nobjs,
+                      geometry_data, material_data, light_data, camera_data,
+                      f);
+        scene->root.camera = NULL;
         scene->root.geometry = NULL;
+        scene->root.material = NULL;
+        scene->root.light = NULL;
         scene->root.model = glms_mat4_identity();
-        strcpy(scene->root.name, "root");
+        
+        parse_object_tree(&scene->root, object_data, header.nobjs, f);
         scene->root.parent = NULL;
+
+        scene->nlights = header.nlights;
+        scene->lights = light_data;
+        
+        scene->nmats = header.nmats;
+        scene->mats = material_data;
+        
+        scene->nobjs = header.nobjs;
+        scene->objs = object_data;
+
+        scene->ngeos = header.ngeos;
+        scene->geos = geometry_data;
+
+        scene->cam = camera_data;
 
         const int c = fgetc(f);
         if (c != EOF) {
-                //ungetc(c, f);
                 bail("Malformated file, trash at the end, I'm being "
                      "very strict so I won't just ignore it.\n");
         }
 
         fclose(f);
-        return header.nobjs;
-}
-
-void scene_updateAllLighting(const struct scene *scene) {
-        for (unsigned i=0; i<scene->nshaders; i++) {
-                light_updateShaderAll(scene->lights, scene->nlights,
-                                      scene->shaders[i]);
-                light_updateGlobalAmbient(scene->shaders[i],
-                                          scene->globalAmbientLight);
-        }
 }
 
 void scene_draw(const struct scene *const scene) {
-        object_draw(&scene->root, &scene->camera,
-                    scene->nlights, scene->lights);
+        object_draw(&scene->root);
 }
 
 void scene_free(const struct scene *const scene) {
@@ -288,7 +231,12 @@ void scene_free(const struct scene *const scene) {
                 free(scene->objs[i].children);
                 object_free(scene->objs + i);
         }
+        for (unsigned i=0; i<scene->ngeos; i++) {
+                geometry_free(scene->geos + i);
+        }
+        free(scene->geos);
         free(scene->objs);
         free(scene->mats);
-        free(scene->shaders);
+        free(scene->lights);
+        free(scene->cam);
 }

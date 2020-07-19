@@ -1,11 +1,11 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
-#define OBJECT_NAME_SIZE 32
-
 #include <geometry.h>
 #include <camera.h>
 #include <light.h>
+
+#define OBJECT_TREE_MAXIMUM_DEPTH 256
 
 /*
  * This module offers an implementation of an object. Objects follow a tree
@@ -17,14 +17,16 @@
 
 struct object {
         struct object *parent;
+        
         unsigned nchildren;
         struct object **children;
 
-        char name[OBJECT_NAME_SIZE];
         mat4s model;
 
+        struct camera *camera;
         struct geometry *geometry;
         struct material *material;
+        struct light *light;
 };
 
 /*
@@ -33,13 +35,32 @@ struct object {
  * and it will read all of the header and the data then return without doing
  * anything else to the file object.
  */
-void object_init_fromFile(struct object *object, FILE *f)
+void object_initFromFile(struct object *object,
+                         struct geometry *geometries,
+                         struct material *materials,
+                         struct light *lights,
+                         struct camera *camera, FILE *f)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
-void object_translate(struct object *object, vec3s position)
+void object_translate(struct object *object, vec3s delta)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void object_translateX(struct object *object, float delta)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void object_translateY(struct object *object, float delta)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void object_translateZ(struct object *object, float delta)
         __attribute__((access (read_write, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
@@ -49,19 +70,30 @@ void object_rotate(struct object *object, float angle, vec3s axis)
         __attribute__((leaf))
         __attribute__((nonnull));
 
+void object_rotateX(struct object *object, float angle)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void object_rotateY(struct object *object, float angle)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void object_rotateZ(struct object *object, float angle)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
 void object_scale(struct object *object, vec3s scale)
         __attribute__((access (read_write, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
-void object_draw(const struct object *object,
-                 const struct camera *camera,
-                 size_t nlights, const struct light *lights)
+void object_draw(const struct object *object)
         __attribute__((access (read_only, 1)))
-        __attribute__((access (read_only, 2)))
-        __attribute__((access (read_only, 4, 3)))
         __attribute__((leaf))
-        __attribute__((nonnull (1, 2)));
+        __attribute__((nonnull));
 
 void object_free(const struct object *object)
         __attribute__((access (read_only, 1)))
