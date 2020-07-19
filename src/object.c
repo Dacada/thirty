@@ -1,6 +1,6 @@
 #include <object.h>
-#include <material.h>
 #include <shader.h>
+#include <material.h>
 #include <geometry.h>
 #include <camera.h>
 #include <light.h>

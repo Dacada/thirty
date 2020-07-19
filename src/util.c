@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <limits.h>
-#include <errno.h>
 
 #define BUFFER_SIZE 256
 

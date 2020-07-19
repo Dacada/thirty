@@ -1,7 +1,7 @@
 #ifndef GEOMETRY_H
 #define GEOMETRY_H
 
-#include <camera.h>
+#include <cglm/struct.h>
 #include <glad/glad.h>
 
 /*

@@ -1,9 +1,10 @@
 #ifndef SCENE_H
 #define SCENE_H
 
-#include <object.h>
-#include <light.h>
 #include <camera.h>
+#include <light.h>
+#include <material.h>
+#include <object.h>
 
 /*
  * A scene contains a collection of objects (children of 'root'). One of these

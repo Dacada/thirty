@@ -1,11 +1,8 @@
 #include <scene.h>
 #include <window.h>
 #include <util.h>
-#include <cglm/cglm.h>
 #include <GLFW/glfw3.h>
 #include <stdbool.h>
-#include <assert.h>
-#include <math.h>
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600

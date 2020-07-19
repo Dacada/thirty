@@ -1,9 +1,10 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
-#include <geometry.h>
 #include <camera.h>
 #include <light.h>
+#include <geometry.h>
+#include <material.h>
 
 #define OBJECT_TREE_MAXIMUM_DEPTH 256
 

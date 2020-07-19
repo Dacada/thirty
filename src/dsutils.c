@@ -96,7 +96,7 @@ void stack_init(struct stack *const s,
 }
 
 void *stack_push(struct stack *const s) {
-        assert(!stack_full());
+        assert(!stack_full(s));
         
         void *ptr = (void *const)
                 ((char *const)s->data + s->ptr * s->itemSize);

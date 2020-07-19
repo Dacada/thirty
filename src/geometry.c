@@ -1,6 +1,7 @@
 #include <geometry.h>
 #include <camera.h>
 #include <util.h>
+#include <cglm/struct.h>
 #include <glad/glad.h>
 #include <stdint.h>
 #include <string.h>
