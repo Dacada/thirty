@@ -24,8 +24,12 @@ enum lightType {
 
 struct light {
         bool enabled;
+
+        float attenuation_constant;
+        float attenuation_linear;
+        float attenuation_quadratic;
+        
         vec4s color;
-        float range;
         float intensity;
         enum lightType type;
 

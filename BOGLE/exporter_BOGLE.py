@@ -717,7 +717,9 @@ class BOGLELight(BOGLEBaseObject):
     def __init__(self, config):
         super().__init__(config)
         self.color = None
-        self.range = None
+        self.attenuation_constant = None
+        self.attenuation_linear = None
+        self.attenuation_quadratic = None
         self.intensity = None
         self.type = None
         self.angle = None
@@ -726,19 +728,26 @@ class BOGLELight(BOGLEBaseObject):
         light = self._get_light(object)
 
         self.color = Vector((*light.color, 1.0))
-        self.range = light.cutoff_distance
-        self.intensity = light.energy
+
+        self.attenuation_constant = 0
+        self.attenuation_quadratic = 1
+        d = light.cutoff_distance
+        self.attenuation_linear = 1000.0 / d - d
 
         if light.type == 'SPOT':
             self.type = 0
-            self.intensity *= 0.005
         elif light.type == 'SUN':
             self.type = 1
         elif light.type == 'POINT':
             self.type = 2
-            self.intensity *= 0.005
         else:
             raise BOGLEConversionError(f"Unsupported light type: {light.type}")
+
+        # formula derived taking values by eye and applying some curve fitting
+        if light.type == 'SPOT' or light.type == 'POINT':
+            self.intensity = 250.0+(-0.5-250.0)/(1.0+(light.energy/15.0)**0.7)
+        else:
+            self.intensity = light.energy
 
         if light.type == 'SPOT':
             self.angle = light.spot_size
@@ -749,8 +758,9 @@ class BOGLELight(BOGLEBaseObject):
         return self._get_light(object).name
 
     def export(self, f):
-        fmt = FormatSpecifier().float(4).float().float().u8().float().format()
-        light = struct.pack(fmt, *self.color, self.range,
+        fmt = FormatSpecifier().float(4).float().float().float().float().u8().float().format()
+        light = struct.pack(fmt, *self.color,
+                            self.attenuation_constant, self.attenuation_linear, self.attenuation_quadratic,
                             self.intensity, self.type, self.angle)
         f.write(light)
 

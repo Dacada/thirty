@@ -172,8 +172,13 @@ Each light should be assigned to one or more object instances.
 
 * `4 float` -> Color of the light. Found in the light object's data.
 
-* `1 float` -> Range of the light. Found in the light object's data as the
-  Distance (use custom distance).
+* `1 float` -> Constant attenuation of the light. From Blender, it's always 0.
+
+* `1 float` -> Linear attenuation of the light. From Blender, it's calculated
+  from the light's "distance" (light data > custom distance). The formula is `l
+  = 1000/d - d`.
+  
+* `1 float` -> Quadratic attenuation of the light. From Blender, it's always 1.
 
 * `1 float` -> Intensity of the light. Found in the light object's data as the
   power.

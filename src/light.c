@@ -10,7 +10,11 @@ void light_initFromFile(struct light *const light,
         light->enabled = true;
         
         sfread(light->color.raw, sizeof(float), 4, f);
-        sfread(&light->range, sizeof(float), 1, f);
+
+        sfread(&light->attenuation_constant, sizeof(float), 1, f);
+        sfread(&light->attenuation_linear, sizeof(float), 1, f);
+        sfread(&light->attenuation_quadratic, sizeof(float), 1, f);
+        
         sfread(&light->intensity, sizeof(float), 1, f);
 
         uint8_t type;
@@ -37,8 +41,14 @@ void light_updateShader(const struct light *light,
         if (light->enabled) {
                 SET_SHADER("lights[%lu].color",
                            shader_setVec4, light->color);
-                SET_SHADER("lights[%lu].range",
-                           shader_setFloat, light->range);
+
+                SET_SHADER("lights[%lu].attenuation_constant",
+                           shader_setFloat, light->attenuation_constant);
+                SET_SHADER("lights[%lu].attenuation_linear",
+                           shader_setFloat, light->attenuation_linear);
+                SET_SHADER("lights[%lu].attenuation_quadratic",
+                           shader_setFloat, light->attenuation_quadratic);
+                
                 SET_SHADER("lights[%lu].intensity",
                            shader_setFloat, light->intensity);
                 SET_SHADER("lights[%lu].type",

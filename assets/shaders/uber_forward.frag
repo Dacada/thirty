@@ -36,9 +36,12 @@ struct Material {
 
 struct Light {
         bool enabled;
+
+        float attenuation_constant;
+        float attenuation_linear;
+        float attenuation_quadratic;
         
         vec4 color;
-        float range;
         float intensity;
 
         uint type;
@@ -111,8 +114,9 @@ vec4 doSpecular(Light light, Material mat, vec4 V, vec4 L, vec4 N) {
 }
 
 float doAttenuation(Light light, float d) {
-        float c = 1.0f - smoothstep(light.range * 0.75f, light.range, d);
-        return c / (1.0f + 0.0f*d + 0.0f*d*d);
+        return 1.0f / (light.attenuation_constant +
+                       light.attenuation_linear*d +
+                       light.attenuation_quadratic*d*d);
 }
 
 LightingResult doPointLight(Light light, Material mat,
@@ -174,10 +178,6 @@ LightingResult doLighting(Material mat, vec4 eyePos, vec4 P, vec4 N) {
 
         for (int i=0; i<NUM_LIGHTS; i++) {
                 if (!lights[i].enabled) {
-                        continue;
-                }
-                if (lights[i].type != LIGHTTYPE_DIRECTION &&
-                    length(lights[i].position_vs - P) > lights[i].range) {
                         continue;
                 }
 
@@ -259,6 +259,7 @@ void main() {
         vec4 P = vec4(position_vs, 1);
         LightingResult lit = doLighting(mat, eyePos, P, N);
 
+        lit.diffuse += ambient;
         diffuse *= vec4(lit.diffuse.xyz, 1.0f);
 
         vec4 specular = vec4(0, 0, 0, 0);
@@ -271,6 +272,6 @@ void main() {
                 specular *= lit.specular;
         }
 
-        FragColor = vec4((ambient + emissive + diffuse + specular).xyz,
+        FragColor = vec4((emissive + diffuse + specular).xyz,
                          alpha * mat.opacity);
 }
