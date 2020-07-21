@@ -50,27 +50,10 @@ void object_initFromFile(struct object *const object,
         } else {
                 object->light = lights + light_idx - 1;
         }
-        
-        vec3s translation;
-        sfread(translation.raw, sizeof(float), 3, f);
-        
-        vec3s rotation_axis;
-        sfread(rotation_axis.raw, sizeof(float), 3, f);
-        
-        float angle;
-        sfread(&angle, sizeof(float), 1, f);
-        
-        vec3s scale;
-        sfread(scale.raw, sizeof(float), 3, f);
-        
-        object->model =
-                glms_scale(
-                        glms_rotate(
-                                glms_translate(
-                                        glms_mat4_identity(),
-                                        translation),
-                                angle, rotation_axis),
-                        scale);
+
+        mat4s model;
+        sfread(model.raw, sizeof(float), 16, f);
+        object->model = model;
 }
 
 void object_translate(struct object *const object, const vec3s delta) {
@@ -121,6 +104,7 @@ struct objectModelAndDistance {
 struct lightingInfo {
         struct growingArray *objects;
         struct growingArray *light_idxs;
+        vec4s globalAmbient;
         mat4s view;
 };
 
@@ -210,6 +194,7 @@ static bool update_shader_lighting(void *const item, void *const args) {
                                    object->model, *shader);
         }
         light_updateShaderDisabled(nlights, *shader);
+        light_updateGlobalAmbient(*shader, lighting->globalAmbient);
         return true;
 }
 
@@ -357,7 +342,8 @@ static bool render_object(void *const item,
         return true;
 }
 
-void object_draw(const struct object *const object) {
+void object_draw(const struct object *const object,
+                 const vec4s globalAmbientLight) {
         static bool first = true;
         unsigned camera_idx = 0;
         static struct growingArray objects;
@@ -391,9 +377,11 @@ void object_draw(const struct object *const object) {
         const mat4s projection = camera_projectionMatrix(camera_data);
 
         // Update every shader with the new lighting information
+        // TODO: Do this as we draw?
         struct lightingInfo lighting = {
                 .objects = &objects,
                 .light_idxs = &light_idxs,
+                .globalAmbient = globalAmbientLight,
                 .view = view
         };
         growingArray_foreach(&shaders, update_shader_lighting, &lighting);

@@ -16,8 +16,7 @@ from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 
 # useful math imports
-from mathutils import Vector, Matrix, Euler
-from math import pi
+from mathutils import Vector
 
 # useful imports from Python's stdlib
 import struct
@@ -30,7 +29,7 @@ bl_info = {
     'description': "Export blender data to a custom binary file format BOGLE",
     'author': "David Carrera",
     'version': (0, 0),
-    'blender': (2, 82, 0),
+    'blender': (2, 83, 0),
     'location': "File > Export",
     'warning': "",
     'category': 'Import-Export',
@@ -98,7 +97,6 @@ class BOGLEConfig:
     def __init__(self, other):
         self.apply_modifiers = other.apply_modifiers
         self.only_selected_objects = other.only_selected_objects
-        self.convert_coordinates = other.convert_coordinates
         self.winding_order = other.winding_order
         self.export_materials = other.export_materials
 
@@ -115,29 +113,6 @@ class BOGLEBaseObject:
 
     def get_name(self, object):
         raise NotImplementedError
-
-    def _convert_vec(self, vec, negate_x=True):
-        if negate_x:
-            # (x,y,z) => (-x, z, y)
-            _change_basis_matrix = Matrix((
-                (-1, 0, 0, 0),
-                (0, 0, 1, 0),
-                (0, 1, 0, 0),
-                (0, 0, 0, 1)
-            ))
-        else:
-            # (x,y,z) => (x, z, y)
-            _change_basis_matrix = Matrix((
-                (1, 0, 0, 0),
-                (0, 0, 1, 0),
-                (0, 1, 0, 0),
-                (0, 0, 0, 1)
-            ))
-
-        if self.config.convert_coordinates:
-            return vec @ _change_basis_matrix
-        else:
-            return vec.copy()
 
 
 class BOGLECamera(BOGLEBaseObject):
@@ -456,11 +431,11 @@ class BOGLEGeometry(BOGLEBaseObject):
             binormal = self._mesh.loops[loop_index].bitangent
             gl_vertex = BOGLEVertex(self.config)
             gl_vertex.convert(
-                self._convert_vec(vertex),
+                vertex.copy(),
                 uv.copy(),
-                self._convert_vec(normal),
-                self._convert_vec(tangent),
-                self._convert_vec(binormal))
+                normal.copy(),
+                tangent.copy(),
+                binormal.copy())
             self.vertices.append(gl_vertex)
 
     def _cleanup(self):
@@ -796,11 +771,7 @@ class BOGLEObject(BOGLEBaseObject):
         self.geometry_idx = None
         self.material_idx = None
         self.light_idx = None
-
-        self.translation = None
-        self.rotation_axis = None
-        self.rotation_angle = None
-        self.scale = None
+        self.transform = None
 
     def convert(self, object, camera_idx, geometry_idx,
                 material_idx, light_idx):
@@ -812,25 +783,18 @@ class BOGLEObject(BOGLEBaseObject):
         self.geometry_idx = self._idx(geometry_idx)
         self.material_idx = self._idx(material_idx)
         self.light_idx = self._idx(light_idx)
-
-        trans, rotq, scale = object.matrix_local.decompose()
-        if camera_idx is not None:
-            # Blender's default camera orientation is different than ours
-            rotq.rotate(Euler((0, -pi/2, 0)))
-        axis, self.rotation_angle = rotq.to_axis_angle()
-        self.translation = self._convert_vec(trans)
-        self.rotation_axis = self._convert_vec(axis)
-        self.scale = self._convert_vec(scale, negate_x=False)
+        self.transform = object.matrix_local.copy()
 
     def export(self, f, material_keys=None):
         fmt = FormatSpecifier().u8().u32().u32().u32().\
-            float(3).float(3).float().float(3).format()
+            float(16).format()
         data = (
             self.camera_idx, self.geometry_idx,
             self.material_idx, self.light_idx,
-            *self.translation,
-            *self.rotation_axis, self.rotation_angle,
-            *self.scale
+            *self.transform.col[0],
+            *self.transform.col[1],
+            *self.transform.col[2],
+            *self.transform.col[3],
         )
         obj = struct.pack(fmt, *data)
         f.write(obj)
@@ -1035,13 +999,6 @@ class BogleExportData(Operator, ExportHelper):
         description="Export only the selected objects instead of the "
         "whole scene",
         default=False,
-    )
-
-    convert_coordinates: BoolProperty(
-        name="Convert coordinates",
-        description="Convert Blender's coordinates (x,y,z) to OpenGL "
-        "coordinates (-x,z,y)",
-        default=True,
     )
 
     winding_order: EnumProperty(

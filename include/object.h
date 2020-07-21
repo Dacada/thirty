@@ -91,7 +91,7 @@ void object_scale(struct object *object, vec3s scale)
         __attribute__((leaf))
         __attribute__((nonnull));
 
-void object_draw(const struct object *object)
+void object_draw(const struct object *object, vec4s globalAmbientLight)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));

@@ -34,7 +34,12 @@ struct scene {
         struct camera *cam;
 };
 
-void scene_initFromFile(struct scene *scene, const char *filename)
+struct sceneInitParams {
+        enum cameraType cameraType;
+};
+
+void scene_initFromFile(struct scene *scene, const char *filename,
+                        const struct sceneInitParams *params)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
         __attribute__((leaf))

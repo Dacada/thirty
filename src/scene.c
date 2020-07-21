@@ -131,7 +131,8 @@ static void parse_object_tree(struct object *const root,
 }
 
 void scene_initFromFile(struct scene *const scene,
-                        const char *const filename) {
+                        const char *const filename,
+                        const struct sceneInitParams *const params) {
         char path[PATH_MAX];
         buildpathObj(PATH_MAX, path, filename);
         if (!accessible(path, true, false, false)) {
@@ -164,8 +165,8 @@ void scene_initFromFile(struct scene *const scene,
         sfread(&header.nlights, sizeof(header.nlights), 1, f);
         sfread(&header.nobjs, sizeof(header.nobjs), 1, f);
 
-        struct camera *camera_data = smalloc(sizeof(*camera_data));
-        camera_initFromFile(camera_data, f);
+        struct camera *camera_data = camera_new(params->cameraType);
+        camera_initFromFile(camera_data, f, params->cameraType);
         
         sfread(scene->globalAmbientLight.raw,
                sizeof(*(scene->globalAmbientLight.raw)), 4, f);
@@ -221,7 +222,7 @@ void scene_initFromFile(struct scene *const scene,
 }
 
 void scene_draw(const struct scene *const scene) {
-        object_draw(&scene->root);
+        object_draw(&scene->root, scene->globalAmbientLight);
 }
 
 void scene_free(const struct scene *const scene) {

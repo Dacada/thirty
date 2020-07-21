@@ -223,13 +223,7 @@ spot lights. And ignored for point lights. The scale is always ignored.
 * `1 uint32` -> Light index: Same strategy as with geometry and
   material. Generally, a light object doesn't have a geometry or material.
   
-* `3 floats` -> Translation vector.
-
-* `3 floats` -> Rotation axis.
-
-* `1 float` -> Rotation angle.
-
-* `3 floats` -> Scale vector.
+* `16 floats` -> Transformation matrix.
 
 ## Scene tree
 

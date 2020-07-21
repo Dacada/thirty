@@ -9,19 +9,40 @@
  * matrix.
  */
 
+enum cameraType {
+        CAMERA_BASIC,
+        CAMERA_FPS
+};
+
 struct camera {
         float aspect;
         float near, far;
         float fov;
+        enum cameraType type;
 };
 
+struct basicCamera {
+        struct camera base;
+};
+
+struct fpsCamera {
+        struct camera base;
+        float pitch, yaw;
+        vec3s position;
+};
+
+void *camera_new(enum cameraType type)
+        __attribute__((leaf))
+        __attribute__((malloc))
+        __attribute__((nonnull));
+
 void camera_init(struct camera *cam, float aspect,
-                 float near, float far, float fov)
+                 float near, float far, float fov, enum cameraType type)
         __attribute__((access (write_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
-void camera_initFromFile(struct camera *cam, FILE *f)
+void camera_initFromFile(struct camera *cam, FILE *f, enum cameraType type)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
         __attribute__((leaf))
