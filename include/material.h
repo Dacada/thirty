@@ -38,7 +38,8 @@ struct material {
 
         float bumpIntensity;
         float specularScale;
-        float alphaThreshold; // Unimplemented
+        float alphaThreshold;
+        bool alphaBlendingMode;
 };
 
 enum material_textureType {

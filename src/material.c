@@ -38,6 +38,7 @@ void material_initDefaults(struct material *const material,
         material->bumpIntensity = 1.0F;
         material->specularScale = 1.0F;
         material->alphaThreshold = 1.0F;
+        material->alphaBlendingMode = false;
 
         initTexturesZero(material);
 }
@@ -69,6 +70,10 @@ void material_initFromFile(struct material *const material, FILE *const f) {
         sfread(&material->bumpIntensity, sizeof(float), 1, f);
         sfread(&material->specularScale, sizeof(float), 1, f);
         sfread(&material->alphaThreshold, sizeof(float), 1, f);
+
+        uint8_t alphaBlendingMode;
+        sfread(&alphaBlendingMode, sizeof(alphaBlendingMode), 1, f);
+        material->alphaBlendingMode = alphaBlendingMode;
         
         initTexturesZero(material);
 
@@ -217,7 +222,7 @@ void material_unsetTexture(struct material *const material,
 }
 
 bool material_isTransparent(const struct material *const material) {
-        return material->opacity < 1.0F || material->opacityTexture != 0;
+        return material->alphaBlendingMode;
 }
 
 void material_updateShader(const struct material *const material) {
@@ -260,6 +265,8 @@ void material_updateShader(const struct material *const material) {
                         material->specularScale);
         shader_setFloat(material->shader, "material.alphaThreshold",
                         material->alphaThreshold);
+        shader_setBool(material->shader, "material.alphaBlendingMode",
+                       material->alphaBlendingMode);
 }
 
 void material_bindTextures(const struct material *const material) {

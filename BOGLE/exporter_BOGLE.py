@@ -278,7 +278,7 @@ class BOGLEGeometry(BOGLEBaseObject):
             if triangle.loop_total != 3:
                 raise BOGLEConversionError(
                     "Mesh is not made entirely out of triangles! "
-                    f"({self.name})")
+                    f"({self._object.name})")
             for loop_index in triangle.loop_indices:
                 vertex_index = self._mesh.loops[loop_index].vertex_index
                 indices = (vertex_index, loop_index, [triangle_index])
@@ -473,6 +473,7 @@ class BOGLEMaterial(BOGLEBaseObject):
         self.bump_intensity = None
         self.specular_scale = None
         self.alpha_threshold = None
+        self.alpha_blending_mode = None
 
         self.texture_ambient = None
         self.texture_emission = None
@@ -525,7 +526,7 @@ class BOGLEMaterial(BOGLEBaseObject):
                 "Shader output is connected to more than one node")
 
         uber_node = links[0].from_node
-        if len(uber_node.inputs) != 31 or len(uber_node.outputs) != 1:
+        if len(uber_node.inputs) != 32 or len(uber_node.outputs) != 1:
             raise BOGLEConversionError(
                 "Unexpected node connected to shader output")
 
@@ -560,7 +561,10 @@ class BOGLEMaterial(BOGLEBaseObject):
                 inputs, 'Bump Intensity')
             self.specular_scale = self._get_float_value(
                 inputs, 'Specular Scale')
-            self.alpha_threshold = 0.0
+            self.alpha_threshold = self._get_float_value(
+                inputs, 'Alpha Threshold')
+            self.alpha_blending_mode = self._get_float_value(
+                inputs, 'Alpha Blending Mode') > 0.001
 
             self.texture_ambient = self._get_texture_name(inputs, 'Ambient')
             self.texture_emission = self._get_texture_name(inputs, 'Emissive')
@@ -664,6 +668,7 @@ class BOGLEMaterial(BOGLEBaseObject):
         self.bump_intensity = 0.0
         self.specular_scale = 0.0
         self.alpha_threshold = 0.0
+        self.alpha_blending_mode = False
 
         self.texture_ambient = ''
         self.texture_emission = ''
@@ -677,7 +682,8 @@ class BOGLEMaterial(BOGLEBaseObject):
     def export(self, f):
         fmt = FormatSpecifier().u32().u32().\
             float(4).float(4).float(4).float(4).float(4).\
-            float().float().float().float().float().float().format()
+            float().float().float().float().float().float()\
+            .u8().format()
         data = (
             self.type, self.shader,
             *self.ambient_color,
@@ -686,7 +692,8 @@ class BOGLEMaterial(BOGLEBaseObject):
             *self.specular_color,
             *self.reflectance,
             self.opacity, self.specular_power, self.index_of_refraction,
-            self.bump_intensity, self.specular_scale, self.alpha_threshold
+            self.bump_intensity, self.specular_scale, self.alpha_threshold,
+            self.alpha_blending_mode
         )
         material = struct.pack(fmt, *data)
         f.write(material)
@@ -758,9 +765,12 @@ class BOGLELight(BOGLEBaseObject):
         return self._get_light(object).name
 
     def export(self, f):
-        fmt = FormatSpecifier().float(4).float().float().float().float().u8().float().format()
+        fmt = FormatSpecifier().float(4).\
+            float().float().float().float().u8().float().format()
         light = struct.pack(fmt, *self.color,
-                            self.attenuation_constant, self.attenuation_linear, self.attenuation_quadratic,
+                            self.attenuation_constant,
+                            self.attenuation_linear,
+                            self.attenuation_quadratic,
                             self.intensity, self.type, self.angle)
         f.write(light)
 

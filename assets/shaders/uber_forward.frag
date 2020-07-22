@@ -32,6 +32,7 @@ struct Material {
         float specularScale;
         
         float alphaThreshold;
+        bool alphaBlendingMode;
 };
 
 struct Light {
@@ -222,6 +223,13 @@ void main() {
         if (mat.hasOpacityTexture) {
                 alpha = texture(opacityTexture, texCoord).x;
         }
+        alpha *= mat.opacity;
+        if (alpha < mat.alphaThreshold) {
+                discard;
+        }
+        if (!mat.alphaBlendingMode) {
+                alpha = 1.0f;
+        }
 
         vec4 ambient = mat.ambientColor;
         if (mat.hasAmbientTexture) {
@@ -272,6 +280,5 @@ void main() {
                 specular *= lit.specular;
         }
 
-        FragColor = vec4((emissive + diffuse + specular).xyz,
-                         alpha * mat.opacity);
+        FragColor = vec4((emissive + diffuse + specular).xyz, alpha);
 }

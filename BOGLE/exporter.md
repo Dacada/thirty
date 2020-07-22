@@ -134,7 +134,12 @@ The following fields would then depend on the kind of material.
 * `1 float` -> Specular scale. Scale values from the specular power map, if
   there's any.
 
-* `1 float` -> Alpha threshold. Unused for now.
+* `1 float` -> Alpha threshold. Pixels with alpha below this value will be
+  discarded. With this, "cut-off" objects with holes can be made without having
+  to render them in the transparency pass.
+
+* `1 uint8` -> Alpha blending mode. If nonzero, this is a semitransparent
+  texture.
 
 Next, each texture is defined. It's defined as simply the name of the texture
 file, without extension (will look for a png). Before each name comes the
