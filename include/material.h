@@ -1,6 +1,7 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
+#include <texture.h>
 #include <shader.h>
 #include <cglm/struct.h>
 #include <stdbool.h>
@@ -27,14 +28,14 @@ struct material {
         float specularPower;
         float indexOfRefraction; // Unimplemented
 
-        unsigned ambientTexture;
-        unsigned emissiveTexture;
-        unsigned diffuseTexture;
-        unsigned specularTexture;
-        unsigned specularPowerTexture;
-        unsigned normalTexture;
-        unsigned bumpTexture;
-        unsigned opacityTexture;
+        struct texture ambientTexture;
+        struct texture emissiveTexture;
+        struct texture diffuseTexture;
+        struct texture specularTexture;
+        struct texture specularPowerTexture;
+        struct texture normalTexture;
+        struct texture bumpTexture;
+        struct texture opacityTexture;
 
         float bumpIntensity;
         float specularScale;
@@ -115,7 +116,7 @@ void material_updateShader(const struct material *material)
 /*
  * Bind the material's textures to the shader previous to drawing.
  */
-void material_bindTextures(const struct material *material)
+void material_bindTextures(struct material *material)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));

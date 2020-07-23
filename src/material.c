@@ -1,30 +1,28 @@
 #include <material.h>
-#include <util.h>
+#include <texture.h>
 #include <shader.h>
-#include <stb_image.h>
 #include <glad/glad.h>
 #include <cglm/struct.h>
 #include <stdbool.h>
-#include <string.h>
 
 __attribute__((access (write_only, 1)))
 __attribute__((nonnull))
-static void initTexturesZero(struct material *const material) {
-        material->ambientTexture = 0;
-        material->emissiveTexture = 0;
-        material->diffuseTexture = 0;
-        material->specularTexture = 0;
-        material->specularPowerTexture = 0;
-        material->normalTexture = 0;
-        material->bumpTexture = 0;
-        material->opacityTexture = 0;
+static void initTexturesEmpty(struct material *const material) {
+        material->ambientTexture.loaded = false;
+        material->emissiveTexture.loaded = false;
+        material->diffuseTexture.loaded = false;
+        material->specularTexture.loaded = false;
+        material->specularPowerTexture.loaded = false;
+        material->normalTexture.loaded = false;
+        material->bumpTexture.loaded = false;
+        material->opacityTexture.loaded = false;
 }
 
 void material_initDefaults(struct material *const material,
                            const enum shaders shader) {
         material->shader = shader;
 
-        vec4s black = GLMS_VEC4_BLACK_INIT;
+        const vec4s black = GLMS_VEC4_BLACK_INIT;
         material->ambientColor = black;
         material->emissiveColor = black;
         material->diffuseColor = black;
@@ -40,7 +38,7 @@ void material_initDefaults(struct material *const material,
         material->alphaThreshold = 1.0F;
         material->alphaBlendingMode = false;
 
-        initTexturesZero(material);
+        initTexturesEmpty(material);
 }
 
 void material_initFromFile(struct material *const material, FILE *const f) {
@@ -75,7 +73,7 @@ void material_initFromFile(struct material *const material, FILE *const f) {
         sfread(&alphaBlendingMode, sizeof(alphaBlendingMode), 1, f);
         material->alphaBlendingMode = alphaBlendingMode;
         
-        initTexturesZero(material);
+        initTexturesEmpty(material);
 
         for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
              tex <= MATERIAL_TEXTURE_OPACITY; tex++) {
@@ -92,133 +90,51 @@ void material_initFromFile(struct material *const material, FILE *const f) {
         }
 }
 
-#define TEXANDSLOT(ptr)                                                 \
-        do {                                                            \
-                switch (tex) {                                          \
-                case MATERIAL_TEXTURE_AMBIENT:                          \
-                        *gltexture = GL_TEXTURE0;                       \
-                        return ptr material->ambientTexture;            \
-                case MATERIAL_TEXTURE_EMISSIVE:                         \
-                        *gltexture = GL_TEXTURE1;                       \
-                        return ptr material->emissiveTexture;           \
-                case MATERIAL_TEXTURE_DIFFUSE:                          \
-                        *gltexture = GL_TEXTURE2;                       \
-                        return ptr material->diffuseTexture;            \
-                case MATERIAL_TEXTURE_SPECULAR:                         \
-                        *gltexture = GL_TEXTURE3;                       \
-                        return ptr material->specularTexture;           \
-                case MATERIAL_TEXTURE_SPECULARPOWER:                    \
-                        *gltexture = GL_TEXTURE4;                       \
-                        return ptr material->specularPowerTexture;      \
-                case MATERIAL_TEXTURE_NORMAL:                           \
-                        *gltexture = GL_TEXTURE5;                       \
-                        return ptr material->normalTexture;             \
-                case MATERIAL_TEXTURE_BUMP:                             \
-                        *gltexture = GL_TEXTURE6;                       \
-                        return ptr material->bumpTexture;               \
-                case MATERIAL_TEXTURE_OPACITY:                          \
-                        *gltexture = GL_TEXTURE7;                       \
-                        return ptr material->opacityTexture;            \
-                default:                                                \
-                        assert_fail();                                  \
-                        break;                                          \
-                }                                                       \
-        } while (0)
 __attribute__((access (read_only, 1)))
-__attribute__((access (write_only, 3)))
 __attribute__((nonnull))
-static unsigned *getTexPtrAndSlot(
-        struct material *const material,
-        const enum material_textureType tex,
-        GLenum *const gltexture) {
-        TEXANDSLOT(&);
-        return NULL;
-}
-__attribute__((access (read_only, 1)))
-__attribute__((access (write_only, 3)))
-__attribute__((nonnull))
-static unsigned getTexAndSlot(const struct material *const material,
-                                 const enum material_textureType tex,
-                                 GLenum *const gltexture) {
-        TEXANDSLOT();
-        return 0;
-}
-#undef TEXANDSLOT
-
-__attribute__((access (write_only, 2, 1)))
-__attribute__((access (read_only, 3)))
-__attribute__((nonnull))
-static void buildpathTex(const size_t destsize, char *const dest,
-                         const char *const file) {
-        const size_t len = pathjoin(destsize, dest, 3, ASSETSPATH,
-                                     "textures", file);
-        if (len + 3 - 1 >= destsize) {
-                die("Path to texture file too long.\n");
+static struct texture *getTexPtrAndSlot(struct material *const material,
+                                        const enum material_textureType tex) {
+        switch (tex) {
+        case MATERIAL_TEXTURE_AMBIENT:
+                return &material->ambientTexture;
+        case MATERIAL_TEXTURE_EMISSIVE:
+                return &material->emissiveTexture;
+        case MATERIAL_TEXTURE_DIFFUSE:
+                return &material->diffuseTexture;
+        case MATERIAL_TEXTURE_SPECULAR:
+                return &material->specularTexture;
+        case MATERIAL_TEXTURE_SPECULARPOWER:
+                return &material->specularPowerTexture;
+        case MATERIAL_TEXTURE_NORMAL:
+                return &material->normalTexture;
+        case MATERIAL_TEXTURE_BUMP:
+                return &material->bumpTexture;
+        case MATERIAL_TEXTURE_OPACITY:
+                return &material->opacityTexture;
+        default:
+                assert_fail();
+                return NULL;
         }
-        strcpy(dest+len-2, ".png");
 }
 
 void material_setTexture(struct material *const material,
                          const enum material_textureType tex,
                          const char *const name) {
-        stbi_set_flip_vertically_on_load(true);
+        GLenum gltexture = GL_TEXTURE0 + tex;
+        struct texture *texture = getTexPtrAndSlot(material, tex);
 
-        GLenum gltexture;
-        unsigned *texture = getTexPtrAndSlot(material, tex, &gltexture);
-
-        if (*texture != 0) {
-                material_unsetTexture(material, tex);
+        if (texture->loaded) {
+                texture_free(texture);
         }
 
-        glGenTextures(1, texture);
-        glActiveTexture(gltexture);
-        glBindTexture(GL_TEXTURE_2D, *texture);
-        
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        static char path[PATH_MAX];
-        buildpathTex(PATH_MAX, path, name);
-        if (!accessible(path, true, false, false)) {
-                bail("Can't read texture file.\n");
-        }
-
-        int width;
-        int height;
-        int nrChannels;
-        unsigned char *const data __attribute__ ((nonstring)) =
-                stbi_load(path, &width, &height, &nrChannels, 0);
-        if (data == NULL) {
-                bail("Can't read texture image data.\n");
-        }
-        
-        GLenum internalFormat;
-        if (nrChannels == 3) { // PNG without transparency data
-                internalFormat = GL_RGB;
-        } else if (nrChannels == 4) { // PNG with transparency data
-                internalFormat =  GL_RGBA;
-        } else { // Abomination
-                die("Failing to load png texture. I expected 3 or 4 "
-                    "channels but this thing has %d?\n", nrChannels);
-        }
-        
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0,
-                     internalFormat, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-        
-        stbi_image_free(data);
+        texture_init(texture, name, gltexture);
+        texture_load(texture);
 }
 
 void material_unsetTexture(struct material *const material,
                            const enum material_textureType tex) {
-        GLenum tmp;
-        unsigned *texture = getTexPtrAndSlot(material, tex, &tmp);
-        if (*texture != 0) {
-                glDeleteTextures(1, texture);
-                *texture = 0;
-        }
+        struct texture *texture = getTexPtrAndSlot(material, tex);
+        texture_free(texture);
 }
 
 bool material_isTransparent(const struct material *const material) {
@@ -245,19 +161,19 @@ void material_updateShader(const struct material *const material) {
                         material->indexOfRefraction);
 
         shader_setBool(material->shader, "material.hasAmbientTexture",
-                       material->ambientTexture != 0);
+                       material->ambientTexture.loaded);
         shader_setBool(material->shader, "material.hasEmissiveTexture",
-                       material->emissiveTexture != 0);
+                       material->emissiveTexture.loaded);
         shader_setBool(material->shader, "material.hasDiffuseTexture",
-                       material->diffuseTexture != 0);
+                       material->diffuseTexture.loaded);
         shader_setBool(material->shader, "material.hasSpecularTexture",
-                       material->specularTexture != 0);
+                       material->specularTexture.loaded);
         shader_setBool(material->shader, "material.hasNormalTexture",
-                       material->normalTexture != 0);
+                       material->normalTexture.loaded);
         shader_setBool(material->shader, "material.hasBumpTexture",
-                       material->bumpTexture != 0);
+                       material->bumpTexture.loaded);
         shader_setBool(material->shader, "material.hasOpacityTexture",
-                       material->opacityTexture != 0);
+                       material->opacityTexture.loaded);
         
         shader_setFloat(material->shader, "material.bumpIntensity",
                         material->bumpIntensity);
@@ -269,15 +185,11 @@ void material_updateShader(const struct material *const material) {
                        material->alphaBlendingMode);
 }
 
-void material_bindTextures(const struct material *const material) {
+void material_bindTextures(struct material *const material) {
         for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
              tex <= MATERIAL_TEXTURE_OPACITY; tex++) {
-                GLenum gltexture;
-                unsigned texture = getTexAndSlot(material, tex, &gltexture);
-                if (texture != 0) {
-                        glActiveTexture(gltexture);
-                        glBindTexture(GL_TEXTURE_2D, texture);
-                }
+                struct texture *texture = getTexPtrAndSlot(material, tex);
+                texture_bind(texture);
         }
 }
 
