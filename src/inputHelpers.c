@@ -61,4 +61,6 @@ void fpsCameraController_look(const struct fpsCameraController *const ctrl,
         const float look = ctrl->look_sensitivity * timeDelta;
         ctrl->camera->yaw += direction.x * look;
         ctrl->camera->pitch += direction.y * look;
+        ctrl->camera->pitch = glm_clamp(ctrl->camera->pitch,
+                                        -GLM_PI_2f, GLM_PI_2f);
 }
