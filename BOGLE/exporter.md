@@ -54,6 +54,30 @@ As specified above, everything is little-endian encoded.
 
 * `1 uint32` -> Number of object instances defined.
 
+## Skybox
+
+The skybox is a cube texture, composed of 6 images, which have the following
+layout:
+
+```
+     top
+left front  right back
+     bottom
+```
+
+The base name should be the value of the "skybox" property on the scene's
+world.
+
+A single name is used, which is appended `_top`, `_left`, `_bottom`, `_front`,
+`_right` or `_back` to retrieve the corresponding texture.
+
+* * `1 uint32` -> Number of characters in the scene's skybox
+  filename. `skybox_nchars`. Of course the next property will be empty if this
+  is zero, meaning no skybox.
+  
+* `skybox_nchars uint8` -> The actual filename of the scene's skybox. This is
+  what will be appended `_top`, etc. To actually retrieve each texture.
+
 ## Camera
 
 One and only one object instance should be assigned as the camera.
@@ -104,10 +128,10 @@ Each material should be assigned to one or more object instances. Special
 grouped shaders exist which represent the material. These shaders should be
 used in the material, since they make it easy to gather these values.
 
-* `1 uint32` -> Material type. Reserved in case there's more than one
+* `1 uint8` -> Material type. Reserved in case there's more than one
   material. Should be 0.
 
-* `1 uint32` -> Shader type. Reserved in case there's more than one
+* `1 uint8` -> Shader type. Reserved in case there's more than one
   shader. Should be 0.
 
 The following fields would then depend on the kind of material.

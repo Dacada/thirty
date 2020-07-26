@@ -27,10 +27,11 @@
  * program.
  */
 
-#define SHADERS_TOTAL 1
-
 enum shaders {
-        SHADER_UBER
+        SHADER_UBER,
+        SHADER_SKYBOX,
+        
+        SHADER_TOTAL
 };
 
 void shader_use(enum shaders shader)
@@ -68,6 +69,12 @@ void shader_setVec3(enum shaders shader,
 
 void shader_setVec4(enum shaders shader,
                     const char *name, vec4s value)
+        __attribute__((access (read_only, 2)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void shader_setMat3(enum shaders shader,
+                    const char *name, mat3s value)
         __attribute__((access (read_only, 2)))
         __attribute__((leaf))
         __attribute__((nonnull));

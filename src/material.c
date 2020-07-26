@@ -5,9 +5,195 @@
 #include <cglm/struct.h>
 #include <stdbool.h>
 
+__attribute__((access (read_only, 1)))
+__attribute__((access (write_only, 3)))
+__attribute__((nonnull (1)))
+static struct texture *getTextureInfo(struct material *const material,
+                                      const enum material_textureType tex,
+                                      GLenum *const textureType) {
+        if (material->type == MATERIAL_UBER) {
+                if (textureType != NULL) {
+                        *textureType = GL_TEXTURE_2D;
+                }
+                
+                struct material_uber *mat = (struct material_uber*)material;
+                switch (tex) {
+                case MATERIAL_TEXTURE_AMBIENT:
+                        return &mat->ambientTexture;
+                case MATERIAL_TEXTURE_EMISSIVE:
+                        return &mat->emissiveTexture;
+                case MATERIAL_TEXTURE_DIFFUSE:
+                        return &mat->diffuseTexture;
+                case MATERIAL_TEXTURE_SPECULAR:
+                        return &mat->specularTexture;
+                case MATERIAL_TEXTURE_SPECULARPOWER:
+                        return &mat->specularPowerTexture;
+                case MATERIAL_TEXTURE_NORMAL:
+                        return &mat->normalTexture;
+                case MATERIAL_TEXTURE_BUMP:
+                        return &mat->bumpTexture;
+                case MATERIAL_TEXTURE_OPACITY:
+                        return &mat->opacityTexture;
+                        
+                case MATERIAL_TEXTURE_ENVIRONMENT:
+                case MATERIAL_TEXTURE_TOTAL:
+                default:
+                        return NULL;
+                }
+        } else if (material->type == MATERIAL_SKYBOX) {
+                if (textureType != NULL) {
+                        *textureType = GL_TEXTURE_CUBE_MAP;
+                }
+                
+                struct material_skybox *mat =
+                        (struct material_skybox*)material;
+                switch (tex) {
+                case MATERIAL_TEXTURE_ENVIRONMENT:
+                        return &mat->skybox;
+                        
+                case MATERIAL_TEXTURE_AMBIENT:
+                case MATERIAL_TEXTURE_EMISSIVE:
+                case MATERIAL_TEXTURE_DIFFUSE:
+                case MATERIAL_TEXTURE_SPECULAR:
+                case MATERIAL_TEXTURE_SPECULARPOWER:
+                case MATERIAL_TEXTURE_NORMAL:
+                case MATERIAL_TEXTURE_BUMP:
+                case MATERIAL_TEXTURE_OPACITY:
+                case MATERIAL_TEXTURE_TOTAL:
+                default:
+                        return NULL;
+                }
+        }
+
+        return NULL;
+}
+
+void material_init(struct material *material,
+                   const enum shaders shader, const enum material_type type) {
+        material->shader = shader;
+        material->type = type;
+}
+
+size_t material_initFromFile(struct material *const material, FILE *const f) {
+        uint8_t mat_type;
+        sfread(&mat_type, sizeof(mat_type), 1, f);
+
+        uint8_t shader_type;
+        sfread(&shader_type, sizeof(shader_type), 1, f);
+        
+        material_init(material, shader_type, mat_type);
+        
+        if (mat_type == MATERIAL_UBER) {
+                material_uber_initFromFile((struct material_uber*)material, f);
+                return sizeof(struct material_uber);
+        }
+        
+        bail("Error parsing scene: Invalid material.");
+}
+
+void material_setTexture(struct material *const material,
+                         const enum material_textureType tex,
+                         const char *const name) {
+        GLenum textureSlot = GL_TEXTURE0 + tex;
+        GLenum textureType;
+        struct texture *texture = getTextureInfo(material, tex,
+                                                 &textureType);
+        if (texture == NULL) {
+                return;
+        }
+
+        if (texture->loaded) {
+                texture_free(texture);
+        }
+
+        texture_init(texture, name, textureSlot, textureType);
+        texture_load(texture);
+}
+
+void material_unsetTexture(struct material *const material,
+                           const enum material_textureType tex) {
+        struct texture *texture = getTextureInfo(material, tex, NULL);
+        if (texture != NULL) {
+                texture_free(texture);
+        }
+}
+
+bool material_isTransparent(const struct material *const material) {
+        if (material->type == MATERIAL_UBER) {
+                return ((const struct material_uber*)material)->
+                        alphaBlendingMode;
+        }
+        return false;
+}
+
+void material_updateShader(const struct material *const material) {
+        if (material->type == MATERIAL_UBER) {
+                const struct material_uber *const mat =
+                        (const struct material_uber*)material;
+                shader_setVec4(material->shader, "material.ambientColor",
+                               mat->ambientColor);
+                shader_setVec4(material->shader, "material.emissiveColor",
+                               mat->emissiveColor);
+                shader_setVec4(material->shader, "material.diffuseColor",
+                               mat->diffuseColor);
+                shader_setVec4(material->shader, "material.specularColor",
+                               mat->specularColor);
+                shader_setVec4(material->shader, "material.reflectance",
+                               mat->reflectance);
+        
+                shader_setFloat(material->shader, "material.opacity",
+                                mat->opacity);
+                shader_setFloat(material->shader, "material.specularPower",
+                                mat->specularPower);
+                shader_setFloat(material->shader, "material.indexOfRefraction",
+                                mat->indexOfRefraction);
+
+                shader_setBool(material->shader, "material.hasAmbientTexture",
+                               mat->ambientTexture.loaded);
+                shader_setBool(material->shader, "material.hasEmissiveTexture",
+                               mat->emissiveTexture.loaded);
+                shader_setBool(material->shader, "material.hasDiffuseTexture",
+                               mat->diffuseTexture.loaded);
+                shader_setBool(material->shader, "material.hasSpecularTexture",
+                               mat->specularTexture.loaded);
+                shader_setBool(material->shader, "material.hasNormalTexture",
+                               mat->normalTexture.loaded);
+                shader_setBool(material->shader, "material.hasBumpTexture",
+                               mat->bumpTexture.loaded);
+                shader_setBool(material->shader, "material.hasOpacityTexture",
+                               mat->opacityTexture.loaded);
+        
+                shader_setFloat(material->shader, "material.bumpIntensity",
+                                mat->bumpIntensity);
+                shader_setFloat(material->shader, "material.specularScale",
+                                mat->specularScale);
+                shader_setFloat(material->shader, "material.alphaThreshold",
+                                mat->alphaThreshold);
+                shader_setBool(material->shader, "material.alphaBlendingMode",
+                               mat->alphaBlendingMode);
+        }
+}
+
+void material_bindTextures(struct material *const material) {
+        for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
+             tex < MATERIAL_TEXTURE_TOTAL; tex++) {
+                struct texture *texture = getTextureInfo(material, tex, NULL);
+                if (texture != NULL) {
+                        texture_bind(texture);
+                }
+        }
+}
+
+void material_free(struct material *const material) {
+        for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
+             tex < MATERIAL_TEXTURE_TOTAL; tex++) {
+                material_unsetTexture(material, tex);
+        }
+}
+
 __attribute__((access (write_only, 1)))
 __attribute__((nonnull))
-static void initTexturesEmpty(struct material *const material) {
+static void uberInitTexturesEmpty(struct material_uber *const material) {
         material->ambientTexture.loaded = false;
         material->emissiveTexture.loaded = false;
         material->diffuseTexture.loaded = false;
@@ -18,11 +204,11 @@ static void initTexturesEmpty(struct material *const material) {
         material->opacityTexture.loaded = false;
 }
 
-void material_initDefaults(struct material *const material,
-                           const enum shaders shader) {
-        material->shader = shader;
+void material_uber_initDefaults(struct material_uber *const material,
+                                const enum shaders shader) {
+        material_init(&material->base, shader, MATERIAL_UBER);
 
-        const vec4s black = GLMS_VEC4_BLACK_INIT;
+        static const vec4s black = GLMS_VEC4_BLACK_INIT;
         material->ambientColor = black;
         material->emissiveColor = black;
         material->diffuseColor = black;
@@ -38,23 +224,11 @@ void material_initDefaults(struct material *const material,
         material->alphaThreshold = 1.0F;
         material->alphaBlendingMode = false;
 
-        initTexturesEmpty(material);
+        uberInitTexturesEmpty(material);
 }
 
-void material_initFromFile(struct material *const material, FILE *const f) {
-        uint32_t mat_type;
-        sfread(&mat_type, sizeof(mat_type), 1, f);
-        if (mat_type != 0) {
-                bail("Error parsing scene: Nonzero material.");
-        }
-
-        uint32_t shader_type;
-        sfread(&shader_type, sizeof(shader_type), 1, f);
-        if (shader_type != SHADER_UBER) {
-                bail("Error parsing scene: Unknown shader.");
-        }
-        material->shader = SHADER_UBER;
-
+void material_uber_initFromFile(struct material_uber *const material,
+                                FILE *const f) {
         sfread(material->ambientColor.raw, sizeof(float), 4, f);
         sfread(material->emissiveColor.raw, sizeof(float), 4, f);
         sfread(material->diffuseColor.raw, sizeof(float), 4, f);
@@ -73,7 +247,7 @@ void material_initFromFile(struct material *const material, FILE *const f) {
         sfread(&alphaBlendingMode, sizeof(alphaBlendingMode), 1, f);
         material->alphaBlendingMode = alphaBlendingMode;
         
-        initTexturesEmpty(material);
+        uberInitTexturesEmpty(material);
 
         for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
              tex <= MATERIAL_TEXTURE_OPACITY; tex++) {
@@ -84,118 +258,22 @@ void material_initFromFile(struct material *const material, FILE *const f) {
                                 smallocarray(nchars+1, sizeof(*name));
                         sfread(name, nchars, sizeof(*name), f);
                         name[nchars] = '\0';
-                        material_setTexture(material, tex, name);
+                        material_setTexture((struct material*)material,
+                                            tex, name);
                         free(name);
                 }
         }
 }
 
-__attribute__((access (read_only, 1)))
-__attribute__((nonnull))
-static struct texture *getTexPtrAndSlot(struct material *const material,
-                                        const enum material_textureType tex) {
-        switch (tex) {
-        case MATERIAL_TEXTURE_AMBIENT:
-                return &material->ambientTexture;
-        case MATERIAL_TEXTURE_EMISSIVE:
-                return &material->emissiveTexture;
-        case MATERIAL_TEXTURE_DIFFUSE:
-                return &material->diffuseTexture;
-        case MATERIAL_TEXTURE_SPECULAR:
-                return &material->specularTexture;
-        case MATERIAL_TEXTURE_SPECULARPOWER:
-                return &material->specularPowerTexture;
-        case MATERIAL_TEXTURE_NORMAL:
-                return &material->normalTexture;
-        case MATERIAL_TEXTURE_BUMP:
-                return &material->bumpTexture;
-        case MATERIAL_TEXTURE_OPACITY:
-                return &material->opacityTexture;
-        default:
-                assert_fail();
-                return NULL;
-        }
+void material_skybox_init(struct material_skybox *const material,
+                          const enum shaders shader) {
+        material_init(&material->base, shader, MATERIAL_SKYBOX);
+        material->skybox.loaded = false;
 }
 
-void material_setTexture(struct material *const material,
-                         const enum material_textureType tex,
-                         const char *const name) {
-        GLenum gltexture = GL_TEXTURE0 + tex;
-        struct texture *texture = getTexPtrAndSlot(material, tex);
-
-        if (texture->loaded) {
-                texture_free(texture);
-        }
-
-        texture_init(texture, name, gltexture);
-        texture_load(texture);
-}
-
-void material_unsetTexture(struct material *const material,
-                           const enum material_textureType tex) {
-        struct texture *texture = getTexPtrAndSlot(material, tex);
-        texture_free(texture);
-}
-
-bool material_isTransparent(const struct material *const material) {
-        return material->alphaBlendingMode;
-}
-
-void material_updateShader(const struct material *const material) {
-        shader_setVec4(material->shader, "material.ambientColor",
-                       material->ambientColor);
-        shader_setVec4(material->shader, "material.emissiveColor",
-                       material->emissiveColor);
-        shader_setVec4(material->shader, "material.diffuseColor",
-                       material->diffuseColor);
-        shader_setVec4(material->shader, "material.specularColor",
-                       material->specularColor);
-        shader_setVec4(material->shader, "material.reflectance",
-                       material->reflectance);
-        
-        shader_setFloat(material->shader, "material.opacity",
-                        material->opacity);
-        shader_setFloat(material->shader, "material.specularPower",
-                        material->specularPower);
-        shader_setFloat(material->shader, "material.indexOfRefraction",
-                        material->indexOfRefraction);
-
-        shader_setBool(material->shader, "material.hasAmbientTexture",
-                       material->ambientTexture.loaded);
-        shader_setBool(material->shader, "material.hasEmissiveTexture",
-                       material->emissiveTexture.loaded);
-        shader_setBool(material->shader, "material.hasDiffuseTexture",
-                       material->diffuseTexture.loaded);
-        shader_setBool(material->shader, "material.hasSpecularTexture",
-                       material->specularTexture.loaded);
-        shader_setBool(material->shader, "material.hasNormalTexture",
-                       material->normalTexture.loaded);
-        shader_setBool(material->shader, "material.hasBumpTexture",
-                       material->bumpTexture.loaded);
-        shader_setBool(material->shader, "material.hasOpacityTexture",
-                       material->opacityTexture.loaded);
-        
-        shader_setFloat(material->shader, "material.bumpIntensity",
-                        material->bumpIntensity);
-        shader_setFloat(material->shader, "material.specularScale",
-                        material->specularScale);
-        shader_setFloat(material->shader, "material.alphaThreshold",
-                        material->alphaThreshold);
-        shader_setBool(material->shader, "material.alphaBlendingMode",
-                       material->alphaBlendingMode);
-}
-
-void material_bindTextures(struct material *const material) {
-        for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
-             tex <= MATERIAL_TEXTURE_OPACITY; tex++) {
-                struct texture *texture = getTexPtrAndSlot(material, tex);
-                texture_bind(texture);
-        }
-}
-
-void material_free(struct material *const material) {
-        for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
-             tex <= MATERIAL_TEXTURE_OPACITY; tex++) {
-                material_unsetTexture(material, tex);
-        }
+void material_skybox_initFromName(struct material_skybox *const material,
+                                  const char *const name) {
+        material_skybox_init(material, SHADER_SKYBOX);
+        material_setTexture((struct material *)material,
+                            MATERIAL_TEXTURE_ENVIRONMENT, name);
 }

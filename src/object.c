@@ -15,7 +15,7 @@
 
 void object_initFromFile(struct object *const object,
                          struct geometry *const geometries,
-                         struct material *const materials,
+                         struct material *const *const materials,
                          struct light *const lights,
                          struct camera *const camera, FILE *const f) {
         uint8_t is_camera;
@@ -40,7 +40,7 @@ void object_initFromFile(struct object *const object,
                 object->material = NULL;
                 assert(object->geometry == NULL);
         } else {
-                object->material = materials + material_idx - 1;
+                object->material = materials[material_idx - 1];
         }
 
         uint32_t light_idx;
@@ -52,8 +52,23 @@ void object_initFromFile(struct object *const object,
         }
 
         mat4s model;
-        sfread(model.raw, sizeof(float), 16, f);
+        sfread(model.raw, sizeof(float), sizeof(model) / sizeof(float), f);
         object->model = model;
+}
+
+void object_initSkybox(struct object *const skybox,
+                       struct geometry *geo,
+                       struct material *mat) {
+        skybox->model = GLMS_MAT4_IDENTITY;
+        
+        skybox->parent = NULL;
+        skybox->nchildren = 0;
+        skybox->children = NULL;
+        
+        skybox->camera = NULL;
+        skybox->light = NULL;
+        skybox->geometry = geo;
+        skybox->material = mat;
 }
 
 void object_translate(struct object *const object, const vec3s delta) {
@@ -110,7 +125,8 @@ struct lightingInfo {
 
 enum renderType {
         RENDER_OPAQUE_OBJECTS,
-        RENDER_TRANSPARENT_OBJECTS
+        RENDER_TRANSPARENT_OBJECTS,
+        RENDER_SKYBOX,
 };
 
 struct renderArgs {
@@ -166,7 +182,7 @@ static void gather_object_tree(struct growingArray *const objects,
                 growingArray_append(objects);
         obj_mod->object = object;
         obj_mod->model = model;
-        
+
         for (unsigned i=0; i<object->nchildren; i++) {
                 gather_object_tree(objects, object->children[i],
                                    camera_idx, light_idxs, shaders, model);
@@ -219,6 +235,8 @@ static bool calculate_distance(void *const item, void *const args) {
 }
 
 // Sort by:
+//  * Geometry (objects without geometry all at the end, won't be rendered)
+//  * Skybox (objects using the skybox material also at the end)
 //  * Transparency (opaque objects first)
 //  * then by Shader (all objects with the same shader grouped)
 //  * then by Material (all objects with the same material grouped)
@@ -252,6 +270,9 @@ static int cmp_objs(const void *const item1, const void *const item2,
         const struct material *mat1 = obj1->object->material;
         const struct material *mat2 = obj2->object->material;
 
+        const bool isSkybox1 = mat1->type == MATERIAL_SKYBOX;
+        const bool isSkybox2 = mat2->type == MATERIAL_SKYBOX;
+
         const enum shaders shader1 = mat1->shader;
         const enum shaders shader2 = mat2->shader;
 
@@ -260,6 +281,14 @@ static int cmp_objs(const void *const item1, const void *const item2,
 
         const bool trans1 = material_isTransparent(mat1);
         const bool trans2 = material_isTransparent(mat2);
+
+        // The skybox object needs to be rendered last.
+        if (isSkybox1 && !isSkybox2) {
+                return 1;
+        }
+        if (!isSkybox1 && isSkybox2) {
+                return -1;
+        }
 
         // Non transparent objects first
         if (!trans1 && trans2) {
@@ -309,6 +338,11 @@ static bool render_object(void *const item,
                 // find one, we're done.
                 return false;
         }
+        
+        assert(args->renderType != RENDER_SKYBOX);
+        assert(args->renderType != RENDER_TRANSPARENT_OBJECTS ||
+               material_isTransparent(obj_mod->object->material) ||
+               obj_mod->object->material->type == MATERIAL_SKYBOX);
 
         if (obj_mod->object->material->shader != args->shader) {
                 shader_use(obj_mod->object->material->shader);
@@ -325,13 +359,32 @@ static bool render_object(void *const item,
                 args->renderType = RENDER_TRANSPARENT_OBJECTS;
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        } else if (args->renderType == RENDER_TRANSPARENT_OBJECTS) {
-                assert(material_isTransparent(obj_mod->object->material));
         }
         
-        const mat4s modelView = glms_mat4_mul(*(args->view), obj_mod->model);
+        mat4s model = obj_mod->model;
+        mat4s view = *(args->view);
+
+        if (obj_mod->object->material->type == MATERIAL_SKYBOX) {
+                args->renderType = RENDER_SKYBOX;
+                glDepthFunc(GL_LEQUAL);
+
+                model.col[3] = (vec4s){{0, 0, 0, 1}};
+                model.m03 = 0;
+                model.m13 = 0;
+                model.m23 = 0;
+                model.m33 = 1;
+                
+                view.col[3] = (vec4s){{0, 0, 0, 1}};
+                view.m03 = 0;
+                view.m13 = 0;
+                view.m23 = 0;
+                view.m33 = 1;
+        }
+        
+        const mat4s modelView = glms_mat4_mul(view, model);
         const mat4s modelViewProjection =
                 glms_mat4_mul(*(args->projection), modelView);
+        
         shader_setMat4(obj_mod->object->material->shader,
                        "modelView", modelView);
         shader_setMat4(obj_mod->object->material->shader,
@@ -388,11 +441,12 @@ void object_draw(const struct object *const object,
 
         // Now we iterate all objects to calculate their distance to the
         // camera.
-        vec4s camera_position;
-        mat4s r;
-        vec3s s;
-        glms_decompose(camera->model, &camera_position, &r, &s);
-        growingArray_foreach(&objects, calculate_distance, &camera_position);
+        vec4s cameraPosition;
+        mat4s cameraRotation;
+        vec3s cameraScale;
+        glms_decompose(camera->model,
+                       &cameraPosition, &cameraRotation, &cameraScale);
+        growingArray_foreach(&objects, calculate_distance, &cameraPosition);
 
         // Sort objects by render order
         growingArray_sort(&objects, cmp_objs, NULL);
@@ -408,13 +462,14 @@ void object_draw(const struct object *const object,
         args.view = &view;
         args.renderType = RENDER_OPAQUE_OBJECTS;
         args.material = NULL;
-        args.shader = SHADERS_TOTAL; // will always be a non existing shader
+        args.shader = SHADER_TOTAL; // will always be a non existing shader
 
         // Render everything
         growingArray_foreach(&objects, render_object, &args);
 
         // Cleanup
         glDisable(GL_BLEND);
+        glDepthFunc(GL_LESS);
         growingArray_clear(&objects);
         growingArray_clear(&light_idxs);
         growingArray_clear(&shaders);

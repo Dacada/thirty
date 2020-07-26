@@ -29,17 +29,17 @@
 
 #else
 
-#define assert(condition)                                       \
-        do {                                                    \
-                if (!(condition)) {                             \
-                        die("Assertion failed: " #condition     \
-                            " on " __FILE__ ": %d", __LINE__);  \
-                }                                               \
+#define assert(condition)                                               \
+        do {                                                            \
+                if (!(condition)) {                                     \
+                        die("Assertion failed: " #condition             \
+                            " on " __FILE__ ": l.%d\n", __LINE__);      \
+                }                                                       \
         } while (0)
 #define assert_fail()                                           \
         do {                                                    \
                 die("Inconditional assertion falure on "        \
-                    __FILE__ ": %d", __LINE__);                 \
+                    __FILE__ ": l.%d\n", __LINE__);             \
         } while (0)
 
 #endif
@@ -102,6 +102,11 @@ void *sreallocarray(void *ptr, size_t nmemb, size_t size)
         __attribute__((leaf))
         __attribute__((warn_unused_result));
 
+char *sstrdup(const char *s)
+        __attribute__((leaf))
+        __attribute__((warn_unused_result))
+        __attribute__((nonnull));
+
 FILE *sfopen(const char *pathname, const char *mode)
         __attribute__((access (read_only, 1)))
         __attribute__((access (read_only, 2)))
@@ -147,6 +152,17 @@ bool accessible(const char *filepath, bool read, bool write, bool execute)
 /* Join paths, like python's os.path.join, yes it's also OS independent. */
 size_t pathjoin(size_t size, char *dest, int nargs, ...)
         __attribute__((access (write_only, 2, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+/* Join paths like pathjoin, but using a va_list instead */
+size_t pathjoin_va(size_t size, char *dest, int nargs, va_list ap)
+        __attribute__((access (write_only, 2, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+/* Join paths like pathjoin but create a new string in dynamic memory. */
+char *pathjoin_dyn(int nargs, ...)
         __attribute__((leaf))
         __attribute__((nonnull));
 

@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <string.h>
 
 #define BUFFER_SIZE 256
 
@@ -95,6 +96,15 @@ void *sreallocarray(void *const ptr, const size_t nmemb, const size_t size) {
         return new_ptr;
 }
 
+char *sstrdup(const char *const s) {
+        char *ptr = strdup(s);
+        if (ptr == NULL) {
+                perror("strdup");
+                die(NULL);
+        }
+        return ptr;
+}
+
 FILE *sfopen(const char *const pathname, const char *const mode) {
         FILE *const f = fopen(pathname, mode);
         if (f == NULL) {
@@ -171,11 +181,11 @@ bool accessible(const char *filepath, const bool read, const bool write,
 
 // TODO: windows version, copy from
 // https://github.com/python/cpython/blob/master/Lib/ntpath.py
-size_t pathjoin(const size_t size, char *const dest, const int nargs, ...) {
+size_t pathjoin_va(const size_t size, char *const dest,
+                   const int nargs, va_list ap) {
         size_t len = 0;
         char *pdest = dest;
-        va_list ap;
-        va_start(ap, nargs);
+
         for (int arg=0; arg<nargs; arg++) {
                 const char *p = va_arg(ap, const char *);
                 if (*p == '/') {
@@ -200,8 +210,35 @@ size_t pathjoin(const size_t size, char *const dest, const int nargs, ...) {
                 }
         }
         *pdest = '\0';
-        len++;
+        len++;    
 end:
-        va_end(ap);
         return len;
+}
+
+size_t pathjoin(const size_t size, char *const dest, const int nargs, ...) {
+        va_list ap;
+        va_start(ap, nargs);
+        size_t r = pathjoin_va(size, dest, nargs, ap);
+        va_end(ap);
+        return r;
+}
+
+char *pathjoin_dyn(int nargs, ...) {
+        va_list ap;
+        
+        va_start(ap, nargs);
+        size_t size = 0;
+        for (int i=0; i<nargs; i++) {
+                const char *p = va_arg(ap, const char *);
+                size += strlen(p) + 1;  // add 1 to account for slashes
+        }
+        size++;  // account for final null character
+        va_end(ap);
+
+        char *dest = smallocarray(size, sizeof(*dest));
+
+        va_start(ap, nargs);
+        pathjoin_va(size, dest, nargs, ap);
+        va_end(ap);
+        return dest;
 }

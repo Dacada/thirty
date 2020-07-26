@@ -78,6 +78,32 @@ void geometry_initFromArray(struct geometry *const geometry,
         geometry->nindices = (const int)nindices;
 }
 
+void geometry_initSkybox(struct geometry *skybox) {
+        static const struct vertex vertices[] = {
+                {.vert.x =  1, .vert.y =  1, .vert.z =  1},
+                {.vert.x =  1, .vert.y =  1, .vert.z = -1},
+                {.vert.x =  1, .vert.y = -1, .vert.z =  1},
+                {.vert.x =  1, .vert.y = -1, .vert.z = -1},
+                {.vert.x = -1, .vert.y =  1, .vert.z =  1},
+                {.vert.x = -1, .vert.y =  1, .vert.z = -1},
+                {.vert.x = -1, .vert.y = -1, .vert.z =  1},
+                {.vert.x = -1, .vert.y = -1, .vert.z = -1},
+        };
+        static const size_t nvertices = sizeof(vertices) / sizeof(*vertices);
+        
+        static const unsigned indices[] = {
+                0, 2, 6,  0, 6, 4,
+                4, 6, 7,  4, 7, 5,
+                5, 7, 3,  5, 3, 1,
+                1, 3, 2,  1, 2, 0,
+                1, 0, 4,  1, 4, 5,
+                2, 3, 7,  2, 7, 6,
+        };
+        static const size_t nindices = sizeof(indices) / sizeof(*indices);
+        
+        geometry_initFromArray(skybox, vertices, nvertices, indices, nindices);
+}
+
 void geometry_initFromFile(struct geometry *const geometry, FILE *const f) {
         struct {
                 uint32_t vertlen;

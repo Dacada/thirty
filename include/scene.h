@@ -3,6 +3,7 @@
 
 #include <camera.h>
 #include <light.h>
+#include <texture.h>
 #include <material.h>
 #include <object.h>
 
@@ -19,11 +20,13 @@ struct scene {
         struct object root;
         
         vec4s globalAmbientLight;
+        struct object *skybox;
+        
         size_t nlights;
         struct light *lights;
 
         unsigned nmats;
-        struct material *mats;
+        struct material **mats;
         
         unsigned nobjs;
         struct object *objs;
@@ -50,7 +53,7 @@ void scene_draw(const struct scene *scene)
         __attribute__((leaf))
         __attribute__((nonnull));
 
-void scene_free(const struct scene *scene)
+void scene_free(struct scene *scene)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));

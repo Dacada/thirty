@@ -3,49 +3,52 @@
 #include <stb_image.h>
 #include <string.h>
 
-__attribute__((access (write_only, 2, 1)))
-__attribute__((access (read_only, 3)))
+__attribute__((access (read_only, 1)))
+__attribute__((access (read_only, 2)))
 __attribute__((nonnull))
-static void buildpathTex(const size_t destsize, char *const dest,
-                         const char *const file) {
-        const size_t len = pathjoin(destsize, dest, 3, ASSETSPATH,
-                                     "textures", file);
-        if (len + 3 - 1 >= destsize) {
-                die("Path to texture file too long.\n");
-        }
-        strcpy(dest+len-2, ".png");
-}
-
-void texture_init(struct texture *tex, const char *name, GLenum slot) {
-        tex->loaded = false;
-        buildpathTex(PATH_MAX, tex->filepath, name);
-        if (!accessible(tex->filepath, true, false, false)) {
-                bail("Can't read texture file.\n");
-        }
-        tex->slot = slot;
-}
-
-void texture_load(struct texture *tex) {
-        stbi_set_flip_vertically_on_load(true);
-
-        glGenTextures(1, &tex->idx);
-        glActiveTexture(tex->slot);
-        glBindTexture(GL_TEXTURE_2D, tex->idx);
+static char *buildpathTex(const char *const file, const char *const ext) {
+        char *path = pathjoin_dyn(3, ASSETSPATH, "textures", file);
+        size_t pathlen = strlen(path);
+        size_t extlen = strlen(ext);
         
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        if (path[pathlen-1] == '/') {
+                pathlen -= 1;
+        }
+        
+        path = sreallocarray(path, pathlen + extlen + 1, sizeof(char));
+        strcpy(path+pathlen, ext);
+        if (!accessible(path, true, false, false)) {
+                die("Cannot read texture file");
+        }
+        return path;
+}
 
+void texture_init(struct texture *const tex, const char *const name,
+                    const GLenum slot, const GLenum type) {
+        tex->loaded = false;
+        tex->slot = slot;
+        tex->type = type;
+        tex->name = sstrdup(name);
+}
+
+__attribute__((access (read_only, 1)))
+__attribute__((nonnull))
+static void loadImageIntoGl(const char *const filename,
+                            const GLenum type, const bool flip) {
+        // TODO: Remove this and use callbacks instead
+        fprintf(stderr, "Loading texture %s ...\n", filename);
+        
+        stbi_set_flip_vertically_on_load(flip);
+        
         int width;
         int height;
         int nrChannels;
         unsigned char *const data __attribute__ ((nonstring)) =
-                stbi_load(tex->filepath, &width, &height, &nrChannels, 0);
+                stbi_load(filename, &width, &height, &nrChannels, 0);
         if (data == NULL) {
                 bail("Can't read texture image data.\n");
         }
-        
+
         GLenum internalFormat;
         if (nrChannels == 3) { // PNG without transparency data
                 internalFormat = GL_RGB;
@@ -55,25 +58,90 @@ void texture_load(struct texture *tex) {
                 die("Failing to load png texture. I expected 3 or 4 "
                     "channels but this thing has %d?\n", nrChannels);
         }
-        
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0,
+
+        glTexImage2D(type, 0, GL_RGB, width, height, 0,
                      internalFormat, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
         
         stbi_image_free(data);
+}
+
+void texture_load(struct texture *const tex) {
+        glGenTextures(1, &tex->idx);
+        glActiveTexture(tex->slot);
+        glBindTexture(tex->type, tex->idx);
+
+        if (tex->type == GL_TEXTURE_2D) {
+                char *filepath = buildpathTex(tex->name, ".png");
+                loadImageIntoGl(filepath, tex->type, true);
+                free(filepath);
+                
+                glTexParameteri(tex->type, GL_TEXTURE_WRAP_S,
+                                GL_REPEAT);
+                glTexParameteri(tex->type, GL_TEXTURE_WRAP_T,
+                                GL_REPEAT);
+                glTexParameteri(tex->type, GL_TEXTURE_MIN_FILTER,
+                                GL_LINEAR);
+                glTexParameteri(tex->type, GL_TEXTURE_MAG_FILTER,
+                                GL_LINEAR);
+                glGenerateMipmap(tex->type);
+        } else if (tex->type == GL_TEXTURE_CUBE_MAP) {
+                char *filepath;
+                filepath = buildpathTex(tex->name, "_right.png");
+                loadImageIntoGl(filepath,
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_X, false);
+                free(filepath);
+                
+                filepath = buildpathTex(tex->name, "_left.png");
+                loadImageIntoGl(filepath,
+                                GL_TEXTURE_CUBE_MAP_NEGATIVE_X, false);
+                free(filepath);
+                
+                filepath = buildpathTex(tex->name, "_up.png");
+                loadImageIntoGl(filepath,
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_Y, false);
+                free(filepath);
+                
+                filepath = buildpathTex(tex->name, "_down.png");
+                loadImageIntoGl(filepath,
+                                GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, false);
+                free(filepath);
+                
+                filepath = buildpathTex(tex->name, "_front.png");
+                loadImageIntoGl(filepath,
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_Z, false);
+                free(filepath);
+                
+                filepath = buildpathTex(tex->name, "_back.png");
+                loadImageIntoGl(filepath,
+                                GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, false);
+                free(filepath);
+                
+                glTexParameteri(tex->type, GL_TEXTURE_WRAP_S,
+                                GL_CLAMP_TO_EDGE);
+                glTexParameteri(tex->type, GL_TEXTURE_WRAP_T,
+                                GL_CLAMP_TO_EDGE);
+                glTexParameteri(tex->type, GL_TEXTURE_WRAP_R,
+                                GL_CLAMP_TO_EDGE);
+                glTexParameteri(tex->type, GL_TEXTURE_MIN_FILTER,
+                                GL_LINEAR);
+                glTexParameteri(tex->type, GL_TEXTURE_MAG_FILTER,
+                                GL_LINEAR);
+        }
+        
         tex->loaded = true;
 }
 
-void texture_bind(const struct texture *tex) {
+void texture_bind(const struct texture *const tex) {
         if (tex->loaded) {
                 glActiveTexture(tex->slot);
-                glBindTexture(GL_TEXTURE_2D, tex->idx);
+                glBindTexture(tex->type, tex->idx);
         }
 }
 
-void texture_free(struct texture *tex) {
+void texture_free(struct texture *const tex) {
         if (tex->loaded) {
                 glDeleteTextures(1, &tex->idx);
                 tex->loaded = false;
+                free(tex->name);
         }
 }

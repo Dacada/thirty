@@ -16,39 +16,15 @@ static const int specularPowerTextureSampler = 4;
 static const int normalTextureSampler = 5;
 static const int bumpTextureSampler = 6;
 static const int opacityTextureSampler = 7;
+static const int environmentTextureSampler = 8;
 
 // Holds currently created shaders, or 0 if the shader hasn't been created yet.
-static unsigned shaders[SHADERS_TOTAL];
-
-__attribute__((access (read_only, 3, 1)))
-__attribute__((access (read_only, 4, 2)))
-__attribute__((access (write_only, 5)))
-__attribute__((nonnull (5)))
-__attribute__((returns_nonnull))
-static char *strcat_new(const size_t lena, const size_t lenb,
-                        char *const a,
-                        char *const b,
-                        size_t *const lenc) {
-        char *const c = smallocarray(lena + lenb + 1, sizeof(char));
-        if (a != NULL) {
-                strncpy(c, a, lena);
-        }
-        if (b != NULL) {
-                strncpy(c + lena, b, lenb);
-        }
-        c[lena + lenb] = '\0';
-        *lenc = lena + lenb;
-        free(a);
-        free(b);
-        return c;
-}
+static unsigned shaders[SHADER_TOTAL];
 
 __attribute__((access (read_only, 1)))
-__attribute__((access (write_only, 2)))
 __attribute__((nonnull))
 __attribute__((returns_nonnull))
-static char *readall(const char *const filename,
-                     size_t *const len) {
+static char *readall(const char *const filename) {
         if (!accessible(filename, true, false, false)) {
                 bail("Failed to access shader file.\n");
         }
@@ -61,9 +37,9 @@ static char *readall(const char *const filename,
 
         char *const buff = smallocarray(size+1, sizeof(char));
         sfread(buff, sizeof(char), size, f);
+        buff[size] = '\0';
         sfclose(f);
 
-        *len = size;
         return buff;
 }
 
@@ -83,7 +59,10 @@ static void buildpath(const size_t destsize, char *const dest,
         strcpy(dest+len-2, extension);
 }
 
-static void handle_compile_infolog(const unsigned int shader) {
+__attribute__((access (read_only, 2)))
+__attribute__((nonnull))
+static void handle_compile_infolog(const unsigned int shader,
+                                   const char *const which) {
         int success;
         glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
         if (success == 0) {
@@ -92,7 +71,8 @@ static void handle_compile_infolog(const unsigned int shader) {
                 char *const info_log =
                         smallocarray((const size_t)length, sizeof(char));
                 glGetShaderInfoLog(shader, length, NULL, info_log);
-                fprintf(stderr, "Error compiling shaders:\n%s\n", info_log);
+                fprintf(stderr, "Error compiling %s shader:\n%s\n",
+                        which, info_log);
                 free(info_log);
                 die(NULL);
         }
@@ -123,25 +103,28 @@ static unsigned int compile_shader(char *const path,
                                    const size_t ext_len,
                                    const char *const ext,
                                    const GLenum shader_type) {
-        char *totalsrc = NULL;
-        size_t totalsrc_len = 0;
+        char *sources[nfilenames];
         for (size_t i=0; i<nfilenames; i++) {
                 const char *const filename = filenames[i];
                 buildpath(PATH_MAX, path, filename, ext_len, ext);
-                size_t fragsrc_len;
-                char *const fragsrc = readall(path, &fragsrc_len);
-                size_t newlen;
-                totalsrc = strcat_new(
-                        fragsrc_len, totalsrc_len, fragsrc, totalsrc, &newlen);
-                totalsrc_len = newlen;
+                char *const src = readall(path);
+                sources[i] = src;
         }
-                
-        const char *const const_src = totalsrc;
+        
         const unsigned int shader = glCreateShader(shader_type);
-        glShaderSource(shader, 1, &const_src, NULL);
+        if (nfilenames > INT_MAX) {
+                die("Too many files for shader\n");
+        }
+        glShaderSource(shader, (int)nfilenames,
+                       (const char *const *)sources, NULL);
         glCompileShader(shader);
-        handle_compile_infolog(shader);
-        free(totalsrc);
+        handle_compile_infolog(shader,
+                               shader_type == GL_VERTEX_SHADER ?
+                               "vertex" : "fragment");
+
+        for (size_t i=0; i<nfilenames; i++) {
+                free(sources[i]);
+        }
         return shader;
 }
 
@@ -195,6 +178,10 @@ static void init_shader(const enum shaders shader) {
                 shader_setInt(shader, "bumpTexture", bumpTextureSampler);
                 shader_setInt(shader, "opacityTexture", opacityTextureSampler);
                 break;
+        case SHADER_SKYBOX:
+                shader_setInt(shader, "skybox", environmentTextureSampler);
+                break;
+        case SHADER_TOTAL:
         default:
                 die("Unexpected Shader");
         }
@@ -205,13 +192,15 @@ static unsigned get_shader_id(const enum shaders shader) {
                 return shaders[shader];
         }
 
-        static const size_t uber_nvertfiles = 1;
-        static const size_t uber_nfragfiles = 1;
+#define SHADERFILES(what, which, ...)                                   \
+        static const char *const which##_##what##files[] = __VA_ARGS__; \
+        static const size_t which##_n##what##files =                    \
+                sizeof(which##_##what##files) / sizeof(*which##_##what##files)
 
-        static const char *const uber_vertfiles[] =
-                {"uber_forward"};
-        static const char *const uber_fragfiles[] =
-                {"uber_forward"};
+        SHADERFILES(vert, uber, {"header", "uber"});
+        SHADERFILES(frag, uber, {"header", "uber"});
+        SHADERFILES(vert, skybox, {"header", "skybox"});
+        SHADERFILES(frag, skybox, {"header", "skybox"});
 
         size_t nvertfiles;
         size_t nfragfiles;
@@ -225,6 +214,13 @@ static unsigned get_shader_id(const enum shaders shader) {
                 vertfiles = uber_vertfiles;
                 fragfiles = uber_fragfiles;
                 break;
+        case SHADER_SKYBOX:
+                nvertfiles = skybox_nvertfiles;
+                nfragfiles = skybox_nfragfiles;
+                vertfiles = skybox_vertfiles;
+                fragfiles = skybox_fragfiles;
+                break;
+        case SHADER_TOTAL:
         default:
                 die("Unexpected Shader");
         }
@@ -270,6 +266,10 @@ void shader_setVec3(const enum shaders shader, const char *const name,
 void shader_setVec4(const enum shaders shader, const char *const name,
                     const vec4s value) {
         glUniform4fv(getloc(shader, name), 1, value.raw);
+}
+void shader_setMat3(const enum shaders shader, const char *const name,
+                    const mat3s value) {
+        glUniformMatrix3fv(getloc(shader, name), 1, GL_FALSE, value.raw[0]);
 }
 void shader_setMat4(const enum shaders shader, const char *const name,
                     const mat4s value) {

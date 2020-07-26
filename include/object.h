@@ -4,6 +4,7 @@
 #include <camera.h>
 #include <light.h>
 #include <geometry.h>
+#include <texture.h>
 #include <material.h>
 
 #define OBJECT_TREE_MAXIMUM_DEPTH 256
@@ -38,11 +39,17 @@ struct object {
  */
 void object_initFromFile(struct object *object,
                          struct geometry *geometries,
-                         struct material *materials,
+                         struct material *const *materials,
                          struct light *lights,
                          struct camera *camera, FILE *f)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void object_initSkybox(struct object *skybox,
+                       struct geometry *geo, struct material *mat)
+        __attribute__((access (write_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
