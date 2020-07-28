@@ -11,9 +11,8 @@ struct Material {
         vec4 diffuseColor;
         vec4 specularColor;
         
-        vec4 reflectance;
-        
         float opacity;
+        float reflectance;
         float specularPower;
         float indexOfRefraction;
         
@@ -71,6 +70,8 @@ uniform sampler2D specularPowerTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D bumpTexture;
 uniform sampler2D opacityTexture;
+
+uniform samplerCube environment;
 
 uniform Material material;
 uniform Light lights[NUM_LIGHTS];
@@ -200,8 +201,8 @@ LightingResult doLighting(Material mat, vec4 eyePos, vec4 P, vec4 N) {
                 totalResult.specular += result.specular;
         }
 
-        totalResult.diffuse = clamp(totalResult.diffuse, 0.0f, 1.0f);
-        totalResult.specular = clamp(totalResult.specular, 0.0f, 1.0f);
+        totalResult.diffuse = totalResult.diffuse;
+        totalResult.specular = totalResult.specular;
 
         return totalResult;
 }
@@ -276,5 +277,14 @@ void main() {
                 specular *= lit.specular;
         }
 
-        FragColor = vec4((emissive + diffuse + specular).xyz, alpha);
+        
+        vec4 regularColor = vec4((emissive + diffuse + specular).xyz, alpha);
+
+        vec4 L = normalize(P - eyePos);
+        vec3 R = normalize(reflect(L, N).xyz);
+        vec4 reflectionColor = texture(environment, R);
+
+        FragColor =
+                reflectionColor * mat.reflectance +
+                regularColor * (1 - mat.reflectance);
 }

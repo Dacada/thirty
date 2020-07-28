@@ -21,7 +21,8 @@ enum material_type {
 /*
  * Ambient, Emissive, Diffuse, Specular, SpecularPower, Normal, Bump and
  * Opacity textures are used by the Uber material only. Environment textures
- * are used for the Skybox material only.
+ * are used for Skybox material only, but are also used for environment
+ * mapping.
  */
 enum material_textureType {
         MATERIAL_TEXTURE_AMBIENT,
@@ -139,10 +140,10 @@ struct material_uber {
         vec4s emissiveColor;
         vec4s diffuseColor;
         vec4s specularColor;
-        vec4s reflectance; // Unimplemented
 
         float opacity;
         float specularPower;
+        float reflectance;
         float indexOfRefraction; // Unimplemented
 
         struct texture ambientTexture;

@@ -144,12 +144,15 @@ The following fields would then depend on the kind of material.
 
 * `4 float` -> Specular color.
 
-* `4 float` -> Reflectance. Unused for now.
-
 * `1 float` -> Opacity. The entire object will be applied this alpha. 1 for
   completely opaque.
 
 * `1 float` -> Specular power. Shininess.
+
+* `1 float` -> Reflectance. Power of the reflectance of the material. Zero
+  means the material doesn't reflect at all. 1 means that it's completely
+  reflective. Any value in between mixes the reflection effect with the regular
+  color.
 
 * `1 float` -> Index of refraction. Unused for now.
 

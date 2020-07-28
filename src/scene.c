@@ -213,6 +213,7 @@ void scene_initFromFile(struct scene *const scene,
                 header.nmats, sizeof(struct material*));
         for (unsigned i=0; i<header.nmats; i++) {
                 size_t size = material_initFromFile(material_data, f);
+                
                 material_ptrs[i] = material_data;
 
                 typedef char aligned_char __attribute__

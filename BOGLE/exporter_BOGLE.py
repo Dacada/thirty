@@ -115,6 +115,24 @@ class BOGLEBaseObject:
         raise NotImplementedError
 
 
+class BOGLESkybox(BOGLEBaseObject):
+    def __init__(self, config):
+        super().__init__(config)
+        self.base_name = None
+
+    def convert(self, name):
+        if name is None:
+            self.base_name = ""
+        else:
+            self.base_name = name
+
+    def export(self, f):
+        f.write(struct.pack(FormatSpecifier().u32().format(), len(self.base_name)))
+        if self.base_name:
+            f.write(array.array(FormatSpecifier().array().u8(),
+                                self.base_name.encode('ascii')))
+
+
 class BOGLECamera(BOGLEBaseObject):
     """Blender camera export to BOGLE file"""
 
@@ -304,7 +322,10 @@ class BOGLEGeometry(BOGLEBaseObject):
         # every vertex is used by three triangles. But if there are repetitions
         # there will be less: Out of the three triangles that use one vertex,
         # another had to use a different vertex to be able to have that UV
-        # coordinate.
+        # coordinate. HOWEVER! a vertex isn't just the vertex coordinate, it's
+        # also the normals (and tangent, and binormal) coordinates. It would be
+        # incorrect to consider equal two vertices just because they have the
+        # same vertex and uv coordinates, the normals are also important
 
         def i(f):
             return int(round(f, 5)*10**5)
@@ -315,8 +336,12 @@ class BOGLEGeometry(BOGLEBaseObject):
 
             vertex = self._mesh.vertices[vertex_index].co
             uv = self._uv_data[loop_index].uv
+            normal = self._mesh.loops[loop_index].normal
+            tangent = self._mesh.loops[loop_index].tangent
+            binormal = self._mesh.loops[loop_index].bitangent
 
-            coords = (i(vertex.x), i(vertex.y), i(vertex.z), i(uv.x), i(uv.y))
+            coords = (*map(i, vertex), *map(i, uv), *map(i, normal),
+                      *map(i, tangent), *map(i, binormal))
             triangles = indexed_norepeat.setdefault(
                 coords, (vertex_index, loop_index, []))
             triangles[2].append(triangle_indices[0])
@@ -465,7 +490,6 @@ class BOGLEMaterial(BOGLEBaseObject):
         self.emissive_color = None
         self.diffuse_color = None
         self.specular_color = None
-        self.reflectance = None
 
         self.opacity = None
         self.specular_power = None
@@ -473,6 +497,8 @@ class BOGLEMaterial(BOGLEBaseObject):
         self.bump_intensity = None
         self.specular_scale = None
         self.alpha_threshold = None
+        self.reflectance = None
+
         self.alpha_blending_mode = None
 
         self.texture_ambient = None
@@ -526,7 +552,7 @@ class BOGLEMaterial(BOGLEBaseObject):
                 "Shader output is connected to more than one node")
 
         uber_node = links[0].from_node
-        if len(uber_node.inputs) != 32 or len(uber_node.outputs) != 1:
+        if len(uber_node.inputs) != 33 or len(uber_node.outputs) != 1:
             raise BOGLEConversionError(
                 "Unexpected node connected to shader output")
 
@@ -552,11 +578,13 @@ class BOGLEMaterial(BOGLEBaseObject):
             self.emissive_color = self._get_color_value(inputs, 'Emissive')
             self.diffuse_color = self._get_color_value(inputs, 'Diffuse')
             self.specular_color = self._get_color_value(inputs, 'Specular')
-            self.reflectance = Vector((0.0, 0.0, 0.0, 0.0))
             self.opacity = self._get_float_value(inputs, 'Opacity')
             self.specular_power = self._get_float_value(
                 inputs, 'Specular Power')
+
+            self.reflectance = self._get_float_value(inputs, 'Reflectance')
             self.index_of_refraction = 0.0
+
             self.bump_intensity = self._get_float_value(
                 inputs, 'Bump Intensity')
             self.specular_scale = self._get_float_value(
@@ -596,7 +624,7 @@ class BOGLEMaterial(BOGLEBaseObject):
         except KeyError as e:
             raise BOGLEConversionError(
                 "Unexpected node connected to shader output, missing "
-                "input: " + str(e))
+                "input: " + str(e) + "\nFor object: " + object.name)
 
     def get_name(self, object):
         if self.config.export_materials:
@@ -660,10 +688,10 @@ class BOGLEMaterial(BOGLEBaseObject):
         self.emissive_color = Vector((0.0, 0.0, 0.0, 1.0))
         self.diffuse_color = Vector((0.8, 0.8, 0.8, 1.0))
         self.specular_color = Vector((0.2, 0.2, 0.2, 0.2))
-        self.reflectance = Vector((0.0, 0.0, 0.0, 1.0))
 
         self.opacity = 1.0
         self.specular_power = 50.0
+        self.reflectance = 0.0
         self.index_of_refraction = 0.0
         self.bump_intensity = 0.0
         self.specular_scale = 0.0
@@ -680,9 +708,9 @@ class BOGLEMaterial(BOGLEBaseObject):
         self.texture_opacity = ''
 
     def export(self, f):
-        fmt = FormatSpecifier().u32().u32().\
-            float(4).float(4).float(4).float(4).float(4).\
-            float().float().float().float().float().float()\
+        fmt = FormatSpecifier().u8().u8().\
+            float(4).float(4).float(4).float(4).\
+            float().float().float().float().float().float().float()\
             .u8().format()
         data = (
             self.type, self.shader,
@@ -690,8 +718,8 @@ class BOGLEMaterial(BOGLEBaseObject):
             *self.emissive_color,
             *self.diffuse_color,
             *self.specular_color,
-            *self.reflectance,
-            self.opacity, self.specular_power, self.index_of_refraction,
+            self.opacity, self.specular_power,
+            self.reflectance, self.index_of_refraction,
             self.bump_intensity, self.specular_scale, self.alpha_threshold,
             self.alpha_blending_mode
         )
@@ -832,6 +860,7 @@ class BOGLExporter(BOGLEBaseObject):
     def __init__(self, config):
         super().__init__(config)
 
+        self.skybox = None
         self.camera = None
         self.globalAmbientLight = None
 
@@ -848,6 +877,9 @@ class BOGLExporter(BOGLEBaseObject):
     def convert(self, context):
         """Convert the objects that should be converted"""
         depsgraph = context.evaluated_depsgraph_get()
+
+        self.skybox = BOGLESkybox(self.config)
+        self.skybox.convert(self._get_skybox(depsgraph))
 
         self.globalAmbientLight = BOGLEAmbientLight(self.config)
         self.globalAmbientLight.convert(self._get_world_color(depsgraph))
@@ -877,6 +909,8 @@ class BOGLExporter(BOGLEBaseObject):
         """Export converted data to file"""
         with open(filepath, 'wb') as f:
             self._export_header(f)
+
+            self.skybox.export(f)
 
             self.camera.export(f)
             self.globalAmbientLight.export(f)
@@ -909,6 +943,9 @@ class BOGLExporter(BOGLEBaseObject):
     def _get_world_color(self, depsgraph):
         return Vector(depsgraph.scene.world.node_tree.nodes['Background'].
                       inputs['Color'].default_value)
+
+    def _get_skybox(self, depsgraph):
+        return depsgraph.scene.world.get('skybox')
 
     def _convert_camera(self, object, render):
         if self.camera is not None:

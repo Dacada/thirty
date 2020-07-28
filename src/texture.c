@@ -96,12 +96,12 @@ void texture_load(struct texture *const tex) {
                                 GL_TEXTURE_CUBE_MAP_NEGATIVE_X, false);
                 free(filepath);
                 
-                filepath = buildpathTex(tex->name, "_up.png");
+                filepath = buildpathTex(tex->name, "_top.png");
                 loadImageIntoGl(filepath,
                                 GL_TEXTURE_CUBE_MAP_POSITIVE_Y, false);
                 free(filepath);
                 
-                filepath = buildpathTex(tex->name, "_down.png");
+                filepath = buildpathTex(tex->name, "_bottom.png");
                 loadImageIntoGl(filepath,
                                 GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, false);
                 free(filepath);

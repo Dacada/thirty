@@ -135,6 +135,7 @@ struct renderArgs {
         const struct material *material;
         const mat4s *projection;
         const mat4s *view;
+        const struct texture *environment_texture;
 };
 
 __attribute__((access (read_only, 1)))
@@ -158,6 +159,7 @@ __attribute__((nonnull))
 static void gather_object_tree(struct growingArray *const objects,
                                const struct object *const object,
                                unsigned *const camera_idx,
+                               unsigned *const skybox_idx,
                                struct growingArray *const light_idxs,
                                struct growingArray *const shaders,
                                const mat4s parent_model) {
@@ -169,6 +171,10 @@ static void gather_object_tree(struct growingArray *const objects,
         if (object->light != NULL) {
                 unsigned *const light_idx = growingArray_append(light_idxs);
                 *light_idx = (unsigned)objects->length;
+        }
+        if (object->material != NULL &&
+            object->material->type == MATERIAL_SKYBOX) {
+                *skybox_idx = (unsigned)objects->length;
         }
 
         if (object->material != NULL &&
@@ -185,7 +191,8 @@ static void gather_object_tree(struct growingArray *const objects,
 
         for (unsigned i=0; i<object->nchildren; i++) {
                 gather_object_tree(objects, object->children[i],
-                                   camera_idx, light_idxs, shaders, model);
+                                   camera_idx, skybox_idx, light_idxs,
+                                   shaders, model);
         }  
 }
 
@@ -325,6 +332,8 @@ static int cmp_objs(const void *const item1, const void *const item2,
         return 0;
 }
 
+static const struct texture *skybox_texture = NULL;
+
 __attribute__((access (read_only, 1)))
 __attribute__((access (read_only, 2)))
 __attribute__((nonnull))
@@ -352,6 +361,15 @@ static bool render_object(void *const item,
                 material_updateShader(obj_mod->object->material);
                 material_bindTextures(obj_mod->object->material);
                 args->material = obj_mod->object->material;
+        }
+
+        // TODO: This will need to change when we have actual environment
+        // mapping...
+        const struct texture *environment_texture = skybox_texture;
+        if (environment_texture != NULL &&
+            environment_texture != args->environment_texture) {
+                texture_bind(environment_texture);
+                args->environment_texture = environment_texture;
         }
 
         if (args->renderType == RENDER_OPAQUE_OBJECTS &&
@@ -399,6 +417,7 @@ void object_draw(const struct object *const object,
                  const vec4s globalAmbientLight) {
         static bool first = true;
         unsigned camera_idx = 0;
+        unsigned skybox_idx = 0;
         static struct growingArray objects;
         static struct growingArray light_idxs;
         static struct growingArray shaders;
@@ -416,10 +435,16 @@ void object_draw(const struct object *const object,
         }
 
         // First we gather all objects, with their model matrices, all shaders,
-        // and learn which object is the camera and which are lights.
+        // and learn which object is the camera and which are lights and which
+        // is the skybox if any.
         gather_object_tree(&objects, object,
-                           &camera_idx, &light_idxs, &shaders,
+                           &camera_idx, &skybox_idx, &light_idxs, &shaders,
                            GLMS_MAT4_IDENTITY);
+
+        // HACK: Until we have proper environment mapping, this will always be
+        // the environment texture for every object. So we keep it in a global
+        // variable and access it during the actual rendering.
+        skybox_texture = &((struct material_skybox*)((struct objectModelAndDistance*)growingArray_get(&objects, skybox_idx))->object->material)->skybox;
         
         // Get view and projection matrices.
         struct objectModelAndDistance *camera = growingArray_get(&objects,
@@ -452,17 +477,18 @@ void object_draw(const struct object *const object,
         growingArray_sort(&objects, cmp_objs, NULL);
 
         // Each time an object is rendered it checks this structure.
-        // Projection and view are just passed to the shader. Material and
-        // shader are the last rendered object's. So that it knows if it needs
-        // to change material/shader. Similar with render type, to know if it
-        // has to change GL to blend mode for rendering transparent
-        // objects.
+        // Projection and view are just passed to the shader. Material, shader
+        // and environment texture are the last rendered object's. So that it
+        // knows if it needs to change material/shader/texture. Similar with
+        // render type, to know if it has to change GL to blend mode for
+        // rendering transparent objects.
         struct renderArgs args;
         args.projection = &projection;
         args.view = &view;
         args.renderType = RENDER_OPAQUE_OBJECTS;
         args.material = NULL;
         args.shader = SHADER_TOTAL; // will always be a non existing shader
+        args.environment_texture = NULL;
 
         // Render everything
         growingArray_foreach(&objects, render_object, &args);

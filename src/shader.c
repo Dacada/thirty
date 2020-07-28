@@ -177,6 +177,7 @@ static void init_shader(const enum shaders shader) {
                 shader_setInt(shader, "normalTexture", normalTextureSampler);
                 shader_setInt(shader, "bumpTexture", bumpTextureSampler);
                 shader_setInt(shader, "opacityTexture", opacityTextureSampler);
+                shader_setInt(shader, "environment", environmentTextureSampler);
                 break;
         case SHADER_SKYBOX:
                 shader_setInt(shader, "skybox", environmentTextureSampler);

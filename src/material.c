@@ -88,7 +88,7 @@ size_t material_initFromFile(struct material *const material, FILE *const f) {
                 return sizeof(struct material_uber);
         }
         
-        bail("Error parsing scene: Invalid material.");
+        bail("Error parsing scene: Invalid material: %u\n", mat_type);
 }
 
 void material_setTexture(struct material *const material,
@@ -138,13 +138,13 @@ void material_updateShader(const struct material *const material) {
                                mat->diffuseColor);
                 shader_setVec4(material->shader, "material.specularColor",
                                mat->specularColor);
-                shader_setVec4(material->shader, "material.reflectance",
-                               mat->reflectance);
         
                 shader_setFloat(material->shader, "material.opacity",
                                 mat->opacity);
                 shader_setFloat(material->shader, "material.specularPower",
                                 mat->specularPower);
+                shader_setFloat(material->shader, "material.reflectance",
+                               mat->reflectance);
                 shader_setFloat(material->shader, "material.indexOfRefraction",
                                 mat->indexOfRefraction);
 
@@ -213,10 +213,10 @@ void material_uber_initDefaults(struct material_uber *const material,
         material->emissiveColor = black;
         material->diffuseColor = black;
         material->specularColor = black;
-        material->reflectance = black;
 
         material->opacity = 1.0F;
         material->specularPower = 100.0F;
+        material->reflectance = 0.0F;
         material->indexOfRefraction = 0.0F;
 
         material->bumpIntensity = 1.0F;
@@ -233,10 +233,10 @@ void material_uber_initFromFile(struct material_uber *const material,
         sfread(material->emissiveColor.raw, sizeof(float), 4, f);
         sfread(material->diffuseColor.raw, sizeof(float), 4, f);
         sfread(material->specularColor.raw, sizeof(float), 4, f);
-        sfread(material->reflectance.raw, sizeof(float), 4, f);
         
         sfread(&material->opacity, sizeof(float), 1, f);
         sfread(&material->specularPower, sizeof(float), 1, f);
+        sfread(&material->reflectance, sizeof(float), 1, f);
         sfread(&material->indexOfRefraction, sizeof(float), 1, f);
         
         sfread(&material->bumpIntensity, sizeof(float), 1, f);
@@ -250,7 +250,11 @@ void material_uber_initFromFile(struct material_uber *const material,
         uberInitTexturesEmpty(material);
 
         for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
-             tex <= MATERIAL_TEXTURE_OPACITY; tex++) {
+             tex < MATERIAL_TEXTURE_TOTAL; tex++) {
+                if (getTextureInfo(&material->base, tex, NULL) == NULL) {
+                        continue;
+                }
+                
                 uint32_t nchars;
                 sfread(&nchars, sizeof(nchars), 1, f);
                 if (nchars > 0) {
