@@ -13,8 +13,9 @@ struct Material {
         
         float opacity;
         float reflectance;
-        float specularPower;
+        float refraction;
         float indexOfRefraction;
+        float specularPower;
         
         bool hasAmbientTexture;
         bool hasEmissiveTexture;
@@ -276,15 +277,19 @@ void main() {
                 }
                 specular *= lit.specular;
         }
-
         
-        vec4 regularColor = vec4((emissive + diffuse + specular).xyz, alpha);
-
-        vec4 L = normalize(P - eyePos);
-        vec3 R = normalize(reflect(L, N).xyz);
-        vec4 reflectionColor = texture(environment, R);
-
-        FragColor =
-                reflectionColor * mat.reflectance +
-                regularColor * (1 - mat.reflectance);
+        FragColor = vec4((emissive + diffuse + specular).xyz, alpha);
+        if (mat.reflectance > 0) {
+                vec4 L = normalize(P - eyePos);
+                vec3 R = normalize(reflect(L, N).xyz);
+                
+                FragColor *= 1 - mat.reflectance;
+                FragColor += texture(environment, R);
+        }
+        if (mat.refraction > 0) {
+                vec4 L = normalize(P - eyePos);
+                vec3 R = normalize(refract(L, N, mat.indexOfRefraction).xyz);
+                FragColor *= 1 - mat.refraction;
+                FragColor += texture(environment, R);
+        }
 }

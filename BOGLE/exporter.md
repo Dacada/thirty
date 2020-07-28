@@ -154,7 +154,14 @@ The following fields would then depend on the kind of material.
   reflective. Any value in between mixes the reflection effect with the regular
   color.
 
-* `1 float` -> Index of refraction. Unused for now.
+* `1 float` -> Refraction. Power of the refraction of the material. Zero means
+  it doesn't refract at all. 1 means it's completely refractive. Any value in
+  between mixes the refraction effect with the regular color.
+
+* `1 float` -> Index of refraction. Used for refractive materials. The division
+  between the refractive index of the material the light is coming from and
+  this material. Air's is 1.00 and glass is 1.52 so for a refractive glass
+  material this value should be 1.00/1.52
 
 * `1 float` -> Bump intensity. Scale values of a bump map, if there's any.
 

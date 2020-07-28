@@ -493,11 +493,12 @@ class BOGLEMaterial(BOGLEBaseObject):
 
         self.opacity = None
         self.specular_power = None
+        self.reflectance = None
+        self.refraction = None
         self.index_of_refraction = None
         self.bump_intensity = None
         self.specular_scale = None
         self.alpha_threshold = None
-        self.reflectance = None
 
         self.alpha_blending_mode = None
 
@@ -552,7 +553,7 @@ class BOGLEMaterial(BOGLEBaseObject):
                 "Shader output is connected to more than one node")
 
         uber_node = links[0].from_node
-        if len(uber_node.inputs) != 33 or len(uber_node.outputs) != 1:
+        if len(uber_node.inputs) != 35 or len(uber_node.outputs) != 1:
             raise BOGLEConversionError(
                 "Unexpected node connected to shader output")
 
@@ -583,7 +584,8 @@ class BOGLEMaterial(BOGLEBaseObject):
                 inputs, 'Specular Power')
 
             self.reflectance = self._get_float_value(inputs, 'Reflectance')
-            self.index_of_refraction = 0.0
+            self.refraction = self._get_float_value(inputs, 'Refraction')
+            self.index_of_refraction = self._get_float_value(inputs, 'Index of Refraction')
 
             self.bump_intensity = self._get_float_value(
                 inputs, 'Bump Intensity')
@@ -710,7 +712,7 @@ class BOGLEMaterial(BOGLEBaseObject):
     def export(self, f):
         fmt = FormatSpecifier().u8().u8().\
             float(4).float(4).float(4).float(4).\
-            float().float().float().float().float().float().float()\
+            float().float().float().float().float().float().float().float()\
             .u8().format()
         data = (
             self.type, self.shader,
@@ -719,7 +721,7 @@ class BOGLEMaterial(BOGLEBaseObject):
             *self.diffuse_color,
             *self.specular_color,
             self.opacity, self.specular_power,
-            self.reflectance, self.index_of_refraction,
+            self.reflectance, self.refraction, self.index_of_refraction,
             self.bump_intensity, self.specular_scale, self.alpha_threshold,
             self.alpha_blending_mode
         )

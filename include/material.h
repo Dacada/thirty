@@ -144,7 +144,8 @@ struct material_uber {
         float opacity;
         float specularPower;
         float reflectance;
-        float indexOfRefraction; // Unimplemented
+        float refraction;
+        float indexOfRefraction;
 
         struct texture ambientTexture;
         struct texture emissiveTexture;

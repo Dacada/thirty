@@ -145,6 +145,8 @@ void material_updateShader(const struct material *const material) {
                                 mat->specularPower);
                 shader_setFloat(material->shader, "material.reflectance",
                                mat->reflectance);
+                shader_setFloat(material->shader, "material.refraction",
+                               mat->refraction);
                 shader_setFloat(material->shader, "material.indexOfRefraction",
                                 mat->indexOfRefraction);
 
@@ -217,7 +219,8 @@ void material_uber_initDefaults(struct material_uber *const material,
         material->opacity = 1.0F;
         material->specularPower = 100.0F;
         material->reflectance = 0.0F;
-        material->indexOfRefraction = 0.0F;
+        material->refraction = 0.0F;
+        material->indexOfRefraction = 1.0F;
 
         material->bumpIntensity = 1.0F;
         material->specularScale = 1.0F;
@@ -237,6 +240,7 @@ void material_uber_initFromFile(struct material_uber *const material,
         sfread(&material->opacity, sizeof(float), 1, f);
         sfread(&material->specularPower, sizeof(float), 1, f);
         sfread(&material->reflectance, sizeof(float), 1, f);
+        sfread(&material->refraction, sizeof(float), 1, f);
         sfread(&material->indexOfRefraction, sizeof(float), 1, f);
         
         sfread(&material->bumpIntensity, sizeof(float), 1, f);
