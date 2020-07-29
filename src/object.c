@@ -376,7 +376,7 @@ static bool render_object(void *const item,
                 shader_use(obj_mod->object->material->shader);
                 args->shader = obj_mod->object->material->shader;
                 shader_setMat4(obj_mod->object->material->shader,
-                               "view", view);
+                               "invView", glms_mat4_inv(view));
         }
         if (obj_mod->object->material != args->material) {
                 material_updateShader(obj_mod->object->material);

@@ -8,4 +8,4 @@ layout (location = 4) in vec3 in_binormal;
 
 uniform mat4 modelViewProjection;
 uniform mat4 modelView;
-uniform mat4 view;
+uniform mat4 invView;
