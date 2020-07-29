@@ -63,6 +63,8 @@ in vec3 tangent_vs;
 in vec3 binormal_vs;
 in vec3 normal_vs;
 
+in mat4 invView;
+
 uniform sampler2D ambientTexture;
 uniform sampler2D emissiveTexture;
 uniform sampler2D diffuseTexture;
@@ -280,15 +282,18 @@ void main() {
         
         FragColor = vec4((emissive + diffuse + specular).xyz, alpha);
         if (mat.reflectance > 0) {
-                vec4 L = normalize(P - eyePos);
-                vec3 R = normalize(reflect(L, N).xyz);
+                vec4 I = normalize(P - eyePos);
+                vec3 R = normalize(reflect(I, N).xyz);
+                R = mat3(0,0,1,1,0,0,0,1,0)*(invView*vec4(R,0)).xyz;
                 
                 FragColor *= 1 - mat.reflectance;
                 FragColor += texture(environment, R);
         }
         if (mat.refraction > 0) {
-                vec4 L = normalize(P - eyePos);
-                vec3 R = normalize(refract(L, N, mat.indexOfRefraction).xyz);
+                vec4 I = normalize(P - eyePos);
+                vec3 R = normalize(refract(I, N, mat.indexOfRefraction).xyz);
+                R = mat3(0,0,1,1,0,0,0,1,0)*(invView*vec4(R,0)).xyz;
+                
                 FragColor *= 1 - mat.refraction;
                 FragColor += texture(environment, R);
         }

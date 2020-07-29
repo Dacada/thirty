@@ -353,9 +353,30 @@ static bool render_object(void *const item,
                material_isTransparent(obj_mod->object->material) ||
                obj_mod->object->material->type == MATERIAL_SKYBOX);
 
+        mat4s model = obj_mod->model;
+        mat4s view = *(args->view);
+        if (obj_mod->object->material->type == MATERIAL_SKYBOX) {
+                args->renderType = RENDER_SKYBOX;
+                glDepthFunc(GL_LEQUAL);
+
+                model.col[3] = (vec4s){{0, 0, 0, 1}};
+                model.m03 = 0;
+                model.m13 = 0;
+                model.m23 = 0;
+                model.m33 = 1;
+                
+                view.col[3] = (vec4s){{0, 0, 0, 1}};
+                view.m03 = 0;
+                view.m13 = 0;
+                view.m23 = 0;
+                view.m33 = 1;
+        }
+
         if (obj_mod->object->material->shader != args->shader) {
                 shader_use(obj_mod->object->material->shader);
                 args->shader = obj_mod->object->material->shader;
+                shader_setMat4(obj_mod->object->material->shader,
+                               "view", view);
         }
         if (obj_mod->object->material != args->material) {
                 material_updateShader(obj_mod->object->material);
@@ -377,26 +398,6 @@ static bool render_object(void *const item,
                 args->renderType = RENDER_TRANSPARENT_OBJECTS;
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        }
-        
-        mat4s model = obj_mod->model;
-        mat4s view = *(args->view);
-
-        if (obj_mod->object->material->type == MATERIAL_SKYBOX) {
-                args->renderType = RENDER_SKYBOX;
-                glDepthFunc(GL_LEQUAL);
-
-                model.col[3] = (vec4s){{0, 0, 0, 1}};
-                model.m03 = 0;
-                model.m13 = 0;
-                model.m23 = 0;
-                model.m33 = 1;
-                
-                view.col[3] = (vec4s){{0, 0, 0, 1}};
-                view.m03 = 0;
-                view.m13 = 0;
-                view.m23 = 0;
-                view.m33 = 1;
         }
         
         const mat4s modelView = glms_mat4_mul(view, model);
