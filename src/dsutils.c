@@ -86,6 +86,103 @@ void growingArray_destroy(struct growingArray *const ga) {
 
 
 
+void varSizeGrowingArray_init(struct varSizeGrowingArray *const vga,
+                              const size_t alignment,
+                              const size_t initialCapacity,
+                              const size_t itemSizeHint) {
+        size_t padding = alignment;
+        while (sizeof(size_t) > padding) {
+                padding *= 2;
+        }
+        padding -= sizeof(size_t);
+        vga->padding = padding;
+        
+        vga->capacity = initialCapacity;
+        vga->data = smalloc(initialCapacity);
+
+        size_t cap;
+        if (itemSizeHint == 0) {
+                cap = 0;
+        } else {
+                cap = initialCapacity / itemSizeHint;
+        }
+        growingArray_init(&vga->offsets, sizeof(size_t), cap);
+}
+
+void *varSizeGrowingArray_append(struct varSizeGrowingArray *const vga,
+                                 const size_t size) {
+        size_t offset;
+        if (vga->offsets.length == 0) {
+                offset = 0;
+        } else {
+                const size_t *const off = growingArray_get(
+                        &vga->offsets, vga->offsets.length-1);
+                offset = *off;
+        }
+        
+        size_t totalSize = sizeof(size_t) + vga->padding + size;
+
+        bool change = false;
+        while (offset + totalSize > vga->capacity) {
+                if (vga->capacity == 0) {
+                        vga->capacity = 1;
+                }
+                vga->capacity *= 2;
+                change = true;
+        }
+        if (change) {
+                vga->data = srealloc(vga->data, vga->capacity);
+        }
+
+        size_t *const off = growingArray_append(&vga->offsets);
+        *off = offset + totalSize;
+
+        void *const ptr = (void*)(((char *)(vga->data))+offset);
+        *((size_t*)ptr) = size;
+        return (void*)(((char*)ptr)+sizeof(size_t)+vga->padding);
+}
+
+void *varSizeGrowingArray_get(const struct varSizeGrowingArray *const vga,
+                              const size_t n, size_t *const s) {
+        size_t offset;
+        if (n == 0) {
+                offset = 0;
+        } else {
+                const size_t *const off = growingArray_get(&vga->offsets, n-1);
+                offset = *off;
+        }
+
+        if (s != NULL) {
+                *s = *((size_t*)((void*)(((char*)(vga->data))+offset)));
+        }
+        return ((void*)(((char*)(vga->data))+
+                        offset+sizeof(size_t)+vga->padding));
+}
+
+void varSizeGrowingArray_foreach(const struct varSizeGrowingArray *const vga,
+                                 const foreach_sized_cb fun,
+                                 void *const args) {
+        char *ptr = vga->data;
+        for (size_t i=0; i<vga->offsets.length; i++) {
+                size_t size = *((size_t*)((void*)ptr));
+                ptr += sizeof(size_t) + vga->padding;
+                void *dataPtr = (void*)ptr;
+                if (!fun(dataPtr, size, args)) {
+                        break;
+                }
+                ptr += size;
+        }
+}
+
+void varSizeGrowingArray_destroy(struct varSizeGrowingArray *const vga) {
+        vga->capacity = 0;
+        free(vga->data);
+        vga->data = NULL;
+        growingArray_destroy(&vga->offsets);
+}
+
+
+
 void stack_init(struct stack *const s,
                 const size_t capacity, const size_t itemSize) {
         s->capacity = capacity;

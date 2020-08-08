@@ -8,6 +8,7 @@
  * Callback for various foreach functions declared here.
  */
 typedef bool (*foreach_cb)(void *, void *);
+typedef bool (*foreach_sized_cb)(void *, size_t, void *);
 
 
 /*
@@ -80,6 +81,19 @@ void growingArray_foreach(const struct growingArray *ga,
         __attribute__((nonnull (1)));
 
 /*
+ * Iterate growing array, but implemented as a macro instead of a
+ * function. It's more convinient but it has some limitations, like that it
+ * can't be nested.
+ */
+#define growingArray_foreach_START(ga, type, name)                      \
+        for (unsigned growingArray_foreach_idx=0;                       \
+             growingArray_foreach_idx<(ga)->length;                     \
+             growingArray_foreach_idx++) {                              \
+        type name = growingArray_get(ga, growingArray_foreach_idx);
+#define growingArray_foreach_END                \
+        }
+
+/*
  * Sort in place the contents of the growing array. The cmp function acts
  * similar to strcmp: A pointer to an element, a pointer to a second element,
  * and a third pointer to "args"; return an integer. Negative if the first
@@ -124,6 +138,73 @@ void growingArray_clear(struct growingArray *ga)
  * be reinitialized if it's going to be reused.
  */
 void growingArray_destroy(struct growingArray *ga)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+///////////////////////////////////////////////////////////////////////////////
+
+/*
+ * A growing array for elements of varying size. Each element is a cell
+ * indicating the length in bytes, then data of that length.
+ */
+
+struct varSizeGrowingArray {
+        size_t capacity;
+        size_t padding;
+        struct growingArray offsets;
+        void *data;
+};
+
+/*
+ * Initialize. Initial capacity in total bytes. Item size hint will be used as
+ * a hint for the size of each individual item in the array. It's only used on
+ * initialization and is generally of no consequence. Smaller values will be
+ * "faster" but consume more memory. All memory returned by functions will be
+ * aligned at least to the given alignment.
+ */
+void varSizeGrowingArray_init(struct varSizeGrowingArray *vga,
+                              size_t alignment, size_t initialCapacity,
+                              size_t itemSizeHint)
+        __attribute__((access (write_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+/*
+ * Similar to growingArray, but the size of the element to append must be
+ * given.
+ */
+void *varSizeGrowingArray_append(struct varSizeGrowingArray *vga,
+                                 size_t size)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull))
+        __attribute__((returns_nonnull));
+
+/*
+ * Get nth element. If s is not NULL, it will hold its size. Return a pointer
+ * to it.
+ */
+void *varSizeGrowingArray_get(const struct varSizeGrowingArray *vga,
+                              size_t n, size_t *s)
+        __attribute__((access (read_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull (1)))
+        __attribute__((returns_nonnull));
+
+/*
+ * Similar to growingArray's foreach, but the callback also receives the size
+ * of the current element.
+ */
+void varSizeGrowingArray_foreach(const struct varSizeGrowingArray *vga,
+                                 foreach_sized_cb fun, void *args)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull (1)));
+
+/*
+ * Deallocate everything.
+ */
+void varSizeGrowingArray_destroy(struct varSizeGrowingArray *vga)
         __attribute__((access (read_write, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));

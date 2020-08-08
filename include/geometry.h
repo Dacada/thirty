@@ -1,6 +1,7 @@
 #ifndef GEOMETRY_H
 #define GEOMETRY_H
 
+#include <component.h>
 #include <cglm/struct.h>
 #include <glad/glad.h>
 
@@ -21,6 +22,7 @@ struct vertex {
 };
 
 struct geometry {
+        struct component base;
         GLuint vao, vbo, ibo;
         int nindices;
 };
@@ -41,7 +43,8 @@ void geometry_initSkybox(struct geometry *skybox)
         __attribute__((leaf))
         __attribute__((nonnull (1)));
 
-void geometry_initFromFile(struct geometry *geometry, FILE *f)
+size_t geometry_initFromFile(struct geometry *geometry, FILE *f,
+                             enum componentType type)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
         __attribute__((leaf))
@@ -52,9 +55,11 @@ void geometry_draw(const struct geometry *geometry)
         __attribute__((leaf))
         __attribute__((nonnull));
 
-void geometry_free(const struct geometry *geometry)
+void geometry_free(struct geometry *geometry)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
+
+#define GEOMETRY_MAXIMUM_SIZE sizeof(struct geometry)
 
 #endif /* GEOMETRY_H */

@@ -1,13 +1,16 @@
 #include <scene.h>
 #include <object.h>
+#include <componentCollection.h>
+#include <geometry.h>
+#include <camera.h>
 #include <material.h>
 #include <light.h>
-#include <camera.h>
-#include <util.h>
 #include <dsutils.h>
+#include <util.h>
 #include <ctype.h>
 #include <string.h>
 #include <limits.h>
+#include <cglm/struct.h>
 
 #define BOGLE_MAGIC_SIZE 5
 #define OBJECT_TREE_NUMBER_BASE 10
@@ -20,126 +23,76 @@ static void buildpathObj(const size_t destsize, char *const dest,
         const size_t len = pathjoin(destsize, dest, 3, ASSETSPATH,
                                      "scenes", file);
         if (len + 3 - 1 >= destsize) {
-                die("Path to geometry file too long.\n");
+                die("Path to scene file too long.\n");
         }
         strcpy(dest+len-2, ".bgl");
 }
 
 __attribute__((access (write_only, 1, 2)))
 __attribute__((access (read_only, 3)))
-__attribute__((access (read_only, 4)))
-__attribute__((access (read_only, 5)))
-__attribute__((access (read_only, 6)))
-__attribute__((access (read_write, 7)))
+__attribute__((access (read_write, 8)))
 __attribute__((nonnull))
-static void parse_objects(struct object *const objects, unsigned nobjs,
-                          struct geometry *const geometries,
-                          struct material *const *const materials,
-                          struct light *const lights,
-                          struct camera *const camera,
-                          FILE *const f) {
+static void parse_objects(struct growingArray *objects, unsigned nobjs,
+                          struct scene *scene,
+                          unsigned ncams, unsigned ngeos, unsigned nmats,
+                          unsigned nlights, FILE *const f) {
         for (unsigned i=0; i<nobjs; i++) {
-                object_initFromFile(objects+i,
-                                    geometries, materials, lights, camera,
-                                    f);
+                struct object *obj = growingArray_append(objects);
+                obj->idx = objects->length;  // idx 0 is root
+                object_initFromFile(obj, scene,
+                                    ncams, ngeos, nmats, nlights, f);
         }
 }
 
-__attribute__((access (write_only, 1)))
-__attribute__((access (read_only, 2)))
+__attribute__((access (read_write, 1)))
+__attribute__((access (read_write, 2)))
 __attribute__((nonnull))
-static bool assign_parent(void *const element,
-                          void *const args) {
-        struct object **child = element;
-        struct object *parent = args;
-        (*child)->parent = parent;
-        return true;
-}
-
-__attribute__((access (write_only, 1)))
-__attribute__((access (write_only, 2)))
-__attribute__((access (read_write, 4)))
-__attribute__((nonnull (1,2,5)))
-static void parse_object_tree(struct object *const root,
-                              struct object *const objects,
-                              const unsigned nobjs,
-                              struct object *const skybox,
-                              FILE *const f) {
-        struct growingArray *const children =
-                smallocarray(nobjs+1, sizeof(*children));
-        for (unsigned i=0; i<nobjs+1; i++) {
-                growingArray_init(&children[i], sizeof(struct object*), 1);
-        }
-        
+static void parse_object_tree(struct scene *const scene, FILE *const f) {
         struct stack stack;
-        stack_init(&stack, OBJECT_TREE_MAXIMUM_DEPTH, sizeof(unsigned));
+        stack_init(&stack, OBJECT_TREE_MAXIMUM_DEPTH, sizeof(size_t));
         
-        unsigned currentObject = 0;
-        unsigned newObject = 0;
+        size_t currentObjectIdx = 0;
+        size_t lastParsedObjectIdx = 0;
         for(;;) {
                 int c = fgetc(f);
                 if (c == EOF) {
                         bail("Unexpected end of file or error.\n");
                 } else if (isdigit(c)) {
-                        newObject = 0;
+                        size_t newObjectIdx = 0;
                         while (isdigit(c)) {
-                                newObject *= OBJECT_TREE_NUMBER_BASE;
-                                newObject += (unsigned int)c - '0';
+                                newObjectIdx *= OBJECT_TREE_NUMBER_BASE;
+                                newObjectIdx += (unsigned int)c - '0';
                                 c = fgetc(f);
                         }
                         ungetc(c, f);
-                        newObject += 1;
+                        newObjectIdx++;
+
+                        struct object *parent = scene_getObjectFromIdx(
+                                scene, currentObjectIdx);
+                        struct object *child = scene_getObjectFromIdx(
+                                scene, newObjectIdx);
+                        object_addChild(parent, child);
                         
-                        const struct object **const obj =
-                                growingArray_append(&children[currentObject]);
-                        *obj = &objects[newObject-1];
+                        lastParsedObjectIdx = newObjectIdx;
                 } else if (isspace(c)) {
                 } else if (c == '{') {
-                        unsigned *const num = stack_push(&stack);
-                        *num = currentObject;
-                        currentObject = newObject;
+                        size_t *idx = stack_push(&stack);
+                        *idx = currentObjectIdx;
+                        currentObjectIdx = lastParsedObjectIdx;
                 } else if (c == '}') {
-                        const unsigned *const num = stack_pop(&stack);
-                        newObject = currentObject;
-                        currentObject = *num;
+                        size_t *idx = stack_pop(&stack);
+                        currentObjectIdx = *idx;
                 } else if (c == '\0') {
                         break;
                 } else {
                         bail("Unexpected character in file.\n");
                 }
         }
-
         stack_destroy(&stack);
-
-        for (unsigned i=0; i<nobjs+1; i++) {
-                struct object *obj;
-                if (i == 0) {
-                        obj = root;
-                        if (skybox != NULL) {
-                                struct object **child =
-                                        growingArray_append(&children[i]);
-                                *child = skybox;
-                        }
-                } else {
-                        obj = &objects[i-1];
-                }
-
-                if (children[i].length > UINT_MAX) {
-                        bail("Too many children.\n");
-                }
-                
-                growingArray_foreach(&children[i], &assign_parent, obj);
-                growingArray_pack(&children[i]);
-                obj->children = children[i].data;
-                obj->nchildren = (const unsigned int)children[i].length;
-        }
-
-        free(children);
 }
 
 void scene_initFromFile(struct scene *const scene,
-                        const char *const filename,
-                        const struct sceneInitParams *const params) {
+                        const char *const filename) {
         char path[PATH_MAX];
         buildpathObj(PATH_MAX, path, filename);
         if (!accessible(path, true, false, false)) {
@@ -150,6 +103,7 @@ void scene_initFromFile(struct scene *const scene,
         struct {
                 uint8_t magic[BOGLE_MAGIC_SIZE];
                 uint8_t version;
+                uint32_t ncams;
                 uint32_t ngeos;
                 uint32_t nmats;
                 uint32_t nlights;
@@ -167,98 +121,43 @@ void scene_initFromFile(struct scene *const scene,
                      "(support only 0)\n", header.version);
         }
 
+        sfread(&header.ncams, sizeof(header.ncams), 1, f);
         sfread(&header.ngeos, sizeof(header.ngeos), 1, f);
         sfread(&header.nmats, sizeof(header.nmats), 1, f);
         sfread(&header.nlights, sizeof(header.nlights), 1, f);
         sfread(&header.nobjs, sizeof(header.nobjs), 1, f);
 
-        uint32_t skyboxNameLen;
-        sfread(&skyboxNameLen, sizeof(skyboxNameLen), 1, f);
-        if (skyboxNameLen > 0) {
-                char *name = smallocarray(skyboxNameLen+1, sizeof(*name));
-                sfread(name, sizeof(*name), skyboxNameLen, f);
-                name[skyboxNameLen] = '\0';
-
-                struct geometry *geo = smalloc(sizeof(*geo));
-                geometry_initSkybox(geo);
-
-                struct material_skybox *mat = smalloc(sizeof(*mat));
-                material_skybox_initFromName(mat, name);
-
-                scene->skybox = smalloc(sizeof(*scene->skybox));        
-                object_initSkybox(scene->skybox, geo, (struct material*)mat);
-                
-                free(name);
-        } else {
-                scene->skybox = NULL;
-        }
-
-        struct camera *camera_data = camera_new(params->cameraType);
-        camera_initFromFile(camera_data, f, params->cameraType);
-        
         sfread(scene->globalAmbientLight.raw,
-               sizeof(*(scene->globalAmbientLight.raw)), 4, f);
-        
-        struct geometry *geometry_data = smallocarray(header.ngeos,
-                                                      sizeof(*geometry_data));
-        for (unsigned i=0; i<header.ngeos; i++) {
-                geometry_initFromFile(geometry_data + i, f);
-        }
+               sizeof(*scene->globalAmbientLight.raw),
+               sizeof(scene->globalAmbientLight) /
+               sizeof(*scene->globalAmbientLight.raw), f);
 
-        static const size_t maxMatSize = max(sizeof(struct material_uber),
-                                             sizeof(struct material_skybox));
-        struct material *material_data = smallocarray(header.nmats,
-                                                      maxMatSize);
-        struct material **material_ptrs = smallocarray(
-                header.nmats, sizeof(struct material*));
-        for (unsigned i=0; i<header.nmats; i++) {
-                size_t size = material_initFromFile(material_data, f);
-                
-                material_ptrs[i] = material_data;
+#define LOAD_DATA(n, which, baseType)                                   \
+        do {                                                            \
+                for (unsigned i=0; i<(n); i++) {                        \
+                        uint8_t type;                                   \
+                        sfread(&type, sizeof(type), 1, f);              \
+                        struct which *comp =                            \
+                                componentCollection_create(             \
+                                        (baseType) + type);             \
+                        which##_initFromFile(comp, f, (baseType) + type); \
+                }                                                       \
+        } while (0)
 
-                typedef char aligned_char __attribute__
-                        ((aligned (__alignof__(struct material))));
-                aligned_char *material_data_bytes;
-                material_data_bytes = (char*)material_data;
-                material_data_bytes += size;
-                material_data = (struct material*)material_data_bytes;
-        }
+        LOAD_DATA(header.ncams, camera, COMPONENT_CAMERA);
+        LOAD_DATA(header.ngeos, geometry, COMPONENT_GEOMETRY);
+        LOAD_DATA(header.nmats, material, COMPONENT_MATERIAL);
+        LOAD_DATA(header.nlights, light, COMPONENT_LIGHT);
 
-        struct light *light_data = smallocarray(header.nlights,
-                                                      sizeof(*light_data));
-        for (unsigned i=0; i<header.nlights; i++) {
-                light_initFromFile(light_data + i, f);
-        }
-        
-        struct object *object_data = smallocarray(header.nobjs,
-                                                  sizeof(*object_data));
-        
-        parse_objects(object_data, header.nobjs,
-                      geometry_data, material_ptrs,
-                      light_data, camera_data, f);
-        scene->root.camera = NULL;
-        scene->root.geometry = NULL;
-        scene->root.material = NULL;
-        scene->root.light = NULL;
-        scene->root.model = glms_mat4_identity();
-        
-        parse_object_tree(&scene->root, object_data, header.nobjs,
-                          scene->skybox, f);
-        scene->root.parent = NULL;
+        growingArray_init(&scene->objects,
+                          sizeof(struct object), header.nobjs);
 
-        scene->nlights = header.nlights;
-        scene->lights = light_data;
-        
-        scene->nmats = header.nmats;
-        scene->mats = material_ptrs;
-        
-        scene->nobjs = header.nobjs;
-        scene->objs = object_data;
-
-        scene->ngeos = header.ngeos;
-        scene->geos = geometry_data;
-
-        scene->cam = camera_data;
+        object_initEmpty(&scene->root, scene);
+        scene->root.idx = 0;
+        parse_objects(&scene->objects, header.nobjs, scene,
+                      header.ncams, header.ngeos, header.nmats,
+                      header.nlights, f);
+        parse_object_tree(scene, f);
 
         const int c = fgetc(f);
         if (c != EOF) {
@@ -269,29 +168,350 @@ void scene_initFromFile(struct scene *const scene,
         fclose(f);
 }
 
-void scene_draw(const struct scene *const scene) {
-        object_draw(&scene->root, scene->globalAmbientLight);
+struct object *scene_createObject(struct scene *scene,
+                                  const size_t parent_idx) {
+        struct object *const child = growingArray_append(&scene->objects);
+        size_t child_idx = scene->objects.length;  // idx 0 is root
+        object_initEmpty(child, scene);
+        child->idx = child_idx;
+        struct object *const parent = scene_getObjectFromIdx(
+                scene, parent_idx);
+        object_addChild(parent, child);
+        return child;
+}
+
+struct object *scene_getObjectFromIdx(struct scene *const scene,
+                                      const size_t object_idx) {
+        if (object_idx == 0) {
+                return &scene->root;
+        }
+        return growingArray_get(&scene->objects, object_idx-1);
+}
+
+size_t scene_setSkybox(struct scene *const scene,
+                       const char *const basename) {
+        struct geometry *geo = componentCollection_create(
+                COMPONENT_GEOMETRY);
+        geometry_initSkybox(geo);
+        size_t geoIdx = geo->base.idx;
+
+        struct material_skybox *mat = componentCollection_create(
+                COMPONENT_MATERIAL_SKYBOX);
+        material_skybox_initFromName(mat, basename);
+        size_t matIdx = mat->base.base.idx;
+
+        struct object *const skybox = scene_createObject(
+                scene, 0);
+        object_setSkybox(skybox, geoIdx, matIdx);
+
+        return skybox->idx;
 }
 
 void scene_free(struct scene *const scene) {
-        free(scene->root.children);
-        for (unsigned i=0; i<scene->nobjs; i++) {
-                free(scene->objs[i].children);
-                object_free(scene->objs + i);
+        object_free(&scene->root);
+        growingArray_foreach_START(&scene->objects, struct object *, object)
+                object_free(object);
+        growingArray_foreach_END;
+        growingArray_destroy(&scene->objects);
+}
+
+
+/// Rendering code ///
+
+// Initial counts for some lists
+#define STARTING_OBJECT_COUNT 16
+#define STARTING_LIGHT_COUNT 8
+#define STARTING_SHADER_COUNT 1
+
+// This struct is used to hold a reference to an object along with its global
+// model matrix after taking into account its parents, and its distance to the
+// camera. The model matrix is passed to the shader for rendering, while the
+// distance to the camera is used for sorting the objects by distance to camera
+// before rendering.
+struct objectModelAndDistance {
+        const struct object *object;
+        mat4s model;
+        float distanceToCamera;
+};
+
+// Used to determine shader order and for checking equality between shaders.
+__attribute__((access (read_only, 1)))
+__attribute__((access (read_only, 2)))
+__attribute__((nonnull (1, 2)))
+static int cmpshdr(const void *const item1,
+                   const void *const item2,
+                   void *const args) {
+        const enum shaders *const shader1 = item1;
+        const enum shaders *const shader2 = item2;
+        (void)args;
+
+        return (int)*shader1 - (int)*shader2;
+}
+
+__attribute__((access (read_write, 1)))
+__attribute__((access (read_only, 2)))
+__attribute__((access (write_only, 4)))
+__attribute__((access (write_only, 5)))
+__attribute__((access (read_write, 6)))
+__attribute__((access (read_write, 7)))
+__attribute__((nonnull))
+static void gatherObjectTree(
+        struct growingArray *const objects, const struct object *const object,
+        const mat4s parentModel,
+        size_t *const cameraIdx,
+        size_t *const skyboxIdx,
+        struct growingArray *const lightIdxs,
+        struct growingArray *const shaders) {
+
+        // Apply model matrix
+        const mat4s model = glms_mat4_mul(parentModel, object->model);
+
+        // Add to objects array
+        struct objectModelAndDistance *const objmod =
+                growingArray_append(objects);
+        objmod->object = object;
+        objmod->model = model;
+        
+        // Detect camera
+        const struct camera *cameraComp = (struct camera*)
+                componentCollection_get(&object->components, COMPONENT_CAMERA);
+        if (cameraComp != NULL && cameraComp->main) {
+                *cameraIdx = objects->length - 1;
         }
-        if (scene->skybox != NULL) {
-                object_free(scene->skybox);
-                free(scene->skybox->geometry);
-                free(scene->skybox->material);
-                free(scene->skybox);
+
+        // Detect skybox
+        const struct component *materialComp = componentCollection_get(
+                &object->components, COMPONENT_MATERIAL);
+        if (materialComp != NULL &&
+            materialComp->type == COMPONENT_MATERIAL_SKYBOX) {
+                *skyboxIdx = objects->length - 1;
         }
-        for (unsigned i=0; i<scene->ngeos; i++) {
-                geometry_free(scene->geos + i);
+
+        // Detect light
+        if (componentCollection_hasComponent(
+                    &object->components, COMPONENT_LIGHT)) {
+                size_t *const lightIdx = growingArray_append(lightIdxs);
+                *lightIdx = objects->length - 1;
         }
-        free(scene->geos);
-        free(scene->objs);
-        free(scene->mats[0]);
-        free(scene->mats);
-        free(scene->lights);
-        free(scene->cam);
+
+        // Detect shader
+        if (materialComp != NULL) {
+                const enum shaders shader = ((const struct material*)
+                                             materialComp)->shader;
+                if (!growingArray_contains(shaders, cmpshdr, &shader)) {
+                        enum shaders *shdrptr = growingArray_append(shaders);
+                        *shdrptr = shader;
+                }
+        }
+
+        // Recurse
+        growingArray_foreach_START(&object->children, size_t*, child_idx)
+                struct object *child = scene_getObjectFromIdx(
+                        object->scene, *child_idx);
+                gatherObjectTree(objects, child, model,
+                                 cameraIdx, skyboxIdx, lightIdxs, shaders);
+        growingArray_foreach_END;
+}
+
+// Compare function used to sort objects for rendering. We want objects with
+// the same material to be grouped together, order objects by distance to the
+// camera, etc.
+static int cmpobj(const void *const item1,
+                  const void *const item2,
+                  void *const args) {
+        (void)args;
+        
+        const struct objectModelAndDistance *const obj1 = item1;
+        const struct objectModelAndDistance *const obj2 = item2;
+
+        const struct componentCollection *comps1 = &obj1->object->components;
+        const struct componentCollection *comps2 = &obj2->object->components;
+
+        const struct geometry *geo1 = (struct geometry*)
+                componentCollection_get(comps1, COMPONENT_GEOMETRY);
+        const struct geometry *geo2 = (struct geometry*)
+                componentCollection_get(comps2, COMPONENT_GEOMETRY);
+        
+        const bool hasgeo1 = geo1 != NULL;
+        const bool hasgeo2 = geo2 != NULL;
+        
+        // No need to do anything for objects without geometry which won't be
+        // rendered. Just put them all at the end so we can finish early when
+        // we find the first one.
+        if (!hasgeo1 && !hasgeo2) {
+                return 0;
+        }
+        if (!hasgeo1 && hasgeo2) {
+                return 1;
+        }
+        if (hasgeo1 && !hasgeo2) {
+                return -1;
+        }
+
+        const struct material *mat1 = (struct material*)
+                componentCollection_get(comps1, COMPONENT_MATERIAL);
+        const struct material *mat2 = (struct material*)
+                componentCollection_get(comps2, COMPONENT_MATERIAL);
+
+        const bool isSkybox1 = mat1->base.type == COMPONENT_MATERIAL_SKYBOX;
+        const bool isSkybox2 = mat2->base.type == COMPONENT_MATERIAL_SKYBOX;
+
+        // The skybox object needs to be rendered last.
+        if (isSkybox1 && !isSkybox2) {
+                return 1;
+        }
+        if (!isSkybox1 && isSkybox2) {
+                return -1;
+        }
+
+        const bool trans1 = material_isTransparent(mat1);
+        const bool trans2 = material_isTransparent(mat2);
+
+        // Non transparent objects first
+        if (!trans1 && trans2) {
+                return -1;
+        }
+        if (trans1 && !trans2) {
+                return 1;
+        }
+
+        const enum shaders shader1 = mat1->shader;
+        const enum shaders shader2 = mat2->shader;
+
+        // Group by shader
+        const int c = cmpshdr(&shader1, &shader2, NULL);
+        if (c != 0) {
+                return c;
+        }
+
+        // Group by material
+        if (mat1 < mat2) {
+                return -1;
+        }
+        if (mat1 > mat2) {
+                return 1;
+        }
+
+        const float dist1 = obj1->distanceToCamera;
+        const float dist2 = obj2->distanceToCamera;
+
+        // Objects closer to the camera first
+        if (dist1 < dist2) {
+                return -1;
+        }
+        if (dist1 > dist2) {
+                return 1;
+        }
+
+        return 0;
+}
+
+void scene_draw(const struct scene *const scene) {
+        // Prepare data structures to hold a list of objects, of lights and of
+        // shaders. We will need them later. Keep them prepared so that on each
+        // draw we use the same list and we don't have to reinitialize it
+        // again.
+        static bool first = true;
+        static struct growingArray objects;
+        static struct growingArray lightIdxs;
+        static struct growingArray shaders;
+        if (first) {
+                growingArray_init(&objects,
+                                  sizeof(struct objectModelAndDistance),
+                                  STARTING_OBJECT_COUNT);
+                growingArray_init(&lightIdxs,
+                                  sizeof(size_t),
+                                  STARTING_LIGHT_COUNT);
+                growingArray_init(&shaders,
+                                  sizeof(enum shaders),
+                                  STARTING_SHADER_COUNT);
+                first = false;
+        }
+
+        // We also need to identify the camera and the skybox.
+        size_t cameraIdx = 0;
+        size_t skyboxIdx = 0;
+
+        // Populate 'objects' array, calculate model matrices, gather shaders,
+        // lights, main camera and skybox.
+        gatherObjectTree(&objects, &scene->root, GLMS_MAT4_IDENTITY,
+                         &cameraIdx, &skyboxIdx, &lightIdxs, &shaders);
+
+        struct objectModelAndDistance *camera = growingArray_get(
+                &objects, cameraIdx);
+        struct objectModelAndDistance *skybox = growingArray_get(
+                &objects, skyboxIdx);
+
+        // Calculate the distance to the main camera for each object
+        const vec4s cameraPosition = camera->model.col[3];
+        growingArray_foreach_START(&objects, struct objectModelAndDistance*,
+                                   objMod)
+                const vec4s objectPosition = objMod->model.col[3];
+                objMod->distanceToCamera = glms_vec4_distance(
+                        cameraPosition, objectPosition);
+        growingArray_foreach_END;
+
+        // Get view and projection matrices from main camera
+        const struct camera *const cameraComp = (struct camera*)
+                componentCollection_get(&camera->object->components,
+                                        COMPONENT_CAMERA);
+        assert(cameraComp != NULL);
+        assert(cameraComp->main);
+        const mat4s view = camera_viewMatrix(cameraComp, camera->model);
+        const mat4s projection = camera_projectionMatrix(cameraComp);
+
+        // Update lighting for all shaders
+        growingArray_foreach_START(&shaders, enum shaders*, shader)
+                shader_use(*shader);
+                for (size_t i=0; i<lightIdxs.length; i++) {
+                        const size_t *const objModIdx = growingArray_get(
+                                &lightIdxs, i);
+                        const struct objectModelAndDistance *const objMod =
+                                growingArray_get(&objects, *objModIdx);
+                        const struct light *const light = (struct light*)
+                                componentCollection_get(
+                                        &objMod->object->components,
+                                        COMPONENT_LIGHT);
+                        assert(light != NULL);
+                        light_updateShader(light, i, view,
+                                           objMod->model, *shader);
+                }
+                light_updateShaderDisabled(lightIdxs.length, *shader);
+                light_updateGlobalAmbient(*shader, scene->globalAmbientLight);
+        growingArray_foreach_END;
+
+        // No environment mapping yet, just the skybox, so make sure the
+        // texture for the environment slot is loaded since some objects might
+        // use it.
+        const struct material *skyboxMaterial = (struct material*)
+                componentCollection_get(&skybox->object->components,
+                                        COMPONENT_MATERIAL);
+        material_bindTextures(skyboxMaterial);
+
+        // Sort objects by render order
+        growingArray_sort(&objects, cmpobj, NULL);
+
+        // Render everything. We keep a state of the rendering process with
+        // renderStage, material and shader. They are changed automatically by
+        // the call, thanks to the fact that our objects are sorted. So, for
+        // example, when it first encounters a transparent object it will
+        // switch the render stage from opaque to transparent.
+        enum renderStage renderStage = RENDER_OPAQUE_OBJECTS;
+        const struct material *material = NULL;  // last material used
+        enum shaders shader = SHADER_TOTAL;  // last shader used
+        growingArray_foreach_START(&objects, struct objectModelAndDistance*,
+                                   objMod)
+                if (!object_draw(objMod->object, objMod->model,
+                                 view, projection,
+                                 &renderStage, &material, &shader)) {
+                        break;
+                }
+        growingArray_foreach_END;
+
+        // Cleanup
+        glDisable(GL_BLEND);
+        glDepthFunc(GL_LESS);
+        growingArray_clear(&objects);
+        growingArray_clear(&lightIdxs);
+        growingArray_clear(&shaders);
 }

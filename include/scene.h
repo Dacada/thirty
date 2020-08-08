@@ -1,11 +1,9 @@
 #ifndef SCENE_H
 #define SCENE_H
 
-#include <camera.h>
-#include <light.h>
-#include <texture.h>
-#include <material.h>
 #include <object.h>
+#include <dsutils.h>
+#include <cglm/struct.h>
 
 /*
  * A scene contains a collection of objects (children of 'root'). One of these
@@ -18,31 +16,28 @@
 
 struct scene {
         struct object root;
-        
+        struct growingArray objects;
         vec4s globalAmbientLight;
-        struct object *skybox;
-        
-        size_t nlights;
-        struct light *lights;
-
-        unsigned nmats;
-        struct material **mats;
-        
-        unsigned nobjs;
-        struct object *objs;
-
-        unsigned ngeos;
-        struct geometry *geos;
-
-        struct camera *cam;
 };
 
-struct sceneInitParams {
-        enum cameraType cameraType;
-};
+void scene_initFromFile(struct scene *scene, const char *filename)
+        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_only, 2)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
-void scene_initFromFile(struct scene *scene, const char *filename,
-                        const struct sceneInitParams *params)
+struct object *scene_createObject(struct scene *scene, size_t parent_idx)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+struct object *scene_getObjectFromIdx(struct scene *scene,
+                                      size_t object_idx)
+        __attribute__((access (read_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+size_t scene_setSkybox(struct scene *scene, const char *basename)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
         __attribute__((leaf))

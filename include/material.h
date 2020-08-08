@@ -3,20 +3,14 @@
 
 #include <texture.h>
 #include <shader.h>
+#include <component.h>
 #include <cglm/struct.h>
 #include <stdbool.h>
-
-#define MATERIAL_STRUCT_ALIGNMENT 16
 
 /*
  * Represents a material. There are two kinds of materials. Uber and
  * Skybox.
  */
-
-enum material_type {
-        MATERIAL_UBER,
-        MATERIAL_SKYBOX,
-};
 
 /*
  * Ambient, Emissive, Diffuse, Specular, SpecularPower, Normal, Bump and
@@ -44,16 +38,16 @@ enum material_textureType {
  * be used directly, as it has no parameters and does nothing on its own.
  */
 struct material {
+        struct component base;
         enum shaders shader;
-        enum material_type type;
-} __attribute__((aligned (MATERIAL_STRUCT_ALIGNMENT)));
+};
 
 /*
  * Initialize the base of the material. Already called by the other materia's
  * init functions.
  */
 void material_init(struct material *material,
-                   enum shaders shader, enum material_type type)
+                   enum shaders shader, enum componentType type)
         __attribute__((access (write_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
@@ -63,7 +57,8 @@ void material_init(struct material *material,
  * type so this assumes that the pointer points to an area with enough space to
  * fit any material type. Returns the actual used size.
  */
-size_t material_initFromFile(struct material *material, FILE *f)
+size_t material_initFromFile(struct material *material, FILE *f,
+                             enum componentType type)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
         __attribute__((leaf))
@@ -77,8 +72,8 @@ size_t material_initFromFile(struct material *material, FILE *f)
  * support it will be silently ignored.
  */
 void material_setTexture(struct material *material,
-                              enum material_textureType tex,
-                              const char *name)
+                         enum material_textureType tex,
+                         const char *name)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 3)))
         __attribute__((leaf))
@@ -116,7 +111,7 @@ void material_updateShader(const struct material *material)
 /*
  * Bind the material's textures to the shader.
  */
-void material_bindTextures(struct material *material)
+void material_bindTextures(const struct material *material)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));

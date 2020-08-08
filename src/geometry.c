@@ -1,5 +1,5 @@
 #include <geometry.h>
-#include <camera.h>
+#include <component.h>
 #include <util.h>
 #include <cglm/struct.h>
 #include <glad/glad.h>
@@ -104,7 +104,10 @@ void geometry_initSkybox(struct geometry *skybox) {
         geometry_initFromArray(skybox, vertices, nvertices, indices, nindices);
 }
 
-void geometry_initFromFile(struct geometry *const geometry, FILE *const f) {
+size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
+                             const enum componentType type) {
+        (void)type;
+        
         struct {
                 uint32_t vertlen;
                 uint32_t indlen;
@@ -127,6 +130,7 @@ void geometry_initFromFile(struct geometry *const geometry, FILE *const f) {
         
         free(vertices);
         free(indices);
+        return sizeof(struct geometry);
 }
 
 void geometry_draw(const struct geometry *const geometry) {
@@ -135,8 +139,14 @@ void geometry_draw(const struct geometry *const geometry) {
         glDrawElements(GL_TRIANGLES, geometry->nindices, GL_UNSIGNED_INT, 0);
 }
 
-void geometry_free(const struct geometry *const geometry) {
+void geometry_free(struct geometry *const geometry) {
         glDeleteBuffers(1, &geometry->vbo);
         glDeleteBuffers(1, &geometry->ibo);
         glDeleteVertexArrays(1, &geometry->vao);
+
+        // Not necessary since deleted objects are ignored by glDelete*, but
+        // more expressive. (zero is also ignored)
+        geometry->vbo = 0;
+        geometry->ibo = 0;
+        geometry->vao = 0;
 }

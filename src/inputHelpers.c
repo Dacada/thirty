@@ -1,8 +1,12 @@
 #include <inputHelpers.h>
-#include <util.h>
-#include <camera.h>
+#include <scene.h>
 #include <object.h>
+#include <componentCollection.h>
+#include <camera.h>
+#include <util.h>
+#include <dsutils.h>
 #include <cglm/struct.h>
+#include <stdbool.h>
 
 void fpsCameraController_init(struct fpsCameraController *const ctrl,
                               const float move, const float look,
@@ -11,17 +15,20 @@ void fpsCameraController_init(struct fpsCameraController *const ctrl,
         ctrl->move_sensitivity = move;
         ctrl->look_sensitivity = look;
         ctrl->camera_obj = camera;
-        ctrl->camera = (struct fpsCamera *)camera->camera;
+        ctrl->camera = (struct camera_fps *)componentCollection_get(
+                &camera->components, COMPONENT_CAMERA);
 
         assert(ctrl->camera != NULL);
-        assert(ctrl->camera->base.type == CAMERA_FPS);
+        assert(ctrl->camera->base.base.type == COMPONENT_CAMERA_FPS);
 }
 
 static mat4s get_model(const struct object *obj) {
         mat4s model = obj->model;
-        while (obj->parent != NULL) {
-                model = glms_mat4_mul(obj->parent->model, model);
-                obj = obj->parent;
+        while (obj->idx != 0) {
+                struct object *parent = scene_getObjectFromIdx(
+                        obj->scene, obj->parent);
+                model = glms_mat4_mul(parent->model, model);
+                obj = parent;
         }
         return model;
 }

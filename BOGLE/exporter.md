@@ -9,8 +9,11 @@ The following shows the overall structure of the file:
 ```
 FILE HEADER
 
-CAMERA DATA
 GLOBAL AMBIENT LIGHT
+
+CAMERA 1 DATA
+...
+CAMERA N DATA
 
 GEOMETRY 1 HEADER
 GEOMETRY 1 DATA
@@ -46,6 +49,8 @@ As specified above, everything is little-endian encoded.
 
 * `1 uint8` -> Version number. Unsigned.
 
+* `1 uint32` -> Number of cameras defined.
+
 * `1 uint32` -> Number of geometries defined.
 
 * `1 uint32` -> Number of materials defined.
@@ -54,33 +59,18 @@ As specified above, everything is little-endian encoded.
 
 * `1 uint32` -> Number of object instances defined.
 
-## Skybox
+## Global Ambient Light
 
-The skybox is a cube texture, composed of 6 images, which have the following
-layout:
+In Blender, this is the world's color.
 
-```
-     top
-left front  right back
-     bottom
-```
+* `4 float` -> Color to add as global ambient light when shading.
 
-The base name should be the value of the "skybox" property on the scene's
-world.
+## Cameras
 
-A single name is used, which is appended `_top`, `_left`, `_bottom`, `_front`,
-`_right` or `_back` to retrieve the corresponding texture.
+There may be many camera components assigned, but only one can have the main camera flag set.
 
-* * `1 uint32` -> Number of characters in the scene's skybox
-  filename. `skybox_nchars`. Of course the next property will be empty if this
-  is zero, meaning no skybox.
-  
-* `skybox_nchars uint8` -> The actual filename of the scene's skybox. This is
-  what will be appended `_top`, etc. To actually retrieve each texture.
-
-## Camera
-
-One and only one object instance should be assigned as the camera.
+* `1 uint8` -> Camera type. 0 for a basic camera, 1 for an fps camera. The
+  exporter always uses 1 for now.
 
 * `1 uint32` -> Screen width. (Blender: Output properties -> Resolution X)
 
@@ -93,16 +83,15 @@ One and only one object instance should be assigned as the camera.
 
 * `1 floar` -> Field of View (radians) (Blender: Camera's Object Data
   Properties -> Field of View)
-
-## Global Ambient Light
-
-In Blender, this is the world's color.
-
-* `4 float` -> Color to add as global ambient light when shading.
+  
+* `1 uint8` -> Main camera flag: This is the active camera. Only one camera can
+  be the active camera.
 
 ## Geometry header
 
 Each geometry should be assigned to one or more objects.
+
+* `1 uint8` -> Geometry type. Always 0 for now.
 
 * `1 uint32` -> `vertlen` The number of vertices in the object.
 
@@ -209,6 +198,14 @@ Normal and bump textures are mutually exclusive.
 
 Each light should be assigned to one or more object instances.
 
+* `1 uint8` -> Type of light:
+
+  - 0 means Spot Light
+  
+  - 1 means Directional (Sun) Light
+  
+  - 2 means Point Light
+
 * `4 float` -> Color of the light. Found in the light object's data.
 
 * `1 float` -> Constant attenuation of the light. From Blender, it's always 0.
@@ -221,14 +218,6 @@ Each light should be assigned to one or more object instances.
 
 * `1 float` -> Intensity of the light. Found in the light object's data as the
   power.
-
-* `1 uint8` -> Type of light:
-
-  - 0 means Spot Light
-  
-  - 1 means Directional (Sun) Light
-  
-  - 2 means Point Light
   
 * `1 float` -> Angle of the light in radians (only meaningful for spot
   lights). Found in the light object's data, under Spot Shape.
@@ -254,18 +243,18 @@ ignored for directional lights. The rotation is the rotation of the default
 direction vector, which is beaming straight down (0, 0, -1) for directional and
 spot lights. And ignored for point lights. The scale is always ignored.
 
-* `1 uint8` -> Whether it is the camera. 0 if it isn't, any other value if it
-  is. One and only one object should be the camera.
+* `1 uint32` -> Camera index: The first camera defined in the file is
+  index 1. Index 0 means not a camera.
   
-* `1 uint32` -> Geometry index: The first geometry defined in the file is
-  index 1. Index 0 means no geometry.
+* `1 uint32` -> Geometry index: Same strategy as the camera index, 0 means no
+  geometry.
   
-* `1 uint32` -> Material index: Same strategy as the geometry index, 0 means no
+* `1 uint32` -> Material index: Same strategy as the others, 0 means no
   material. All objects with a geometry must have a material, otherwise crashes
   may occur.
   
-* `1 uint32` -> Light index: Same strategy as with geometry and
-  material. Generally, a light object doesn't have a geometry or material.
+* `1 uint32` -> Light index: Same strategy as with the others. Generally, a
+  light or camera objects doesn't have a geometry or material.
   
 * `16 floats` -> Transformation matrix.
 

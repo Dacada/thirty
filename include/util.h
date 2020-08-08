@@ -25,7 +25,9 @@
                         __builtin_unreachable();        \
                 }                                       \
         } while (0)
+
 #define assert_fail() __builtin_unreachable();
+#define dbg(msg, ...)
 
 #else
 
@@ -33,14 +35,18 @@
         do {                                                            \
                 if (!(condition)) {                                     \
                         die("Assertion failed: " #condition             \
-                            " on " __FILE__ ": l.%d\n", __LINE__);      \
+                            " on " __FILE__ ":%d\n", __LINE__);         \
                 }                                                       \
         } while (0)
+
 #define assert_fail()                                           \
         do {                                                    \
                 die("Inconditional assertion falure on "        \
-                    __FILE__ ": l.%d\n", __LINE__);             \
+                    __FILE__ ":%d\n", __LINE__);                \
         } while (0)
+
+#define dbg(msg, ...)                                   \
+        fprintf(stderr, msg "\n",##__VA_ARGS__)
 
 #endif
 

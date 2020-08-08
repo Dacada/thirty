@@ -1,6 +1,8 @@
 #include <texture.h>
 #include <util.h>
 #include <stb_image.h>
+#include <glad/glad.h>
+#include <stdbool.h>
 #include <string.h>
 
 __attribute__((access (read_only, 1)))
@@ -141,7 +143,7 @@ void texture_bind(const struct texture *const tex) {
 void texture_free(struct texture *const tex) {
         if (tex->loaded) {
                 glDeleteTextures(1, &tex->idx);
-                tex->loaded = false;
                 free(tex->name);
+                tex->loaded = false;
         }
 }

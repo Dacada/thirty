@@ -1,6 +1,9 @@
 #ifndef WINDOW_H
 #define WINDOW_H
 
+#include <cglm/struct.h>
+#include <stdbool.h>
+
 /*
  * Create the window, OpenGL context, and everything else. After window_init,
  * call window_run to start the program's main loop.
@@ -44,9 +47,6 @@
  * You can edit window_clearColor (effective next frame) and window_title
  * (effective upon call to window_updateTitle).
  */
-
-#include <cglm/struct.h>
-#include <stdbool.h>
 
 extern void(*window_onKeyboardEvent)(const int, const int, const int);
 extern void(*window_onKeyboardInput)(void);

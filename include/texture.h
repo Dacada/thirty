@@ -1,8 +1,6 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
 
-#include <util.h>
-#include <cglm/struct.h>
 #include <glad/glad.h>
 #include <stdbool.h>
 

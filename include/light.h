@@ -2,6 +2,7 @@
 #define LIGHT_H
 
 #include <shader.h>
+#include <component.h>
 #include <cglm/struct.h>
 
 #define NUM_LIGHTS 20
@@ -16,13 +17,8 @@
 
 extern vec4s light_globalAmbientLight;
 
-enum lightType {
-        LIGHTTYPE_SPOT = 0,
-        LIGHTTYPE_DIRECTION = 1,
-        LIGHTTYPE_POINT = 2
-};
-
 struct light {
+        struct component base;
         bool enabled;
 
         float attenuation_constant;
@@ -31,14 +27,11 @@ struct light {
         
         vec4s color;
         float intensity;
-        enum lightType type;
-
-        // Only spot light
         float angle;
 };
 
 
-void light_initFromFile(struct light *light, FILE *f)
+size_t light_initFromFile(struct light *light, FILE *f, enum componentType type)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
         __attribute__((leaf))
@@ -66,5 +59,7 @@ void light_updateShaderDisabled(size_t which, enum shaders shader)
  */
 void light_updateGlobalAmbient(enum shaders shader, vec4s globalAmbientLight)
         __attribute__((leaf));
+
+#define LIGHT_MAXIMUM_SIZE sizeof(struct light)
 
 #endif /* LIGHT_H */

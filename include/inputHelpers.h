@@ -2,13 +2,14 @@
 #define INPUT_HELPERS_H
 
 #include <cglm/struct.h>
+#include <stdbool.h>
 
 struct fpsCameraController {
         bool freefly;
         float move_sensitivity;
         float look_sensitivity;
         const struct object *camera_obj;
-        struct fpsCamera *camera;
+        struct camera_fps *camera;
 };
 
 void fpsCameraController_init(struct fpsCameraController *ctrl,

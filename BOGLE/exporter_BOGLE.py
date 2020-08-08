@@ -115,24 +115,6 @@ class BOGLEBaseObject:
         raise NotImplementedError
 
 
-class BOGLESkybox(BOGLEBaseObject):
-    def __init__(self, config):
-        super().__init__(config)
-        self.base_name = None
-
-    def convert(self, name):
-        if name is None:
-            self.base_name = ""
-        else:
-            self.base_name = name
-
-    def export(self, f):
-        f.write(struct.pack(FormatSpecifier().u32().format(), len(self.base_name)))
-        if self.base_name:
-            f.write(array.array(FormatSpecifier().array().u8(),
-                                self.base_name.encode('ascii')))
-
-
 class BOGLECamera(BOGLEBaseObject):
     """Blender camera export to BOGLE file"""
 
@@ -585,7 +567,8 @@ class BOGLEMaterial(BOGLEBaseObject):
 
             self.reflectance = self._get_float_value(inputs, 'Reflectance')
             self.refraction = self._get_float_value(inputs, 'Refraction')
-            self.index_of_refraction = self._get_float_value(inputs, 'Index of Refraction')
+            self.index_of_refraction = self._get_float_value(
+                inputs, 'Index of Refraction')
 
             self.bump_intensity = self._get_float_value(
                 inputs, 'Bump Intensity')
@@ -862,7 +845,6 @@ class BOGLExporter(BOGLEBaseObject):
     def __init__(self, config):
         super().__init__(config)
 
-        self.skybox = None
         self.camera = None
         self.globalAmbientLight = None
 
@@ -879,9 +861,6 @@ class BOGLExporter(BOGLEBaseObject):
     def convert(self, context):
         """Convert the objects that should be converted"""
         depsgraph = context.evaluated_depsgraph_get()
-
-        self.skybox = BOGLESkybox(self.config)
-        self.skybox.convert(self._get_skybox(depsgraph))
 
         self.globalAmbientLight = BOGLEAmbientLight(self.config)
         self.globalAmbientLight.convert(self._get_world_color(depsgraph))
@@ -911,8 +890,6 @@ class BOGLExporter(BOGLEBaseObject):
         """Export converted data to file"""
         with open(filepath, 'wb') as f:
             self._export_header(f)
-
-            self.skybox.export(f)
 
             self.camera.export(f)
             self.globalAmbientLight.export(f)
@@ -945,9 +922,6 @@ class BOGLExporter(BOGLEBaseObject):
     def _get_world_color(self, depsgraph):
         return Vector(depsgraph.scene.world.node_tree.nodes['Background'].
                       inputs['Color'].default_value)
-
-    def _get_skybox(self, depsgraph):
-        return depsgraph.scene.world.get('skybox')
 
     def _convert_camera(self, object, render):
         if self.camera is not None:

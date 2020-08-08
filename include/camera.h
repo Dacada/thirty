@@ -1,6 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+#include <component.h>
 #include <cglm/struct.h>
 
 /*
@@ -9,40 +10,32 @@
  * matrix.
  */
 
-enum cameraType {
-        CAMERA_BASIC,
-        CAMERA_FPS
-};
-
 struct camera {
+        struct component base;
+        bool main;
         float aspect;
         float near, far;
         float fov;
-        enum cameraType type;
 };
 
-struct basicCamera {
+struct camera_basic {
         struct camera base;
 };
 
-struct fpsCamera {
+struct camera_fps {
         struct camera base;
         float pitch, yaw;
         vec3s position;
 };
 
-void *camera_new(enum cameraType type)
-        __attribute__((leaf))
-        __attribute__((malloc))
-        __attribute__((nonnull));
-
 void camera_init(struct camera *cam, float aspect,
-                 float near, float far, float fov, enum cameraType type)
+                 float near, float far, float fov, bool main,
+                 enum componentType type)
         __attribute__((access (write_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
-void camera_initFromFile(struct camera *cam, FILE *f, enum cameraType type)
+size_t camera_initFromFile(struct camera *cam, FILE *f, enum componentType type)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
         __attribute__((leaf))
@@ -57,5 +50,8 @@ mat4s camera_projectionMatrix(const struct camera *cam)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
+
+#define CAMERA_MAXIMUM_SIZE max(sizeof(struct camera_basic),\
+                                sizeof(struct camera_fps))
 
 #endif /* CAMERA_H */

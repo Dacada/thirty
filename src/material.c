@@ -1,94 +1,115 @@
 #include <material.h>
+#include <material.h>
 #include <texture.h>
 #include <shader.h>
+#include <component.h>
+#include <util.h>
 #include <glad/glad.h>
 #include <cglm/struct.h>
 #include <stdbool.h>
 
+#define getTextureInfo(cnst, material, tex, textureType)                \
+        do {                                                            \
+                if ((material)->base.type == COMPONENT_MATERIAL_UBER) { \
+                        if ((textureType) != NULL) {                    \
+                                *(textureType) = GL_TEXTURE_2D;         \
+                        }                                               \
+                                                                        \
+                        cnst struct material_uber *mat =                \
+                                (cnst struct material_uber*)(material); \
+                        switch (tex) {                                  \
+                        case MATERIAL_TEXTURE_AMBIENT:                  \
+                                return &mat->ambientTexture;            \
+                        case MATERIAL_TEXTURE_EMISSIVE:                 \
+                                return &mat->emissiveTexture;           \
+                        case MATERIAL_TEXTURE_DIFFUSE:                  \
+                                return &mat->diffuseTexture;            \
+                        case MATERIAL_TEXTURE_SPECULAR:                 \
+                                return &mat->specularTexture;           \
+                        case MATERIAL_TEXTURE_SPECULARPOWER:            \
+                                return &mat->specularPowerTexture;      \
+                        case MATERIAL_TEXTURE_NORMAL:                   \
+                                return &mat->normalTexture;             \
+                        case MATERIAL_TEXTURE_BUMP:                     \
+                                return &mat->bumpTexture;               \
+                        case MATERIAL_TEXTURE_OPACITY:                  \
+                                return &mat->opacityTexture;            \
+                                                                        \
+                        case MATERIAL_TEXTURE_ENVIRONMENT:              \
+                        case MATERIAL_TEXTURE_TOTAL:                    \
+                        default:                                        \
+                                return NULL;                            \
+                        }                                               \
+                } else if ((material)->base.type ==                     \
+                           COMPONENT_MATERIAL_SKYBOX) {                 \
+                        if ((textureType) != NULL) {                    \
+                                *(textureType) = GL_TEXTURE_CUBE_MAP;   \
+                        }                                               \
+                                                                        \
+                        cnst struct material_skybox *mat =              \
+                                (cnst struct material_skybox*)(material); \
+                        switch (tex) {                                  \
+                        case MATERIAL_TEXTURE_ENVIRONMENT:              \
+                                return &mat->skybox;                    \
+                                                                        \
+                        case MATERIAL_TEXTURE_AMBIENT:                  \
+                        case MATERIAL_TEXTURE_EMISSIVE:                 \
+                        case MATERIAL_TEXTURE_DIFFUSE:                  \
+                        case MATERIAL_TEXTURE_SPECULAR:                 \
+                        case MATERIAL_TEXTURE_SPECULARPOWER:            \
+                        case MATERIAL_TEXTURE_NORMAL:                   \
+                        case MATERIAL_TEXTURE_BUMP:                     \
+                        case MATERIAL_TEXTURE_OPACITY:                  \
+                        case MATERIAL_TEXTURE_TOTAL:                    \
+                        default:                                        \
+                                return NULL;                            \
+                        }                                               \
+                }                                                       \
+                                                                        \
+                return NULL;                                            \
+        } while (0)
+                
 __attribute__((access (read_only, 1)))
 __attribute__((access (write_only, 3)))
 __attribute__((nonnull (1)))
-static struct texture *getTextureInfo(struct material *const material,
-                                      const enum material_textureType tex,
-                                      GLenum *const textureType) {
-        if (material->type == MATERIAL_UBER) {
-                if (textureType != NULL) {
-                        *textureType = GL_TEXTURE_2D;
-                }
-                
-                struct material_uber *mat = (struct material_uber*)material;
-                switch (tex) {
-                case MATERIAL_TEXTURE_AMBIENT:
-                        return &mat->ambientTexture;
-                case MATERIAL_TEXTURE_EMISSIVE:
-                        return &mat->emissiveTexture;
-                case MATERIAL_TEXTURE_DIFFUSE:
-                        return &mat->diffuseTexture;
-                case MATERIAL_TEXTURE_SPECULAR:
-                        return &mat->specularTexture;
-                case MATERIAL_TEXTURE_SPECULARPOWER:
-                        return &mat->specularPowerTexture;
-                case MATERIAL_TEXTURE_NORMAL:
-                        return &mat->normalTexture;
-                case MATERIAL_TEXTURE_BUMP:
-                        return &mat->bumpTexture;
-                case MATERIAL_TEXTURE_OPACITY:
-                        return &mat->opacityTexture;
-                        
-                case MATERIAL_TEXTURE_ENVIRONMENT:
-                case MATERIAL_TEXTURE_TOTAL:
-                default:
-                        return NULL;
-                }
-        } else if (material->type == MATERIAL_SKYBOX) {
-                if (textureType != NULL) {
-                        *textureType = GL_TEXTURE_CUBE_MAP;
-                }
-                
-                struct material_skybox *mat =
-                        (struct material_skybox*)material;
-                switch (tex) {
-                case MATERIAL_TEXTURE_ENVIRONMENT:
-                        return &mat->skybox;
-                        
-                case MATERIAL_TEXTURE_AMBIENT:
-                case MATERIAL_TEXTURE_EMISSIVE:
-                case MATERIAL_TEXTURE_DIFFUSE:
-                case MATERIAL_TEXTURE_SPECULAR:
-                case MATERIAL_TEXTURE_SPECULARPOWER:
-                case MATERIAL_TEXTURE_NORMAL:
-                case MATERIAL_TEXTURE_BUMP:
-                case MATERIAL_TEXTURE_OPACITY:
-                case MATERIAL_TEXTURE_TOTAL:
-                default:
-                        return NULL;
-                }
-        }
-
-        return NULL;
+static const struct texture *getConstTextureInfo(
+        const struct material *const material,
+        const enum material_textureType tex,
+        GLenum *const textureType) {
+        getTextureInfo(const, material, tex, textureType);
 }
+
+__attribute__((access (read_only, 1)))
+__attribute__((access (write_only, 3)))
+__attribute__((nonnull (1)))
+static struct texture *getVarTextureInfo(
+        struct material *const material,
+        const enum material_textureType tex,
+        GLenum *const textureType) {
+        getTextureInfo(, material, tex, textureType);
+}
+
+#undef getTextureInfo
 
 void material_init(struct material *material,
-                   const enum shaders shader, const enum material_type type) {
+                   const enum shaders shader, const enum componentType type) {
+        material->base.type = type;
         material->shader = shader;
-        material->type = type;
 }
 
-size_t material_initFromFile(struct material *const material, FILE *const f) {
-        uint8_t mat_type;
-        sfread(&mat_type, sizeof(mat_type), 1, f);
-
+size_t material_initFromFile(struct material *const material, FILE *const f,
+                             const enum componentType type) {
         uint8_t shader_type;
         sfread(&shader_type, sizeof(shader_type), 1, f);
         
-        material_init(material, shader_type, mat_type);
+        material_init(material, shader_type, type);
         
-        if (mat_type == MATERIAL_UBER) {
+        if (type == COMPONENT_MATERIAL_UBER) {
                 material_uber_initFromFile((struct material_uber*)material, f);
                 return sizeof(struct material_uber);
         }
         
-        bail("Error parsing scene: Invalid material: %u\n", mat_type);
+        bail("Error parsing scene: Invalid material: %u\n", type);
 }
 
 void material_setTexture(struct material *const material,
@@ -96,8 +117,8 @@ void material_setTexture(struct material *const material,
                          const char *const name) {
         GLenum textureSlot = GL_TEXTURE0 + tex;
         GLenum textureType;
-        struct texture *texture = getTextureInfo(material, tex,
-                                                 &textureType);
+        struct texture *texture = getVarTextureInfo(material, tex,
+                                                    &textureType);
         if (texture == NULL) {
                 return;
         }
@@ -112,14 +133,14 @@ void material_setTexture(struct material *const material,
 
 void material_unsetTexture(struct material *const material,
                            const enum material_textureType tex) {
-        struct texture *texture = getTextureInfo(material, tex, NULL);
+        struct texture *texture = getVarTextureInfo(material, tex, NULL);
         if (texture != NULL) {
                 texture_free(texture);
         }
 }
 
 bool material_isTransparent(const struct material *const material) {
-        if (material->type == MATERIAL_UBER) {
+        if (material->base.type == COMPONENT_MATERIAL_UBER) {
                 return ((const struct material_uber*)material)->
                         alphaBlendingMode;
         }
@@ -127,7 +148,7 @@ bool material_isTransparent(const struct material *const material) {
 }
 
 void material_updateShader(const struct material *const material) {
-        if (material->type == MATERIAL_UBER) {
+        if (material->base.type == COMPONENT_MATERIAL_UBER) {
                 const struct material_uber *const mat =
                         (const struct material_uber*)material;
                 shader_setVec4(material->shader, "material.ambientColor",
@@ -176,10 +197,11 @@ void material_updateShader(const struct material *const material) {
         }
 }
 
-void material_bindTextures(struct material *const material) {
+void material_bindTextures(const struct material *const material) {
         for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
              tex < MATERIAL_TEXTURE_TOTAL; tex++) {
-                struct texture *texture = getTextureInfo(material, tex, NULL);
+                const struct texture *texture = getConstTextureInfo(
+                        material, tex, NULL);
                 if (texture != NULL) {
                         texture_bind(texture);
                 }
@@ -208,7 +230,7 @@ static void uberInitTexturesEmpty(struct material_uber *const material) {
 
 void material_uber_initDefaults(struct material_uber *const material,
                                 const enum shaders shader) {
-        material_init(&material->base, shader, MATERIAL_UBER);
+        material_init(&material->base, shader, COMPONENT_MATERIAL_UBER);
 
         static const vec4s black = GLMS_VEC4_BLACK_INIT;
         material->ambientColor = black;
@@ -255,7 +277,7 @@ void material_uber_initFromFile(struct material_uber *const material,
 
         for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
              tex < MATERIAL_TEXTURE_TOTAL; tex++) {
-                if (getTextureInfo(&material->base, tex, NULL) == NULL) {
+                if (getConstTextureInfo(&material->base, tex, NULL) == NULL) {
                         continue;
                 }
                 
@@ -275,7 +297,7 @@ void material_uber_initFromFile(struct material_uber *const material,
 
 void material_skybox_init(struct material_skybox *const material,
                           const enum shaders shader) {
-        material_init(&material->base, shader, MATERIAL_SKYBOX);
+        material_init(&material->base, shader, COMPONENT_MATERIAL_SKYBOX);
         material->skybox.loaded = false;
 }
 

@@ -1,7 +1,9 @@
+#include <inputHelpers.h>
 #include <scene.h>
+#include <componentCollection.h>
+#include <camera.h>
 #include <window.h>
 #include <util.h>
-#include <inputHelpers.h>
 #include <GLFW/glfw3.h>
 #include <stdbool.h>
 
@@ -19,16 +21,20 @@ static struct scene *scene;
 static char title[TITLE_BUFFER_SIZE];
 
 static struct object *find_camera(struct object *const object) {
-        if (object->camera != NULL) {
+        struct camera *cam = (struct camera*)
+                componentCollection_get(&object->components,
+                                        COMPONENT_CAMERA);
+        if (cam != NULL && cam->main) {
                 return object;
         }
 
-        for (unsigned i=0; i<object->nchildren; i++) {
-                struct object *ret = find_camera(object->children[i]);
+        growingArray_foreach_START(&object->children, size_t*, child)
+                struct object *obj = scene_getObjectFromIdx(scene, *child);
+                struct object *ret = find_camera(obj);
                 if (ret != NULL) {
                         return ret;
                 }
-        }
+        growingArray_foreach_END
 
         return NULL;
 }
@@ -116,17 +122,17 @@ static void draw(void) {
 static void freeScene(void) {
         scene_free(scene);
         free(scene);
+        componentCollection_shutdown();
 }
 
 int main(void) {
+        componentCollection_startup();
         window_init(SCREEN_WIDTH, SCREEN_HEIGHT);
         window_title = title;
 
-        struct sceneInitParams params;
-        params.cameraType = CAMERA_FPS;
-
         scene = smalloc(sizeof(*scene));
-        scene_initFromFile(scene, "scene", &params);
+        scene_initFromFile(scene, "scene");
+        scene_setSkybox(scene, "skybox");
         
         fpsCameraController_init(&cam_ctrl,
                                  movement_speed, look_sensitivity,

@@ -1,11 +1,11 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
-#include <camera.h>
-#include <light.h>
-#include <geometry.h>
-#include <texture.h>
+#include <componentCollection.h>
 #include <material.h>
+#include <shader.h>
+#include <dsutils.h>
+#include <cglm/struct.h>
 
 #define OBJECT_TREE_MAXIMUM_DEPTH 256
 
@@ -18,18 +18,30 @@
  */
 
 struct object {
-        struct object *parent;
+        size_t idx;
+        struct scene *scene;
         
-        unsigned nchildren;
-        struct object **children;
-
+        size_t parent;
+        struct growingArray children;
+        
         mat4s model;
-
-        struct camera *camera;
-        struct geometry *geometry;
-        struct material *material;
-        struct light *light;
+        struct componentCollection components;
 };
+
+enum renderStage {
+        RENDER_OPAQUE_OBJECTS,
+        RENDER_TRANSPARENT_OBJECTS,
+        RENDER_SKYBOX,
+};
+
+/*
+ * Initialize an empty object with default paramters. WARNING! This object has
+ * no parent or children defined! Use object_addChild for that.
+ */
+void object_initEmpty(struct object *object, struct scene *scene)
+        __attribute__((access (write_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
 
 /*
  * Initialize object from a file pointer. Does not set parent or children. This
@@ -37,18 +49,16 @@ struct object {
  * and it will read all of the header and the data then return without doing
  * anything else to the file object.
  */
-void object_initFromFile(struct object *object,
-                         struct geometry *geometries,
-                         struct material *const *materials,
-                         struct light *lights,
-                         struct camera *camera, FILE *f)
+void object_initFromFile(struct object *object, struct scene *scene,
+                         unsigned ncams, unsigned ngeos,
+                         unsigned nmats, unsigned nlights, FILE *f)
         __attribute__((access (write_only, 1)))
-        __attribute__((access (read_write, 2)))
+        __attribute__((access (read_only, 2)))
+        __attribute__((access (read_write, 7)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
-void object_initSkybox(struct object *skybox,
-                       struct geometry *geo, struct material *mat)
+void object_setSkybox(struct object *skybox, size_t geo, size_t mat)
         __attribute__((access (write_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
@@ -93,17 +103,35 @@ void object_rotateZ(struct object *object, float angle)
         __attribute__((leaf))
         __attribute__((nonnull));
 
+void object_rotateMat(struct object *object, mat4s rotation)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
 void object_scale(struct object *object, vec3s scale)
         __attribute__((access (read_write, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
-void object_draw(const struct object *object, vec4s globalAmbientLight)
-        __attribute__((access (read_only, 1)))
+void object_addChild(struct object *parent, struct object *child)
+        __attribute__((access (read_write, 1)))
+        __attribute__((access (read_write, 2)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
-void object_free(const struct object *object)
+bool object_draw(const struct object *object, mat4s model,
+                 mat4s view, mat4s projection,
+                 enum renderStage *lastRenderStage,
+                 const struct material **lastMaterial,
+                 enum shaders *lastShader)
+        __attribute__((access (read_only, 1)))
+        __attribute__((access (read_write, 5)))
+        __attribute__((access (read_write, 6)))
+        __attribute__((access (read_write, 7)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void object_free(struct object *object)
         __attribute__((access (read_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));

@@ -1,12 +1,14 @@
 #include <light.h>
-#include <util.h>
 #include <shader.h>
+#include <component.h>
+#include <util.h>
 #include <cglm/struct.h>
 
 #define BUFFER_SIZE 256
 
-void light_initFromFile(struct light *const light,
-                        FILE *const f) {
+size_t light_initFromFile(struct light *const light,
+                          FILE *const f, const enum componentType type) {
+        light->base.type = type;
         light->enabled = true;
         
         sfread(light->color.raw, sizeof(float), 4, f);
@@ -16,12 +18,9 @@ void light_initFromFile(struct light *const light,
         sfread(&light->attenuation_quadratic, sizeof(float), 1, f);
         
         sfread(&light->intensity, sizeof(float), 1, f);
-
-        uint8_t type;
-        sfread(&type, sizeof(uint8_t), 1, f);
-        light->type = type;
-
         sfread(&light->angle, sizeof(float), 1, f);
+        
+        return sizeof(struct light);
 }
 
 #define SET_SHADER(format, shader_set, val)                  \
@@ -52,7 +51,7 @@ void light_updateShader(const struct light *light,
                 SET_SHADER("lights[%lu].intensity",
                            shader_setFloat, light->intensity);
                 SET_SHADER("lights[%lu].type",
-                           shader_setUInt, light->type);
+                           shader_setUInt, light->base.type - COMPONENT_LIGHT);
 
                 vec4s position;
                 mat4s r;
@@ -67,26 +66,33 @@ void light_updateShader(const struct light *light,
                 vec4s position_vs = glms_mat4_mulv(view, position);
                 vec4s direction_vs = glms_mat4_mulv(view, direction);
                         
-                switch (light->type) {
-                case LIGHTTYPE_SPOT:
+                switch (light->base.type) {
+                case COMPONENT_LIGHT_SPOT:
                         SET_SHADER("lights[%lu].angle",
                                    shader_setFloat, light->angle);
                         __attribute__ ((fallthrough));
-                case LIGHTTYPE_POINT:
+                case COMPONENT_LIGHT_POINT:
                         SET_SHADER("lights[%lu].position_ws",
                                    shader_setVec4, position);
                         SET_SHADER("lights[%lu].position_vs",
                                    shader_setVec4, position_vs);
-                        if (light->type == LIGHTTYPE_POINT) {
+                        if (light->base.type == COMPONENT_LIGHT_POINT) {
                                 break;
                         }
                         __attribute__ ((fallthrough));
-                case LIGHTTYPE_DIRECTION:
+                case COMPONENT_LIGHT_DIRECTION:
                         SET_SHADER("lights[%lu].direction_ws",
                                    shader_setVec4, direction);
                         SET_SHADER("lights[%lu].direction_vs",
                                    shader_setVec4, direction_vs);
                         break;
+
+                case COMPONENT_CAMERA_BASIC:
+                case COMPONENT_CAMERA_FPS:
+                case COMPONENT_GEOMETRY:
+                case COMPONENT_MATERIAL_UBER:
+                case COMPONENT_MATERIAL_SKYBOX:
+                case COMPONENT_TOTAL:
                 default:
                         assert_fail();
                         break;
