@@ -26,7 +26,8 @@ void scene_initFromFile(struct scene *scene, const char *filename)
         __attribute__((leaf))
         __attribute__((nonnull));
 
-struct object *scene_createObject(struct scene *scene, size_t parent_idx)
+struct object *scene_createObject(struct scene *scene, const char *name,
+                                  size_t parent_idx)
         __attribute__((access (read_write, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));

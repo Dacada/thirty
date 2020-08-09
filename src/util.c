@@ -242,3 +242,12 @@ char *pathjoin_dyn(int nargs, ...) {
         va_end(ap);
         return dest;
 }
+
+char *strfile(FILE *const f) {
+        uint32_t len;
+        sfread(&len, sizeof(len), 1, f);
+        char *const str = smallocarray(len+1, sizeof(char));
+        sfread(str, sizeof(char), len, f);
+        str[len] = '\0';
+        return str;
+}

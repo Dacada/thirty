@@ -27,7 +27,7 @@ import os.path  # remove extension from file name
 bl_info = {
     'name': "BOGLE exporter (dev)",
     'description': "Export blender data to a custom binary file format BOGLE",
-    'author': "David Carrera",
+    'author': "dacada",
     'version': (0, 0),
     'blender': (2, 83, 0),
     'location': "File > Export",
@@ -103,42 +103,34 @@ class BOGLEConfig:
 
 class BOGLEBaseObject:
     def __init__(self, config):
+        self.type = None
+        self.name = None
         self.config = config
 
     def convert(self, object):
-        raise NotImplementedError
+        self.type = 0
+        self.name = self.get_name(object)
+
+    def export_type(self, f):
+        fmt = FormatSpecifier().u8().format()
+        obj = struct.pack(fmt, self.type)
+        f.write(obj)
+
+    def export_name(self, f):
+        fmt = FormatSpecifier().u32().format()
+        obj = struct.pack(fmt, len(self.name))
+        f.write(obj)
+
+        fmt = FormatSpecifier.array().u8()
+        name = array.array(fmt, self.name.encode('ascii')).tobytes()
+        f.write(name)
 
     def export(self, f):
-        raise NotImplementedError
+        self.export_type(f)
+        self.export_name(f)
 
     def get_name(self, object):
-        raise NotImplementedError
-
-
-class BOGLECamera(BOGLEBaseObject):
-    """Blender camera export to BOGLE file"""
-
-    def __init__(self, config):
-        super().__init__(config)
-        self.width = None
-        self.height = None
-        self.near = None
-        self.far = None
-        self.fov = None
-
-    def convert(self, object, render):
-        camera = object.data
-        self.width = render.resolution_x
-        self.height = render.resolution_y
-        self.near = camera.clip_start
-        self.far = camera.clip_end
-        self.fov = camera.angle
-
-    def export(self, f):
-        fmt = FormatSpecifier().u32().u32().float().float().float().format()
-        camera = struct.pack(fmt, self.width, self.height,
-                             self.near, self.far, self.fov)
-        f.write(camera)
+        return object.data.name
 
 
 class BOGLEAmbientLight(BOGLEBaseObject):
@@ -153,6 +145,39 @@ class BOGLEAmbientLight(BOGLEBaseObject):
         fmt = FormatSpecifier().float(4).format()
         light = struct.pack(fmt, *self.color)
         f.write(light)
+
+
+class BOGLECamera(BOGLEBaseObject):
+    """Blender camera export to BOGLE file"""
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.width = None
+        self.height = None
+        self.near = None
+        self.far = None
+        self.fov = None
+        self.ismain = None
+
+    def convert(self, object, scene):
+        super().convert(object)
+        self.type = 1
+
+        camera = object.data
+
+        self.width = scene.render.resolution_x
+        self.height = scene.render.resolution_y
+        self.near = camera.clip_start
+        self.far = camera.clip_end
+        self.fov = camera.angle
+        self.ismain = object.name == scene.camera.name
+
+    def export(self, f):
+        super().export(f)
+        fmt = FormatSpecifier().u32(2).float(3).u8().format()
+        camera = struct.pack(fmt, self.width, self.height,
+                             self.near, self.far, self.fov, self.ismain)
+        f.write(camera)
 
 
 class BOGLEVertex(BOGLEBaseObject):
@@ -208,6 +233,8 @@ class BOGLEGeometry(BOGLEBaseObject):
         functions called here to see every step of the process.
 
         """
+        super().convert(object)
+
         try:
             self._object = object
             self._obtain_mesh(object)
@@ -231,6 +258,7 @@ class BOGLEGeometry(BOGLEBaseObject):
 
     def export(self, f):
         """Export the converted data"""
+        super().export(f)
         print(f"Writing {len(self.vertices)} vertices and "
               f"{len(self.indices)} indices to file.")
         self._export_header(f)
@@ -465,7 +493,6 @@ class BOGLEMaterial(BOGLEBaseObject):
 
     def __init__(self, config):
         super().__init__(config)
-        self.type = None
         self.shader = None
 
         self.ambient_color = None
@@ -494,6 +521,8 @@ class BOGLEMaterial(BOGLEBaseObject):
         self.texture_opacity = None
 
     def convert(self, object):
+        super().convert(object)
+
         if not self.config.export_materials:
             self._set_default_values()
             return
@@ -539,7 +568,6 @@ class BOGLEMaterial(BOGLEBaseObject):
             raise BOGLEConversionError(
                 "Unexpected node connected to shader output")
 
-        self.type = 0
         self.shader = 0
 
         try:
@@ -666,7 +694,6 @@ class BOGLEMaterial(BOGLEBaseObject):
             return Vector(socket.default_value).xyz
 
     def _set_default_values(self):
-        self.type = 0
         self.shader = 0
 
         self.ambient_color = Vector((0.02, 0.02, 0.02, 1.0))
@@ -693,12 +720,12 @@ class BOGLEMaterial(BOGLEBaseObject):
         self.texture_opacity = ''
 
     def export(self, f):
-        fmt = FormatSpecifier().u8().u8().\
-            float(4).float(4).float(4).float(4).\
-            float().float().float().float().float().float().float().float()\
-            .u8().format()
+        self.export_type(f)
+        f.write(struct.pack(FormatSpecifier().u8().format(), self.shader))
+        self.export_name(f)
+
+        fmt = FormatSpecifier().float(24).u8().format()
         data = (
-            self.type, self.shader,
             *self.ambient_color,
             *self.emissive_color,
             *self.diffuse_color,
@@ -741,11 +768,12 @@ class BOGLELight(BOGLEBaseObject):
         self.attenuation_linear = None
         self.attenuation_quadratic = None
         self.intensity = None
-        self.type = None
         self.angle = None
 
     def convert(self, object):
-        light = self._get_light(object)
+        super().convert(object)
+
+        light = object.data
 
         self.color = Vector((*light.color, 1.0))
 
@@ -774,21 +802,15 @@ class BOGLELight(BOGLEBaseObject):
         else:
             self.angle = 0
 
-    def get_name(self, object):
-        return self._get_light(object).name
-
     def export(self, f):
-        fmt = FormatSpecifier().float(4).\
-            float().float().float().float().u8().float().format()
+        super().export(f)
+        fmt = FormatSpecifier().float(9).format()
         light = struct.pack(fmt, *self.color,
                             self.attenuation_constant,
                             self.attenuation_linear,
                             self.attenuation_quadratic,
-                            self.intensity, self.type, self.angle)
+                            self.intensity, self.angle)
         f.write(light)
-
-    def _get_light(self, object):
-        return object.data
 
 
 class BOGLEObject(BOGLEBaseObject):
@@ -797,7 +819,6 @@ class BOGLEObject(BOGLEBaseObject):
     def __init__(self, config):
         super().__init__(config)
 
-        self.name = None
         self.parent_name = None
 
         self.camera_idx = None
@@ -808,7 +829,8 @@ class BOGLEObject(BOGLEBaseObject):
 
     def convert(self, object, camera_idx, geometry_idx,
                 material_idx, light_idx):
-        self.name = object.original.name
+        super().convert(object)
+
         if object.parent is not None:
             self.parent_name = object.parent.name
 
@@ -819,8 +841,9 @@ class BOGLEObject(BOGLEBaseObject):
         self.transform = object.matrix_local.copy()
 
     def export(self, f, material_keys=None):
-        fmt = FormatSpecifier().u8().u32().u32().u32().\
-            float(16).format()
+        self.export_name(f)
+
+        fmt = FormatSpecifier().u32(4).float(16).format()
         data = (
             self.camera_idx, self.geometry_idx,
             self.material_idx, self.light_idx,
@@ -838,6 +861,9 @@ class BOGLEObject(BOGLEBaseObject):
         else:
             return idx + 1
 
+    def get_name(self, object):
+        return object.original.name
+
 
 class BOGLExporter(BOGLEBaseObject):
     """Blender export to BOGLE file"""
@@ -845,9 +871,10 @@ class BOGLExporter(BOGLEBaseObject):
     def __init__(self, config):
         super().__init__(config)
 
-        self.camera = None
         self.globalAmbientLight = None
 
+        self.cameras = []
+        self.camera_indices = {}
         self.geometries = []
         self.geometry_indices = {}
         self.materials = []
@@ -875,7 +902,7 @@ class BOGLExporter(BOGLEBaseObject):
             elif type == 'EMPTY':
                 self._convert_object(object, None, None, None, None)
             elif type == 'CAMERA':
-                cam = self._convert_camera(object, depsgraph.scene.render)
+                cam = self._convert_camera(object, depsgraph.scene)
                 self._convert_object(object, cam, None, None, None)
             elif type == 'LIGHT':
                 light = self._convert_light(object)
@@ -891,8 +918,10 @@ class BOGLExporter(BOGLEBaseObject):
         with open(filepath, 'wb') as f:
             self._export_header(f)
 
-            self.camera.export(f)
             self.globalAmbientLight.export(f)
+
+            for camera in self.cameras:
+                camera.export(f)
 
             for geometry in self.geometries:
                 geometry.export(f)
@@ -923,14 +952,9 @@ class BOGLExporter(BOGLEBaseObject):
         return Vector(depsgraph.scene.world.node_tree.nodes['Background'].
                       inputs['Color'].default_value)
 
-    def _convert_camera(self, object, render):
-        if self.camera is not None:
-            raise BOGLEConversionError("More than one camera defined")
-
-        cam = BOGLECamera(self.config)
-        cam.convert(object, render)
-        self.camera = cam
-        return 0
+    def _convert_camera(self, object, scene):
+        return self._convert_indexed(object, BOGLECamera,
+                                     self.camera_indices, self.cameras, scene)
 
     def _convert_geometry(self, object):
         return self._convert_indexed(object, BOGLEGeometry,
@@ -944,13 +968,13 @@ class BOGLExporter(BOGLEBaseObject):
         return self._convert_indexed(object, BOGLELight,
                                      self.light_indices, self.lights)
 
-    def _convert_indexed(self, object, cls, indices, objects):
+    def _convert_indexed(self, object, cls, indices, objects, *args):
         obj = cls(self.config)
         name = obj.get_name(object)
         if name in indices:
             return indices[name]
 
-        obj.convert(object)
+        obj.convert(object, *args)
         objects.append(obj)
 
         idx = len(objects) - 1
@@ -993,11 +1017,11 @@ class BOGLExporter(BOGLEBaseObject):
         f.write(tree)
 
     def _export_header(self, f):
-        header_fmt = FormatSpecifier().char(5).u8().\
-            u32().u32().u32().u32().format()
+        header_fmt = FormatSpecifier().char(5).u8().u32(5).format()
         header_data = (
             b'B', b'O', b'G', b'L', b'E',  # Magic
             0,  # Version
+            len(self.cameras),  # Number of cameras
             len(self.geometries),  # Number of geometries
             len(self.materials),  # Number of materials
             len(self.lights),  # Number of lights

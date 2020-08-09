@@ -4,10 +4,12 @@
 #include <cglm/struct.h>
 #include <stdint.h>
 
-void camera_init(struct camera *const cam, const float aspect,
-                 const float near, const float far, const float fov,
-                 const bool main,
+void camera_init(struct camera *const cam, const char *const name,
+                 const float aspect, const float near, const float far,
+                 const float fov, const bool main,
                  const enum componentType type) {
+        component_init((struct component*)cam, name);
+        
         cam->base.type = type;
         cam->main = main;
         cam->aspect = aspect;
@@ -44,6 +46,8 @@ size_t camera_initFromFile(struct camera *const cam, FILE *const f,
         float fov;
         uint8_t main;
 
+        char *name = strfile(f);
+
         sfread(&width, sizeof(width), 1, f);
         sfread(&height, sizeof(height), 1, f);
         sfread(&near, sizeof(near), 1, f);
@@ -51,8 +55,9 @@ size_t camera_initFromFile(struct camera *const cam, FILE *const f,
         sfread(&fov, sizeof(fov), 1, f);
         sfread(&main, sizeof(main), 1, f);
 
-        camera_init(cam, (float)width / (float)height,
+        camera_init(cam, name, (float)width / (float)height,
                     near, far, fov, main, type);
+        free(name);
         
         switch (type) {
         case COMPONENT_CAMERA_BASIC:
@@ -98,4 +103,8 @@ mat4s camera_viewMatrix(const struct camera *const cam, mat4s model) {
 
 mat4s camera_projectionMatrix(const struct camera *const cam) {
         return glms_perspective(cam->fov, cam->aspect, cam->near, cam->far);
+}
+
+void camera_free(struct camera *cam) {
+        component_free((struct component*)cam);
 }

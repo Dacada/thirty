@@ -27,6 +27,11 @@ enum componentType {
 struct component {
         enum componentType type;
         size_t idx;
+        char *name;
 } __attribute__((aligned (COMPONENT_STRUCT_ALIGNMENT)));
+
+void component_init(struct component *component, const char *name);
+
+void component_free(struct component *component);
 
 #endif /* COMPONENT_H */

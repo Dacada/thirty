@@ -9,7 +9,9 @@
 #include <stdint.h>
 #include <string.h>
 
-void object_initEmpty(struct object *const object, struct scene *const scene) {
+void object_initEmpty(struct object *const object, struct scene *const scene,
+                      const char *const name) {
+        object->name = sstrdup(name);
         object->scene = scene;
         growingArray_init(&object->children, sizeof(size_t), 1);
         object->model = GLMS_MAT4_IDENTITY;
@@ -21,7 +23,9 @@ void object_initFromFile(struct object *const object,
                          const unsigned ncams, const unsigned ngeos,
                          const unsigned nmats, const unsigned nlights,
                          FILE *const f) {
-        object_initEmpty(object, scene);
+        char *name = strfile(f);
+        object_initEmpty(object, scene, name);
+        free(name);
         
         uint32_t camera_idx;
         sfread(&camera_idx, sizeof(camera_idx), 1, f);
@@ -200,6 +204,7 @@ bool object_draw(const struct object *const object, mat4s model,
 }
 
 void object_free(struct object *object) {
+        free(object->name);
         growingArray_destroy(&object->children);
         componentCollection_free(&object->components);
 }

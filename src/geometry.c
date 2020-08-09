@@ -16,6 +16,7 @@ static void geometry_init(struct geometry *const geometry) {
 }
 
 void geometry_initFromArray(struct geometry *const geometry,
+                            const char *const name,
                             const struct vertex *const vertices,
                             const size_t nvertices,
                             const unsigned *const indices,
@@ -25,7 +26,8 @@ void geometry_initFromArray(struct geometry *const geometry,
                      "indices (attempted geometry has %lu indices)\n",
                      INT_MAX, nindices);
         }
-        
+
+        component_init((struct component *)geometry, name);
         geometry_init(geometry);
         
         glGenVertexArrays(1, &geometry->vao);
@@ -78,7 +80,7 @@ void geometry_initFromArray(struct geometry *const geometry,
         geometry->nindices = (const int)nindices;
 }
 
-void geometry_initSkybox(struct geometry *skybox) {
+void geometry_initSkybox(struct geometry *skybox, const char *const name) {
         static const struct vertex vertices[] = {
                 {.vert.x =  1, .vert.y =  1, .vert.z =  1},
                 {.vert.x =  1, .vert.y =  1, .vert.z = -1},
@@ -101,7 +103,8 @@ void geometry_initSkybox(struct geometry *skybox) {
         };
         static const size_t nindices = sizeof(indices) / sizeof(*indices);
         
-        geometry_initFromArray(skybox, vertices, nvertices, indices, nindices);
+        geometry_initFromArray(skybox, name,
+                               vertices, nvertices, indices, nindices);
 }
 
 size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
@@ -112,6 +115,8 @@ size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
                 uint32_t vertlen;
                 uint32_t indlen;
         } header;
+
+        char *name = strfile(f);
 
         sfread(&header.vertlen, sizeof(header.vertlen), 1, f);
         sfread(&header.indlen, sizeof(header.indlen), 1, f);
@@ -124,10 +129,11 @@ size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
         sfread(vertices, sizeof(*vertices), header.vertlen, f);
         sfread(indices, sizeof(*indices), header.indlen, f);
         
-        geometry_initFromArray(geometry,
+        geometry_initFromArray(geometry, name,
                                vertices, header.vertlen,
                                indices, header.indlen);
-        
+
+        free(name);
         free(vertices);
         free(indices);
         return sizeof(struct geometry);
@@ -140,6 +146,8 @@ void geometry_draw(const struct geometry *const geometry) {
 }
 
 void geometry_free(struct geometry *const geometry) {
+        component_free((struct component*)geometry);
+        
         glDeleteBuffers(1, &geometry->vbo);
         glDeleteBuffers(1, &geometry->ibo);
         glDeleteVertexArrays(1, &geometry->vao);

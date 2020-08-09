@@ -148,11 +148,12 @@ void scene_initFromFile(struct scene *const scene,
         LOAD_DATA(header.ngeos, geometry, COMPONENT_GEOMETRY);
         LOAD_DATA(header.nmats, material, COMPONENT_MATERIAL);
         LOAD_DATA(header.nlights, light, COMPONENT_LIGHT);
+#undef LOAD_DATA
 
         growingArray_init(&scene->objects,
                           sizeof(struct object), header.nobjs);
 
-        object_initEmpty(&scene->root, scene);
+        object_initEmpty(&scene->root, scene, "root");
         scene->root.idx = 0;
         parse_objects(&scene->objects, header.nobjs, scene,
                       header.ncams, header.ngeos, header.nmats,
@@ -169,10 +170,11 @@ void scene_initFromFile(struct scene *const scene,
 }
 
 struct object *scene_createObject(struct scene *scene,
+                                  const char *const name,
                                   const size_t parent_idx) {
         struct object *const child = growingArray_append(&scene->objects);
         size_t child_idx = scene->objects.length;  // idx 0 is root
-        object_initEmpty(child, scene);
+        object_initEmpty(child, scene, name);
         child->idx = child_idx;
         struct object *const parent = scene_getObjectFromIdx(
                 scene, parent_idx);
@@ -192,7 +194,7 @@ size_t scene_setSkybox(struct scene *const scene,
                        const char *const basename) {
         struct geometry *geo = componentCollection_create(
                 COMPONENT_GEOMETRY);
-        geometry_initSkybox(geo);
+        geometry_initSkybox(geo, basename);
         size_t geoIdx = geo->base.idx;
 
         struct material_skybox *mat = componentCollection_create(
@@ -201,7 +203,7 @@ size_t scene_setSkybox(struct scene *const scene,
         size_t matIdx = mat->base.base.idx;
 
         struct object *const skybox = scene_createObject(
-                scene, 0);
+                scene, basename, 0);
         object_setSkybox(skybox, geoIdx, matIdx);
 
         return skybox->idx;

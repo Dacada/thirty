@@ -178,6 +178,11 @@ static bool freeComponent(void *compPtr, size_t size, void *args) {
         struct component *comp = compPtr;
         
         switch(comp->type) {
+        case COMPONENT_CAMERA:
+        case COMPONENT_CAMERA_FPS:
+                camera_free((struct camera*)comp);
+                break;
+                
         case COMPONENT_GEOMETRY:
                 geometry_free((struct geometry*)comp);
                 break;
@@ -187,11 +192,12 @@ static bool freeComponent(void *compPtr, size_t size, void *args) {
                 material_free((struct material*)comp);
                 break;
                 
-        case COMPONENT_CAMERA:
-        case COMPONENT_CAMERA_FPS:
         case COMPONENT_LIGHT:
         case COMPONENT_LIGHT_DIRECTION:
         case COMPONENT_LIGHT_POINT:
+                light_free((struct light*)comp);
+                break;
+                
         case COMPONENT_TOTAL:
         default:
                 break;

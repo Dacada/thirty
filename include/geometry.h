@@ -28,18 +28,21 @@ struct geometry {
 };
 
 void geometry_initFromArray(struct geometry *geometry,
+                            const char *name,
                             const struct vertex *vertices,
                             size_t nvertices,
                             const unsigned *indices,
                             size_t nindices)
         __attribute__((access (write_only, 1)))
-        __attribute__((access (read_only, 2, 3)))
-        __attribute__((access (read_only, 4, 5)))
+        __attribute__((access (read_only, 2)))
+        __attribute__((access (read_only, 3, 4)))
+        __attribute__((access (read_only, 5, 6)))
         __attribute__((leaf))
         __attribute__((nonnull (1)));
 
-void geometry_initSkybox(struct geometry *skybox)
+void geometry_initSkybox(struct geometry *skybox, const char *name)
         __attribute__((access (write_only, 1)))
+        __attribute__((access (read_only, 2)))
         __attribute__((leaf))
         __attribute__((nonnull (1)));
 

@@ -71,6 +71,10 @@ There may be many camera components assigned, but only one can have the main cam
 
 * `1 uint8` -> Camera type. 0 for a basic camera, 1 for an fps camera. The
   exporter always uses 1 for now.
+  
+* `1 uint32` -> Length of the camera's name. `namelen`
+
+* `namelen uint8` -> Camera's name.
 
 * `1 uint32` -> Screen width. (Blender: Output properties -> Resolution X)
 
@@ -92,6 +96,10 @@ There may be many camera components assigned, but only one can have the main cam
 Each geometry should be assigned to one or more objects.
 
 * `1 uint8` -> Geometry type. Always 0 for now.
+  
+* `1 uint32` -> Length of the geometry's name. `namelen`
+
+* `namelen uint8` -> Geometry's name.
 
 * `1 uint32` -> `vertlen` The number of vertices in the object.
 
@@ -122,6 +130,10 @@ used in the material, since they make it easy to gather these values.
 
 * `1 uint8` -> Shader type. Reserved in case there's more than one
   shader. Should be 0.
+  
+* `1 uint32` -> Length of the material's name. `namelen`
+
+* `namelen uint8` -> Material's name.
 
 The following fields would then depend on the kind of material.
 
@@ -205,6 +217,10 @@ Each light should be assigned to one or more object instances.
   - 1 means Directional (Sun) Light
   
   - 2 means Point Light
+  
+* `1 uint32` -> Length of the light's name. `namelen`
+
+* `namelen uint8` -> Light's name.
 
 * `4 float` -> Color of the light. Found in the light object's data.
 
@@ -242,6 +258,10 @@ A light's position is the light's position for point and spot lights and
 ignored for directional lights. The rotation is the rotation of the default
 direction vector, which is beaming straight down (0, 0, -1) for directional and
 spot lights. And ignored for point lights. The scale is always ignored.
+  
+* `1 uint32` -> Length of the object's name. `namelen`
+
+* `namelen uint8` -> Object's name.
 
 * `1 uint32` -> Camera index: The first camera defined in the file is
   index 1. Index 0 means not a camera.

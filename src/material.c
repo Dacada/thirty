@@ -91,8 +91,9 @@ static struct texture *getVarTextureInfo(
 
 #undef getTextureInfo
 
-void material_init(struct material *material,
+void material_init(struct material *material, const char *const name,
                    const enum shaders shader, const enum componentType type) {
+        component_init((struct component*)material, name);
         material->base.type = type;
         material->shader = shader;
 }
@@ -101,8 +102,10 @@ size_t material_initFromFile(struct material *const material, FILE *const f,
                              const enum componentType type) {
         uint8_t shader_type;
         sfread(&shader_type, sizeof(shader_type), 1, f);
-        
-        material_init(material, shader_type, type);
+
+        char *name = strfile(f);
+        material_init(material, name, shader_type, type);
+        free(name);
         
         if (type == COMPONENT_MATERIAL_UBER) {
                 material_uber_initFromFile((struct material_uber*)material, f);
@@ -209,6 +212,7 @@ void material_bindTextures(const struct material *const material) {
 }
 
 void material_free(struct material *const material) {
+        component_free((struct component*)material);
         for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
              tex < MATERIAL_TEXTURE_TOTAL; tex++) {
                 material_unsetTexture(material, tex);
@@ -229,8 +233,9 @@ static void uberInitTexturesEmpty(struct material_uber *const material) {
 }
 
 void material_uber_initDefaults(struct material_uber *const material,
+                                const char *const name,
                                 const enum shaders shader) {
-        material_init(&material->base, shader, COMPONENT_MATERIAL_UBER);
+        material_init(&material->base, name, shader, COMPONENT_MATERIAL_UBER);
 
         static const vec4s black = GLMS_VEC4_BLACK_INIT;
         material->ambientColor = black;
@@ -296,14 +301,15 @@ void material_uber_initFromFile(struct material_uber *const material,
 }
 
 void material_skybox_init(struct material_skybox *const material,
-                          const enum shaders shader) {
-        material_init(&material->base, shader, COMPONENT_MATERIAL_SKYBOX);
+                          const char *name, const enum shaders shader) {
+        material_init(&material->base, name, shader,
+                      COMPONENT_MATERIAL_SKYBOX);
         material->skybox.loaded = false;
 }
 
 void material_skybox_initFromName(struct material_skybox *const material,
                                   const char *const name) {
-        material_skybox_init(material, SHADER_SKYBOX);
+        material_skybox_init(material, name, SHADER_SKYBOX);
         material_setTexture((struct material *)material,
                             MATERIAL_TEXTURE_ENVIRONMENT, name);
 }

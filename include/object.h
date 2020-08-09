@@ -19,6 +19,7 @@
 
 struct object {
         size_t idx;
+        char *name;
         struct scene *scene;
         
         size_t parent;
@@ -38,7 +39,8 @@ enum renderStage {
  * Initialize an empty object with default paramters. WARNING! This object has
  * no parent or children defined! Use object_addChild for that.
  */
-void object_initEmpty(struct object *object, struct scene *scene)
+void object_initEmpty(struct object *object, struct scene *scene,
+                      const char *name)
         __attribute__((access (write_only, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));

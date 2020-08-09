@@ -28,10 +28,11 @@ struct camera_fps {
         vec3s position;
 };
 
-void camera_init(struct camera *cam, float aspect,
+void camera_init(struct camera *cam, const char *name, float aspect,
                  float near, float far, float fov, bool main,
                  enum componentType type)
         __attribute__((access (write_only, 1)))
+        __attribute__((access (read_only, 2)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
@@ -48,6 +49,11 @@ mat4s camera_viewMatrix(const struct camera *cam, mat4s model)
 
 mat4s camera_projectionMatrix(const struct camera *cam)
         __attribute__((access (read_only, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void camera_free(struct camera *cam)
+        __attribute__((access (read_write, 1)))
         __attribute__((leaf))
         __attribute__((nonnull));
 

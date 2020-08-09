@@ -46,9 +46,10 @@ struct material {
  * Initialize the base of the material. Already called by the other materia's
  * init functions.
  */
-void material_init(struct material *material,
+void material_init(struct material *material, const char *name,
                    enum shaders shader, enum componentType type)
         __attribute__((access (write_only, 1)))
+        __attribute__((access (read_only, 2)))
         __attribute__((leaf))
         __attribute__((nonnull));
 
@@ -162,6 +163,7 @@ struct material_uber {
  * associated textures. Must still pass in the shader.
  */
 void material_uber_initDefaults(struct material_uber *material,
+                                const char *name,
                                 enum shaders shader)
         __attribute__((access (write_only, 1)))
         __attribute__((leaf))
@@ -191,6 +193,7 @@ struct material_skybox {
  * Initialize the skybox material.
  */
 void material_skybox_init(struct material_skybox *material,
+                          const char *name,
                           enum shaders shader)
         __attribute__((access (write_only, 1)))
         __attribute__((leaf))

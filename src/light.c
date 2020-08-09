@@ -10,6 +10,10 @@ size_t light_initFromFile(struct light *const light,
                           FILE *const f, const enum componentType type) {
         light->base.type = type;
         light->enabled = true;
+
+        char *name = strfile(f);
+        component_init((struct component*)light, name);
+        free(name);
         
         sfread(light->color.raw, sizeof(float), 4, f);
 
@@ -112,4 +116,8 @@ void light_updateShaderDisabled(size_t which, enum shaders shader) {
 void light_updateGlobalAmbient(const enum shaders shader,
                                const vec4s globalAmbientLight) {
         shader_setVec4(shader, "material.globalAmbient", globalAmbientLight);
+}
+
+void light_free(struct light *const light) {
+        component_free((struct component*)light);
 }

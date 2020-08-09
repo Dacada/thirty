@@ -172,4 +172,14 @@ char *pathjoin_dyn(int nargs, ...)
         __attribute__((leaf))
         __attribute__((nonnull));
 
+/*
+ * Read a 32 bit unsigned integer from a file, then read that many 8 bit
+ * integers from that same file and return it as a dynamically allocated
+ * string.
+ */
+char *strfile(FILE *f)
+        __attribute__((access (read_write, 1)))
+        __attribute__((leaf))
+        __attribute__((nonnull));
+
 #endif /* CUTIL_UTIL_H */
