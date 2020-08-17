@@ -2,6 +2,7 @@
 #include <componentCollection.h>
 #include <geometry.h>
 #include <material.h>
+#include <animationCollection.h>
 #include <shader.h>
 #include <dsutils.h>
 #include <util.h>
@@ -18,54 +19,40 @@ void object_initEmpty(struct object *const object, struct scene *const scene,
         componentCollection_init(&object->components);
 }
 
+static inline void assign_idx(struct componentCollection *const collection,
+                              const enum componentType component,
+                              const unsigned offset,
+                              FILE *const f) {
+        uint32_t idx;
+        sfread(&idx, sizeof(idx), 1, f);
+        if (idx != 0) {
+                componentCollection_set(
+                        collection, component, offset + idx - 1);
+        }
+}
+
 void object_initFromFile(struct object *const object,
                          struct scene *const scene, 
                          const unsigned ncams, const unsigned ngeos,
                          const unsigned nmats, const unsigned nlights,
+                         const unsigned nanims,
                          FILE *const f) {
         char *name = strfile(f);
         object_initEmpty(object, scene, name);
         free(name);
-        
-        uint32_t camera_idx;
-        sfread(&camera_idx, sizeof(camera_idx), 1, f);
-        if (camera_idx != 0) {
-                componentCollection_set(
-                        &object->components,
-                        COMPONENT_CAMERA,
-                        camera_idx - 1);
-        }
 
-        uint32_t geometry_idx;
-        sfread(&geometry_idx, sizeof(geometry_idx), 1, f);
-        if (geometry_idx != 0) {
-                componentCollection_set(
-                        &object->components,
-                        COMPONENT_GEOMETRY,
-                        ncams + geometry_idx - 1);
-        }
-
-        uint32_t material_idx;
-        sfread(&material_idx, sizeof(material_idx), 1, f);
-        if (material_idx == 0) {
-                assert(geometry_idx == 0);
-        } else {
-                componentCollection_set(
-                        &object->components,
-                        COMPONENT_MATERIAL,
-                        ncams + ngeos + material_idx - 1);
-        }
-
-        uint32_t light_idx;
-        sfread(&light_idx, sizeof(light_idx), 1, f);
-        if (light_idx != 0) {
-                componentCollection_set(
-                        &object->components,
-                        COMPONENT_LIGHT,
-                        ncams + ngeos + nmats + light_idx - 1);
-        }
-
-        (void)nlights;
+        unsigned offset = 0;
+        assign_idx(&object->components, COMPONENT_CAMERA, offset, f);
+        offset += ncams;
+        assign_idx(&object->components, COMPONENT_GEOMETRY, offset, f);
+        offset += ngeos;
+        assign_idx(&object->components, COMPONENT_MATERIAL, offset, f);
+        offset += nmats;
+        assign_idx(&object->components, COMPONENT_LIGHT, offset, f);
+        offset += nlights;
+        assign_idx(&object->components,
+                   COMPONENT_ANIMATIONCOLLECTION, offset, f);
+        offset += nanims;
 
         mat4s model;
         sfread(model.raw, sizeof(float), sizeof(model) / sizeof(float), f);
@@ -128,6 +115,10 @@ void object_addChild(struct object *parent, struct object *child) {
         child->parent = parent->idx;
 }
 
+void object_update(struct object *const object) {
+        componentCollection_update(&object->components);
+}
+
 bool object_draw(const struct object *const object, mat4s model,
                  mat4s view, const mat4s projection,
                  enum renderStage *const lastRenderStage,
@@ -136,8 +127,8 @@ bool object_draw(const struct object *const object, mat4s model,
 
         const struct componentCollection *const comps = &object->components;
 
-        const struct geometry *const geometry = (struct geometry*)
-                componentCollection_get(comps, COMPONENT_GEOMETRY);
+        const struct geometry *const geometry = componentCollection_get(
+                comps, COMPONENT_GEOMETRY);
 
         if (geometry == NULL) {
                 // All objects without geometry are lumped at the end. If we
@@ -145,8 +136,8 @@ bool object_draw(const struct object *const object, mat4s model,
                 return false;
         }
 
-        const struct material *const material = (struct material*)
-                componentCollection_get(comps, COMPONENT_MATERIAL);
+        const struct material *const material = componentCollection_get(
+                comps, COMPONENT_MATERIAL);
         assert(material != NULL);
 
         // Sanity checks, if objects are well sorted this should always pass
@@ -182,6 +173,12 @@ bool object_draw(const struct object *const object, mat4s model,
                 material_updateShader(material);
                 material_bindTextures(material);
                 *lastMaterial = material;
+        }
+
+        struct animationCollection *anims = componentCollection_get(
+                &object->components, COMPONENT_ANIMATIONCOLLECTION);
+        if (anims != NULL) {
+                animationCollection_bindBones(anims, shader);
         }
 
         if (*lastRenderStage == RENDER_OPAQUE_OBJECTS &&

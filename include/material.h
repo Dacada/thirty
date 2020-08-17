@@ -50,7 +50,6 @@ void material_init(struct material *material, const char *name,
                    enum shaders shader, enum componentType type)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -62,7 +61,6 @@ size_t material_initFromFile(struct material *material, FILE *f,
                              enum componentType type)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -77,7 +75,6 @@ void material_setTexture(struct material *material,
                          const char *name)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 3)))
-        __attribute__((leaf))
         __attribute__((nonnull (1)));
 
 /*
@@ -89,7 +86,6 @@ void material_setTexture(struct material *material,
 void material_unsetTexture(struct material *material,
                            enum material_textureType tex)
         __attribute__((access (write_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -98,7 +94,6 @@ void material_unsetTexture(struct material *material,
  */
 bool material_isTransparent(const struct material *material)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -106,7 +101,6 @@ bool material_isTransparent(const struct material *material)
  */
 void material_updateShader(const struct material *material)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -114,7 +108,6 @@ void material_updateShader(const struct material *material)
  */
 void material_bindTextures(const struct material *material)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -122,7 +115,6 @@ void material_bindTextures(const struct material *material)
  */
 void material_free(struct material *material)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 
@@ -166,7 +158,6 @@ void material_uber_initDefaults(struct material_uber *material,
                                 const char *name,
                                 enum shaders shader)
         __attribute__((access (write_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -176,7 +167,6 @@ void material_uber_initDefaults(struct material_uber *material,
 void material_uber_initFromFile(struct material_uber *material, FILE *f)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 
@@ -196,7 +186,6 @@ void material_skybox_init(struct material_skybox *material,
                           const char *name,
                           enum shaders shader)
         __attribute__((access (write_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -206,7 +195,6 @@ void material_skybox_initFromName(struct material_skybox *material,
                                   const char *name)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 #endif /* MATERIAL_H */

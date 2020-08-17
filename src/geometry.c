@@ -68,6 +68,18 @@ void geometry_initFromArray(struct geometry *const geometry,
                               sizeof(struct vertex),
                               (const void *const)
                               offsetof(struct vertex, binorm));
+
+        glEnableVertexAttribArray(5);
+        glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE,
+                              sizeof(struct vertex),
+                              (const void *const)
+                              offsetof(struct vertex, bones));
+
+        glEnableVertexAttribArray(6);
+        glVertexAttribPointer(6, 3, GL_FLOAT, GL_FALSE,
+                              sizeof(struct vertex),
+                              (const void *const)
+                              offsetof(struct vertex, weights));
         
         glGenBuffers(1, &geometry->ibo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geometry->ibo);
@@ -80,16 +92,24 @@ void geometry_initFromArray(struct geometry *const geometry,
         geometry->nindices = (const int)nindices;
 }
 
-void geometry_initSkybox(struct geometry *skybox, const char *const name) {
+void geometry_initCube(struct geometry *skybox, const char *const name) {
         static const struct vertex vertices[] = {
-                {.vert.x =  1, .vert.y =  1, .vert.z =  1},
-                {.vert.x =  1, .vert.y =  1, .vert.z = -1},
-                {.vert.x =  1, .vert.y = -1, .vert.z =  1},
-                {.vert.x =  1, .vert.y = -1, .vert.z = -1},
-                {.vert.x = -1, .vert.y =  1, .vert.z =  1},
-                {.vert.x = -1, .vert.y =  1, .vert.z = -1},
-                {.vert.x = -1, .vert.y = -1, .vert.z =  1},
-                {.vert.x = -1, .vert.y = -1, .vert.z = -1},
+                {.vert.x =  1, .vert.y =  1, .vert.z =  1,
+                 .bones={{0,0,0}}, .weights={{0,0,0}}},
+                {.vert.x =  1, .vert.y =  1, .vert.z = -1,
+                 .bones={{0,0,0}}, .weights={{0,0,0}}},
+                {.vert.x =  1, .vert.y = -1, .vert.z =  1,
+                 .bones={{0,0,0}}, .weights={{0,0,0}}},
+                {.vert.x =  1, .vert.y = -1, .vert.z = -1,
+                 .bones={{0,0,0}}, .weights={{0,0,0}}},
+                {.vert.x = -1, .vert.y =  1, .vert.z =  1,
+                 .bones={{0,0,0}}, .weights={{0,0,0}}},
+                {.vert.x = -1, .vert.y =  1, .vert.z = -1,
+                 .bones={{0,0,0}}, .weights={{0,0,0}}},
+                {.vert.x = -1, .vert.y = -1, .vert.z =  1,
+                 .bones={{0,0,0}}, .weights={{0,0,0}}},
+                {.vert.x = -1, .vert.y = -1, .vert.z = -1,
+                 .bones={{0,0,0}}, .weights={{0,0,0}}},
         };
         static const size_t nvertices = sizeof(vertices) / sizeof(*vertices);
         

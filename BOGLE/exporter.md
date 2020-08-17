@@ -29,6 +29,16 @@ LIGHT 1 DATA
 ...
 LIGHT N DATA
 
+ANIMATION COLLECTION 1 DATA
+ANIMATION 1 DATA
+FRAME 1 DATA
+...
+ANIMATION FRAME N DATA
+...
+ANIMATION N DATA
+...
+ANIMATION COLLECTION N DATA
+
 INSTANCE DEFINITIONS
 SCENE TREE
 ```
@@ -56,6 +66,8 @@ As specified above, everything is little-endian encoded.
 * `1 uint32` -> Number of materials defined.
 
 * `1 uint32` -> Number of lights defined.
+
+* `1 uint32` -> Number of animations defined.
 
 * `1 uint32` -> Number of object instances defined.
 
@@ -113,11 +125,23 @@ Each geometry should be assigned to one or more objects.
 
 ### Vertices
 
-Vertices are outlined as follows: 3 floats for the vertex coordinate, 2 floats
-for the texture coordinate, 3 floats for the normal, 3 floats for the tangent
-and 3 floats for the binormal.
+Vertices are outlined as follows (all in object space):
 
-Therefore the vertex data structure consists of `14 float`.
+* `3 floats` -> Vertex position.
+
+* `2 floats` -> Texture coordinates.
+
+* `3 floats` -> Normal.
+
+* `3 floats` -> Tangent.
+
+* `3 floats` -> Binormal.
+
+* `3 uint32` -> Indices of bones that affect this vertex. They match with the
+  indices of the bones in the skeleton.
+
+* `3 float` -> Weight of how much the vertex is affected by the corresponding
+  bone.
 
 ## Materials
 
@@ -241,6 +265,72 @@ Each light should be assigned to one or more object instances.
 Non meaningful fields like angle for a non spot light must still be present
 with any valid value.
 
+## Animations
+
+Animations are ordered into collections. Each collection can have many
+animations. Then each collection is associated to one or more objects. An
+animation collection is all the animations that can be applied to an object as
+well as the skeleton that the actual animations are played on.
+
+### Animation collection
+
+* `1 uint8` -> Type of animation collection. Always 0.
+  
+* `1 uint32` -> Length of the collection's name. `namelen`
+
+* `namelen uint8` -> Animation collection's name.
+
+* `1 uint32` -> How many animations are in this collection. `nanimations`
+
+### Skeleton
+
+Then follows the definition of the skeleton this animations are actually
+animating. The definition is simply an offset from the object's origin and then
+a collection of bones.
+
+* `16 float` -> Transform of the skeleton relative to the object it's being
+  applied to.
+
+* `1 uint32` -> Number of bones in the skeleton. `nbones`
+
+Then follow `nbones` bone definitions. These define the rotation of each bone
+in the skeleton's bind pose relative to their parent, or in the case of the
+root, to the object's origin.
+
+#### Bone
+
+* `3 floats` -> Bone's position
+
+* `4 floats` -> Bone's rotation, an (x,y,z,w) quaternion (normalized)
+
+* `1 uint32` -> Parent index. Zero if no parent, one if parent is the first
+  defined bone, etc.
+
+Then follow `nanimations` animations
+
+### Animation
+
+* `1 uint32` -> Length of the name of the animation. `namelen`
+
+* `namelen uint8` -> Animation's name.
+
+* `1 uint32` -> How many keyframes are in this animation. `nkeyframes`
+
+Then follow `nkeyframes` keyframes
+
+### Animation keyframe
+
+All keyframes must be ordered by timestamp.
+
+* `1 float` -> Timestamp of this keyframe
+
+* `3 floats` -> Offset of the root bone relative to the skeleton's bind pose.
+
+`nbones` times the following:
+
+* `4 floats` -> Bone's rotation, an (x,y,z,w) quaternion (normalized) relative
+  to the parent bone (or to the object's origin in the case of the root bone).
+
 ## Instance definitions
 
 Here each object instance is defined and assigned a position, rotation and
@@ -275,6 +365,9 @@ spot lights. And ignored for point lights. The scale is always ignored.
   
 * `1 uint32` -> Light index: Same strategy as with the others. Generally, a
   light or camera objects doesn't have a geometry or material.
+  
+* `1 uint32` -> Animation collection index: Which animation collection, if any,
+  is associated to this object.
   
 * `16 floats` -> Transformation matrix.
 

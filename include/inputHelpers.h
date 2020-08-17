@@ -14,12 +14,19 @@ struct fpsCameraController {
 
 void fpsCameraController_init(struct fpsCameraController *ctrl,
                               float move, float look,
-                              const struct object *camera);
+                              const struct object *camera)
+        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_only, 4)))
+        __attribute__((nonnull));
 
 void fpsCameraController_move(const struct fpsCameraController *ctrl,
-                              vec2s direction, float timeDelta);
+                              vec2s direction, float timeDelta)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull));
 
 void fpsCameraController_look(const struct fpsCameraController *ctrl,
-                              vec2s direction, float timeDelta);
+                              vec2s direction, float timeDelta)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull));
 
 #endif /* INPUT_HELPERS */

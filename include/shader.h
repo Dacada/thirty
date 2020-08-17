@@ -34,55 +34,46 @@ enum shaders {
         SHADER_TOTAL
 };
 
-void shader_use(enum shaders shader)
-        __attribute__((leaf));
+void shader_use(enum shaders shader);
 
 void shader_setBool(enum shaders shader,
                     const char *name, bool value)
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void shader_setInt(enum shaders shader,
                    const char *name, int value)
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void shader_setUInt(enum shaders shader,
                    const char *name, unsigned value)
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void shader_setFloat(enum shaders shader,
                      const char *name, float value)
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void shader_setVec3(enum shaders shader,
                     const char *name, vec3s value)
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void shader_setVec4(enum shaders shader,
                     const char *name, vec4s value)
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void shader_setMat3(enum shaders shader,
                     const char *name, mat3s value)
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void shader_setMat4(enum shaders shader,
                     const char *name, mat4s value)
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 #endif

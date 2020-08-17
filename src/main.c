@@ -1,7 +1,11 @@
 #include <inputHelpers.h>
 #include <scene.h>
 #include <componentCollection.h>
+#include <animationCollection.h>
+#include <animation.h>
+#include <bone.h>
 #include <camera.h>
+#include <geometry.h>
 #include <window.h>
 #include <util.h>
 #include <GLFW/glfw3.h>
@@ -21,9 +25,8 @@ static struct scene *scene;
 static char title[TITLE_BUFFER_SIZE];
 
 static struct object *find_camera(struct object *const object) {
-        struct camera *cam = (struct camera*)
-                componentCollection_get(&object->components,
-                                        COMPONENT_CAMERA);
+        struct camera *cam = componentCollection_get(&object->components,
+                                                     COMPONENT_CAMERA);
         if (cam != NULL && cam->main) {
                 return object;
         }
@@ -85,14 +88,91 @@ static void processKeyboardInput(void) {
 
 static void processKeyboardEvent(const int key, const int action,
                                  const int modifiers) {
+        static enum {
+                anim_stop,
+                anim_wiggle,
+                anim_move,
+        } animationState = anim_stop;
+        static bool first = true;
+        static size_t wiggleIdx;
+        static size_t moveIdx;
+        static size_t animIdx;
+        
+        if (first) {
+                animIdx = componentCollection_idxByName(
+                        "SnekSkeleton", COMPONENT_ANIMATIONCOLLECTION);
+                assert(animIdx > 0);
+                animIdx--;
+                
+                struct animationCollection *anim =
+                        componentCollection_compByIdx(animIdx);
+                
+                wiggleIdx = animationCollection_idxByName(anim, "SnekRotate");
+                assert(wiggleIdx > 0);
+                wiggleIdx--;
+                
+                moveIdx = animationCollection_idxByName(anim, "SnekMove");
+                assert(moveIdx > 0);
+                moveIdx--;
+                
+                first = false;
+        }
+        
+        struct animationCollection *anim =
+                componentCollection_compByIdx(animIdx);
+                        
         (void)modifiers;
         if (action == GLFW_PRESS) {
                 if (key == GLFW_KEY_ESCAPE) {
                         window_close();
                 } else if (key == GLFW_KEY_F) {
                         cam_ctrl.freefly = !cam_ctrl.freefly;
+                } else if (key == GLFW_KEY_G) {
+                        animationState = (animationState + 1) % 3;
+                        switch (animationState) {
+                        case anim_stop:
+                                dbg("play stop");
+                                animationCollection_setBindPose(anim);
+                                break;
+                        case anim_wiggle:
+                                dbg("play wiggle");
+                                animationCollection_playAnimation(
+                                        anim, wiggleIdx);
+                                break;
+                        case anim_move:
+                                dbg("play move");
+                                animationCollection_playAnimation(
+                                        anim, moveIdx);
+                                break;
+                        default:
+                                assert_fail();
+                        }
+                } else if (key == GLFW_KEY_SPACE) {
+                        static const float timestamp = 
+                                ANIMATION_FRAME_TO_TIMESTAMP(40.0F, 60.0F);
+                        switch(animationState) {
+                        case anim_stop:
+                                dbg("pose stop");
+                                break;
+                        case anim_wiggle:
+                                dbg("pose wiggle");
+                                animationCollection_poseAnimation(
+                                        anim, wiggleIdx, timestamp);
+                                break;
+                        case anim_move:
+                                dbg("pose move");
+                                animationCollection_poseAnimation(
+                                        anim, moveIdx, timestamp);
+                                break;
+                        default:
+                                assert_fail();
+                        }
                 }
         }
+}
+
+static void update(void) {
+        scene_update(scene);
 }
 
 static void draw(void) {
@@ -125,6 +205,20 @@ static void freeScene(void) {
         componentCollection_shutdown();
 }
 
+
+static const vec3s debugBoneScale = {.x=0.3F, .y=0.3F, .z=0.3F};
+static size_t debugBones[15];
+static void onAnimateSkeleton(const struct skeleton *skel) {
+        for (int i=0; i<15; i++) {
+                struct object *obj = scene_getObjectFromIdx(
+                        scene, debugBones[i]);
+                const struct bone *bone = skel->bones + i;
+
+                obj->model = bone->absoluteTransform;
+                obj->model = glms_scale(obj->model, debugBoneScale);
+        }
+}
+
 int main(void) {
         componentCollection_startup();
         window_init(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -133,14 +227,68 @@ int main(void) {
         scene = smalloc(sizeof(*scene));
         scene_initFromFile(scene, "scene");
         scene_setSkybox(scene, "skybox");
+
+        animation_onAnimateSkeleton = onAnimateSkeleton;
+
+        size_t snek = scene_idxByName(scene, "SnekSkin");
+        assert(snek > 0);
+        snek--;
         
+        for (int i=0; i<15; i++) {
+                char buf[64];
+                
+                snprintf(buf, 64, "debugBone_%d", i);
+                struct object *obj = scene_createObject(scene, buf, snek+1);
+                debugBones[i] = obj->idx;
+                
+                snprintf(buf, 64, "debugBone_%d_geo", i);
+                struct geometry *geo = componentCollection_create(
+                        COMPONENT_GEOMETRY);
+                componentCollection_set(&obj->components, COMPONENT_GEOMETRY,
+                                        geo->base.idx);
+                geometry_initCube(geo, buf);
+
+                snprintf(buf, 64, "debugBone_%d_mat", i);
+                struct material_uber *mat = componentCollection_create(
+                        COMPONENT_MATERIAL_UBER);
+                componentCollection_set(&obj->components, COMPONENT_MATERIAL,
+                                        mat->base.base.idx);
+                material_uber_initDefaults(mat, buf, SHADER_UBER);
+                mat->ambientColor.x = 1;
+                mat->ambientColor.y = 1;
+                mat->ambientColor.z = 1;
+                mat->emissiveColor.x = 1;
+                mat->emissiveColor.y = 1;
+                mat->emissiveColor.z = 1;
+
+                float *c1;
+                float *c2;
+                int v;
+                if (i < 7) {
+                        c1 = &mat->ambientColor.x;
+                        c2 = &mat->emissiveColor.x;
+                        v = i;
+                } else if (i > 7) {
+                        c1 = &mat->ambientColor.y;
+                        c2 = &mat->emissiveColor.y;
+                        v = i - 8;
+                } else {
+                        continue;
+                }
+
+                *c1 = *c2 = (float)v/6.0F;
+        }
+
+        struct object *cam = find_camera(&scene->root);
+        object_translateY(cam, 30);
         fpsCameraController_init(&cam_ctrl,
                                  movement_speed, look_sensitivity,
-                                 find_camera(&scene->root));
+                                 cam);
 
         window_onKeyboardInput = processKeyboardInput;
         window_onKeyboardEvent = processKeyboardEvent;
         window_onMousePosition = processMouseInput;
+        window_onUpdate = update;
         window_onDraw = draw;
         window_onTearDown = freeScene;
         

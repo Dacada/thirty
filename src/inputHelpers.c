@@ -15,8 +15,8 @@ void fpsCameraController_init(struct fpsCameraController *const ctrl,
         ctrl->move_sensitivity = move;
         ctrl->look_sensitivity = look;
         ctrl->camera_obj = camera;
-        ctrl->camera = (struct camera_fps *)componentCollection_get(
-                &camera->components, COMPONENT_CAMERA);
+        ctrl->camera = componentCollection_get(&camera->components,
+                                               COMPONENT_CAMERA);
 
         assert(ctrl->camera != NULL);
         assert(ctrl->camera->base.base.type == COMPONENT_CAMERA_FPS);

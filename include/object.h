@@ -42,7 +42,6 @@ enum renderStage {
 void object_initEmpty(struct object *object, struct scene *scene,
                       const char *name)
         __attribute__((access (write_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -53,72 +52,65 @@ void object_initEmpty(struct object *object, struct scene *scene,
  */
 void object_initFromFile(struct object *object, struct scene *scene,
                          unsigned ncams, unsigned ngeos,
-                         unsigned nmats, unsigned nlights, FILE *f)
+                         unsigned nmats, unsigned nlights,
+                         unsigned nanims, FILE *f)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
-        __attribute__((access (read_write, 7)))
-        __attribute__((leaf))
+        __attribute__((access (read_write, 8)))
         __attribute__((nonnull));
 
 void object_setSkybox(struct object *skybox, size_t geo, size_t mat)
         __attribute__((access (write_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_translate(struct object *object, vec3s delta)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_translateX(struct object *object, float delta)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_translateY(struct object *object, float delta)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_translateZ(struct object *object, float delta)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_rotate(struct object *object, float angle, vec3s axis)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_rotateX(struct object *object, float angle)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_rotateY(struct object *object, float angle)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_rotateZ(struct object *object, float angle)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_rotateMat(struct object *object, mat4s rotation)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_scale(struct object *object, vec3s scale)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_addChild(struct object *parent, struct object *child)
         __attribute__((access (read_write, 1)))
         __attribute__((access (read_write, 2)))
-        __attribute__((leaf))
+        __attribute__((nonnull));
+
+
+void object_update(struct object *object)
+        __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 bool object_draw(const struct object *object, mat4s model,
@@ -130,12 +122,10 @@ bool object_draw(const struct object *object, mat4s model,
         __attribute__((access (read_write, 5)))
         __attribute__((access (read_write, 6)))
         __attribute__((access (read_write, 7)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void object_free(struct object *object)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 #endif /* OBJECT_H */

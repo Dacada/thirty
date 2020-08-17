@@ -31,6 +31,7 @@ void camera_init(struct camera *const cam, const char *const name,
         case COMPONENT_LIGHT_SPOT:
         case COMPONENT_MATERIAL_UBER:
         case COMPONENT_MATERIAL_SKYBOX:
+        case COMPONENT_ANIMATIONCOLLECTION:
         case COMPONENT_TOTAL:
         default:
                 assert_fail();
@@ -70,6 +71,7 @@ size_t camera_initFromFile(struct camera *const cam, FILE *const f,
         case COMPONENT_LIGHT_SPOT:
         case COMPONENT_MATERIAL_UBER:
         case COMPONENT_MATERIAL_SKYBOX:
+        case COMPONENT_ANIMATIONCOLLECTION:
         case COMPONENT_TOTAL:
         default:
                 assert_fail();
@@ -95,6 +97,7 @@ mat4s camera_viewMatrix(const struct camera *const cam, mat4s model) {
         case COMPONENT_LIGHT_SPOT:
         case COMPONENT_MATERIAL_UBER:
         case COMPONENT_MATERIAL_SKYBOX:
+        case COMPONENT_ANIMATIONCOLLECTION:
         case COMPONENT_TOTAL:
         default:
                 assert_fail();

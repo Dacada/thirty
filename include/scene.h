@@ -23,35 +23,37 @@ struct scene {
 void scene_initFromFile(struct scene *scene, const char *filename)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 struct object *scene_createObject(struct scene *scene, const char *name,
                                   size_t parent_idx)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
+        __attribute__((nonnull));
+
+size_t scene_idxByName(const struct scene *scene, const char *name)
+        __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 
 struct object *scene_getObjectFromIdx(struct scene *scene,
                                       size_t object_idx)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 size_t scene_setSkybox(struct scene *scene, const char *basename)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
+        __attribute__((nonnull));
+
+void scene_update(struct scene *scene)
+        __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 void scene_draw(const struct scene *scene)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void scene_free(struct scene *scene)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 #endif /* SCENE_H */

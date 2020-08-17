@@ -33,7 +33,6 @@ struct light {
 size_t light_initFromFile(struct light *light, FILE *f, enum componentType type)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -43,25 +42,21 @@ void light_updateShader(const struct light *light,
                         size_t which, mat4s view, mat4s model,
                         enum shaders shader)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
  * Set all lights in the shader starting with the given which as disabled.
  */
 void light_updateShaderDisabled(size_t which, enum shaders shader)
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
  * Update shader's global ambient lighting
  */
-void light_updateGlobalAmbient(enum shaders shader, vec4s globalAmbientLight)
-        __attribute__((leaf));
+void light_updateGlobalAmbient(enum shaders shader, vec4s globalAmbientLight);
 
 void light_free(struct light *light)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 #define LIGHT_MAXIMUM_SIZE sizeof(struct light)

@@ -62,7 +62,6 @@ float clamp_angle(float angle, float min, float max)
 void bail(const char *msg, ...)
         __attribute__((access (read_only, 1)))
         __attribute__((format (printf, 1, 2)))
-        __attribute__((leaf))
         __attribute__((noreturn));
 
 /*
@@ -74,7 +73,6 @@ void bail(const char *msg, ...)
 void die(const char *msg, ...)
         __attribute__((access (read_only, 1)))
         __attribute__((format (printf, 1, 2)))
-        __attribute__((leaf))
         __attribute__((noreturn));
 
 /* 
@@ -87,60 +85,50 @@ void die(const char *msg, ...)
 void *smalloc(size_t size)
         __attribute__((alloc_size (1)))
         __attribute__((malloc))
-        __attribute__((leaf))
         __attribute__((warn_unused_result));
 
 // like malloc, but ensures nmemb * size doesn't overflow, doesn't align memory
 void *smallocarray(size_t nmemb, size_t size)
         __attribute__((alloc_size (1, 2)))
         __attribute__((malloc))
-        __attribute__((leaf))
         __attribute__((warn_unused_result));
 
 void *srealloc(void *ptr, size_t size)
         __attribute__((alloc_size (2)))
-        __attribute__((leaf))
         __attribute__((warn_unused_result));
 
 // similar to smallocarray, but for realloc, also no memory alignment
 void *sreallocarray(void *ptr, size_t nmemb, size_t size)
         __attribute__((alloc_size (2, 3)))
-        __attribute__((leaf))
         __attribute__((warn_unused_result));
 
 char *sstrdup(const char *s)
-        __attribute__((leaf))
         __attribute__((warn_unused_result))
         __attribute__((nonnull));
 
 FILE *sfopen(const char *pathname, const char *mode)
         __attribute__((access (read_only, 1)))
         __attribute__((access (read_only, 2)))
-        __attribute__((leaf))
         __attribute__((nonnull))
         __attribute__((returns_nonnull))
         __attribute__((warn_unused_result));
 
 void sfseek(FILE *stream, long offset, int whence)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 size_t sftell(FILE *stream)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void sfread(void *ptr, size_t size, size_t nmemb,
             FILE *stream)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 4)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 void sfclose(FILE *stream)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 
@@ -151,25 +139,21 @@ void sfclose(FILE *stream)
  */
 bool accessible(const char *filepath, bool read, bool write, bool execute)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 
 /* Join paths, like python's os.path.join, yes it's also OS independent. */
 size_t pathjoin(size_t size, char *dest, int nargs, ...)
         __attribute__((access (write_only, 2, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /* Join paths like pathjoin, but using a va_list instead */
 size_t pathjoin_va(size_t size, char *dest, int nargs, va_list ap)
         __attribute__((access (write_only, 2, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /* Join paths like pathjoin but create a new string in dynamic memory. */
 char *pathjoin_dyn(int nargs, ...)
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -179,7 +163,6 @@ char *pathjoin_dyn(int nargs, ...)
  */
 char *strfile(FILE *f)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 #endif /* CUTIL_UTIL_H */

@@ -52,6 +52,7 @@ extern void(*window_onKeyboardEvent)(const int, const int, const int);
 extern void(*window_onKeyboardInput)(void);
 extern void(*window_onMousePosition)(const double, const double);
 extern void(*window_onMouseScroll)(const double);
+extern void(*window_onUpdate)(void);
 extern void(*window_onDraw)(void);
 extern void(*window_onTearDown)(void);
 
@@ -59,10 +60,15 @@ extern vec4s window_clearColor;
 extern char *window_title;
 
 void window_init(int width, int height);
+
 void window_run(void);
+
 float window_timeDelta(void);
+
 bool window_keyPressed(int key);
+
 void window_updateTitle(void);
+
 void window_close(void);
 
 #endif

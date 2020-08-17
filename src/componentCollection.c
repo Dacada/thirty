@@ -3,11 +3,13 @@
 #include <camera.h>
 #include <material.h>
 #include <light.h>
+#include <animationCollection.h>
 #include <texture.h>
 #include <component.h>
 #include <dsutils.h>
 #include <util.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define COMPONENTS_MIN_SIZE sizeof(struct component)
 #define COMPONENTS_INITIAL_CAPACITY (4*COMPONENTS_MIN_SIZE)
@@ -48,6 +50,10 @@ void *componentCollection_create(const enum componentType type) {
         case COMPONENT_LIGHT_POINT:
                 size = sizeof(struct light);
                 break;
+                
+        case COMPONENT_ANIMATIONCOLLECTION:
+                size = sizeof(struct animationCollection);
+                break;
         
         case COMPONENT_TOTAL:
         default:
@@ -62,14 +68,57 @@ void *componentCollection_create(const enum componentType type) {
         return ptr;
 }
 
+struct findComponentArgs {
+        const char *name;
+        enum componentType type;
+        size_t idx;
+        bool found;
+};
+static bool findComponent(void *const item, const size_t size,
+                          void *const vargs) {
+        struct component *comp = item;
+        struct findComponentArgs *args = vargs;
+        (void)size;
+
+        args->idx++;
+        if ((args->type == COMPONENT_TOTAL || args->type == comp->type) &&
+            strcmp(comp->name, args->name) == 0) {
+                args->found = true;
+                return false;
+        }
+
+        return true;
+}
+size_t componentCollection_idxByName(const char *const name,
+                                     const enum componentType type) {
+        struct findComponentArgs args = {
+                .name = name,
+                .type = type,
+                .idx = 0,
+                .found = false,
+        };
+        varSizeGrowingArray_foreach(&components, findComponent, &args);
+
+        if (args.found) {
+                return args.idx;
+        } else {
+                return 0;
+        }
+}
+
+void *componentCollection_compByIdx(const size_t idx) {
+        return varSizeGrowingArray_get(&components, idx, NULL);
+}
+
 void componentCollection_init(struct componentCollection *const collection) {
         collection->camera = 0;
         collection->geometry = 0;
         collection->material = 0;
         collection->light = 0;
+        collection->animationCollection = 0;
 }
 
-struct component *componentCollection_get(
+void *componentCollection_get(
         const struct componentCollection *const collection,
         const enum componentType type){
 
@@ -93,6 +142,10 @@ struct component *componentCollection_get(
         case COMPONENT_LIGHT_DIRECTION:
         case COMPONENT_LIGHT_POINT:
                 idx = collection->light;
+                break;
+                
+        case COMPONENT_ANIMATIONCOLLECTION:
+                idx = collection->animationCollection;
                 break;
                 
         case COMPONENT_TOTAL:
@@ -133,6 +186,10 @@ void componentCollection_set(struct componentCollection *const collection,
                 collection->light = idx+1;
                 break;
                 
+        case COMPONENT_ANIMATIONCOLLECTION:
+                collection->animationCollection = idx+1;
+                break;
+                
         case COMPONENT_TOTAL:
         default:
                 assert_fail();
@@ -161,9 +218,20 @@ bool componentCollection_hasComponent(
         case COMPONENT_LIGHT_POINT:
                 return collection->light != 0;
                 
+        case COMPONENT_ANIMATIONCOLLECTION:
+                return collection->animationCollection != 0;
+                
         case COMPONENT_TOTAL:
         default:
                 return false;
+        }
+}
+
+void componentCollection_update(struct componentCollection *const collection) {
+        struct animationCollection *anim = componentCollection_get(
+                collection, COMPONENT_ANIMATIONCOLLECTION);
+        if (anim != NULL) {
+                animationCollection_update(anim);
         }
 }
 
@@ -196,6 +264,10 @@ static bool freeComponent(void *compPtr, size_t size, void *args) {
         case COMPONENT_LIGHT_DIRECTION:
         case COMPONENT_LIGHT_POINT:
                 light_free((struct light*)comp);
+                break;
+                
+        case COMPONENT_ANIMATIONCOLLECTION:
+                animationCollection_free((struct animationCollection*)comp);
                 break;
                 
         case COMPONENT_TOTAL:

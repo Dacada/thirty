@@ -14,18 +14,22 @@ void growingArray_init(struct growingArray *const ga,
         ga->data = smallocarray(initialCapacity, itemSize);
 }
 
+#define growingArrayAddress(ga, n)              \
+        (void *const)((char *const)(ga)->data + ((n) * (ga)->itemSize))
+
 void *growingArray_append(struct growingArray *const ga) {
         while (ga->length >= ga->capacity) {
                 ga->capacity *= 2;
                 ga->data = sreallocarray(ga->data, ga->capacity, ga->itemSize);
         }
-        void *const ptr = growingArray_get(ga, ga->length);
+        void *const ptr = growingArrayAddress(ga, ga->length);
         ga->length++;
         return ptr;
 }
 
 void *growingArray_get(const struct growingArray *const ga, const size_t n) {
-        return (void *const)((char *const)ga->data + (n * ga->itemSize));
+        assert(n < ga->length);
+        return growingArrayAddress(ga, n);
 }
 
 void growingArray_pack(struct growingArray *const ga) {
@@ -144,6 +148,8 @@ void *varSizeGrowingArray_append(struct varSizeGrowingArray *const vga,
 
 void *varSizeGrowingArray_get(const struct varSizeGrowingArray *const vga,
                               const size_t n, size_t *const s) {
+        assert(n < vga->offsets.length);
+        
         size_t offset;
         if (n == 0) {
                 offset = 0;

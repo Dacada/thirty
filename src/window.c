@@ -12,6 +12,7 @@ void(*window_onKeyboardInput)(void) = NULL;
 void(*window_onKeyboardEvent)(const int, const int, const int) = NULL;
 void(*window_onMousePosition)(const double, const double) = NULL;
 void(*window_onMouseScroll)(const double) = NULL;
+void(*window_onUpdate)(void) = NULL;
 void(*window_onDraw)(void) = NULL;
 void(*window_onTearDown)(void) = NULL;
 
@@ -48,6 +49,12 @@ static void onMouseScroll(GLFWwindow *const w, const double xoff,
         (void)xoff;
         if (window_onMouseScroll != NULL) {
                 window_onMouseScroll(yoff);
+        }
+}
+
+static void onUpdate(void) {
+        if (window_onUpdate != NULL) {
+                window_onUpdate();
         }
 }
 
@@ -111,6 +118,9 @@ void window_run(void) {
                 // Update deltatime
                 timeDelta = (const float)glfwGetTime();
                 glfwSetTime(0);
+
+                // Update game state
+                onUpdate();
 
                 // Clear screen
                 glClearColor(window_clearColor.x, window_clearColor.y,

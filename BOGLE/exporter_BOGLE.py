@@ -9,19 +9,17 @@ data that can almost directly be passed on to OpenGL.
 
 """
 
-# imports for integration with Blender UI
 import bpy
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 
-# useful math imports
-from mathutils import Vector
+from mathutils import Vector, Quaternion, Euler
 
-# useful imports from Python's stdlib
 import struct
 import array
-import os.path  # remove extension from file name
+import os.path
+import re
 
 
 bl_info = {
@@ -190,24 +188,29 @@ class BOGLEVertex(BOGLEBaseObject):
         self.norm = None
         self.tang = None
         self.binorm = None
+        self.bidxs = None
+        self.bwghts = None
 
-    def convert(self, vert, tex, norm, tang, binorm):
+    def convert(self, vert, tex, norm, tang, binorm, bone_idxs, bone_weights):
         self.vert = vert
         self.uv = tex
         self.norm = norm
         self.tang = tang
         self.binorm = binorm
+        self.bidxs = bone_idxs
+        self.bwghts = bone_weights
 
     def export(self, f):
         """Write vertex data to file"""
-        vertex_fmt = FormatSpecifier().float(3).float(2).\
-            float(3).float(3).float(3).format()
+        vertex_fmt = FormatSpecifier().float(20).format()
         vertex_data = (
             *self.vert,
             *clamp(self.uv, 0.0, 1.0),
             *self.norm,
             *self.tang,
             *self.binorm,
+            *self.bidxs,
+            *self.bwghts
         )
         vertex = struct.pack(vertex_fmt, *vertex_data)
         f.write(vertex)
@@ -464,14 +467,46 @@ class BOGLEGeometry(BOGLEBaseObject):
             normal = self._mesh.loops[loop_index].normal
             tangent = self._mesh.loops[loop_index].tangent
             binormal = self._mesh.loops[loop_index].bitangent
+            bone_idxs, bone_weights = self._get_bone_data(vertex_index)
             gl_vertex = BOGLEVertex(self.config)
             gl_vertex.convert(
                 vertex.copy(),
                 uv.copy(),
                 normal.copy(),
                 tangent.copy(),
-                binormal.copy())
+                binormal.copy(),
+                bone_idxs,
+                bone_weights)
             self.vertices.append(gl_vertex)
+
+    def _get_bone_data(self, idx):
+        bones = {}
+        total = 0
+        for vg in self._object.vertex_groups:
+            try:
+                bones[vg.name] = vg.weight(idx)
+                total += 1
+            except RuntimeError:  # vertex is not part of group
+                bones[vg.name] = 0
+
+        if total == 0:
+            return Vector((0, 0, 0)), Vector((0.0, 0.0, 0.0))
+
+        if total > 3:
+            print(
+                f"WARNING! Vertex {idx} is affected by more than 3 bones! "
+                "Only the 3 with the most weight will be exported!"
+            )
+
+        bones = [i for i in bones.items()]
+        bones.sort()  # sorted alphabetically by name
+        bones = [(w, i) for i, (n, w) in enumerate(bones)]
+        bones.sort(reverse=True)  # sorted by weight ascending
+        bones = bones[:3]
+        bones.sort(key=lambda e: e[1])  # sorted by index because it's nice
+
+        weights, indices = zip(*bones)
+        return Vector(indices), Vector(weights)
 
     def _cleanup(self):
         if self._mesh is not None:
@@ -813,6 +848,238 @@ class BOGLELight(BOGLEBaseObject):
         f.write(light)
 
 
+class BOGLEKeyframe(BOGLEBaseObject):
+    def __init__(self, config):
+        super().__init__(config)
+        self.timestamp = None
+        self.rootOffset = None
+        self.boneRotations = None
+
+    def convert(self, frame, fcurves, boneNames, fps):
+        self.timestamp = frame/fps
+
+        offset = Vector()
+        rotations = {name: Quaternion() for name in boneNames}
+        for fcurve in fcurves:
+            path = self._split_data_path(fcurve.data_path)
+
+            if path[0] != 'pose':
+                raise BOGLEConversionError(
+                    f"Can only convert pose animations not {path[0]}")
+
+            m = re.match(r'bones\["(.*)"\]', path[1])
+            if m is None:
+                raise BOGLEConversionError(
+                    f"Can only convert bone animations not {path[1]}")
+            name = m.group(1)
+
+            if path[2] == 'rotation_quaternion':
+                q = rotations[name]
+                if type(q) is not Quaternion:
+                    q = q.to_quaternion()
+                q[fcurve.array_index] = fcurve.evaluate(frame)
+                rotations[name] = q
+            elif path[2] == 'rotation_euler':
+                q = rotations[name]
+                if type(q) is not Euler:
+                    q = q.to_euler()
+                q[fcurve.array_index] = fcurve.evaluate(frame)
+                rotations[name] = q
+            elif path[2] == 'location':
+                offset[fcurve.array_index] = fcurve.evaluate(frame)
+            else:
+                raise BOGLEConversionError(
+                    f"Can only convert rotation or locatio not {path[2]}")
+
+        self.rootOffset = offset
+        self.boneRotations = [rot.to_quaternion()
+                              if type(rot) is not Quaternion
+                              else
+                              rot
+                              for _, rot in sorted(rotations.items())]
+
+    def _split_data_path(self, data_path):
+        splt = []
+        curr = ''
+        splitting = True
+
+        for c in data_path:
+            if c == '.' and splitting:
+                splt.append(curr)
+                curr = ''
+            else:
+                curr += c
+                if c == '"':
+                    splitting = not splitting
+
+        if curr:
+            splt.append(curr)
+
+        return splt
+
+    def export(self, f):
+        fmt = FormatSpecifier().float(4).format()
+        keyframe = struct.pack(fmt, self.timestamp, *self.rootOffset)
+        f.write(keyframe)
+
+        fmt = FormatSpecifier().float(4).format()
+        for rot in self.boneRotations:
+            rotCglm = (rot.x, rot.y, rot.z, rot.w)
+            rotStr = struct.pack(fmt, *rotCglm)
+            f.write(rotStr)
+
+
+class BOGLEAnimation(BOGLEBaseObject):
+    def __init__(self, config):
+        super().__init__(config)
+        self.keyframes = None
+
+    def convert(self, action, boneNames, fps):
+        super().convert(action)
+        # it's possible that an animation controls two values but those two
+        # values have different keyframes, so collect every single used
+        # keyframe: the exported animation will have as many keyframes as there
+        # exist in total. For example, if one rotation has keyframes at 3, 7
+        # and 10 and another at 5, 7 and 9, we will export keyframes 3, 5, 7, 9
+        # and 10 for both rotations
+        keyframe_points = set(kfp.co.x
+                              for fcurve in action.fcurves
+                              for kfp in fcurve.keyframe_points)
+        keyframe_points = sorted(keyframe_points)
+
+        self.keyframes = []
+        for point in keyframe_points:
+            keyframe = BOGLEKeyframe(self.config)
+            keyframe.convert(point, action.fcurves, boneNames, fps)
+            self.keyframes.append(keyframe)
+
+    def export(self, f):
+        self.export_name(f)
+
+        fmt = FormatSpecifier().u32().format()
+        anim = struct.pack(fmt, len(self.keyframes))
+        f.write(anim)
+
+        for keyframe in self.keyframes:
+            keyframe.export(f)
+
+    def get_name(self, action):
+        return action.name
+
+
+class BOGLEBone(BOGLEBaseObject):
+    def __init__(self, config):
+        super().__init__(config)
+        self.position = None
+        self.rotation = None
+        self.parent = None
+
+    def convert(self, position, rotation, parent):
+        self.position = position
+        self.rotation = rotation
+        self.rotation.normalize()
+
+        if parent is None:
+            self.parent = 0
+        else:
+            self.parent = parent + 1
+
+    def export(self, f):
+        fmt = FormatSpecifier().float(7).u32().format()
+        rotation = (
+            self.rotation.x,
+            self.rotation.y,
+            self.rotation.z,
+            self.rotation.w
+        )
+        bone = struct.pack(fmt, *self.position, *rotation, self.parent)
+        f.write(bone)
+
+
+class BOGLESkeleton(BOGLEBaseObject):
+    def __init__(self, config):
+        super().__init__(config)
+        self.model = None
+        self.bones = None
+
+    def convert(self, model, armature):
+        self.model = model
+
+        bones = {bone.name: bone for bone in armature.bones}
+        boneNames = sorted(bones.keys())
+
+        self.bones = []
+        for name in boneNames:
+            bone = bones[name]
+            if bone.parent is None:
+                pos, rot, _ = bone.matrix_local.decompose()
+                parentIdx = None
+            else:
+                rot = bone.matrix.to_quaternion()
+                pos = bone.parent.vector + bone.head
+                pos.rotate(bone.parent.matrix.inverted())
+                pos.rotate(bone.matrix.inverted())
+                parentIdx = boneNames.index(bone.parent.name)
+
+            b = BOGLEBone(self.config)
+            b.convert(pos, rot, parentIdx)
+            self.bones.append(b)
+
+        return boneNames
+
+    def export(self, f):
+        fmt = FormatSpecifier().float(16).u32().format()
+        cols = (
+            *self.model.col[0],
+            *self.model.col[1],
+            *self.model.col[2],
+            *self.model.col[3]
+        )
+        skel = struct.pack(fmt, *cols, len(self.bones))
+        f.write(skel)
+
+        for bone in self.bones:
+            bone.export(f)
+
+
+class BOGLEAnimationCollection(BOGLEBaseObject):
+    def __init__(self, config):
+        super().__init__(config)
+        self.skeleton = None
+        self.animations = None
+
+    def convert(self, object, fps):
+        armature = object.parent
+
+        super().convert(armature)
+
+        # Need to know where the armature is in relation to the object it's
+        # animating
+        model = object.matrix_local.inverted()
+
+        self.skeleton = BOGLESkeleton(self.config)
+        boneNames = self.skeleton.convert(model, armature.data)
+
+        self.animations = []
+        for nla_track in armature.animation_data.nla_tracks:
+            for strip in nla_track.strips:
+                animation = BOGLEAnimation(self.config)
+                animation.convert(strip.action, boneNames, fps)
+                self.animations.append(animation)
+
+    def export(self, f):
+        super().export(f)
+
+        fmt = FormatSpecifier().u32().format()
+        col = struct.pack(fmt, len(self.animations))
+        f.write(col)
+
+        self.skeleton.export(f)
+
+        for animation in self.animations:
+            animation.export(f)
+
+
 class BOGLEObject(BOGLEBaseObject):
     """Blender object export to BOGLE file"""
 
@@ -825,28 +1092,37 @@ class BOGLEObject(BOGLEBaseObject):
         self.geometry_idx = None
         self.material_idx = None
         self.light_idx = None
+        self.animation_idx = None
         self.transform = None
 
     def convert(self, object, camera_idx, geometry_idx,
-                material_idx, light_idx):
+                material_idx, light_idx, animation_idx):
         super().convert(object)
 
-        if object.parent is not None:
-            self.parent_name = object.parent.name
+        transform = object.matrix_local.copy()
+
+        parent = object.parent
+        while parent is not None and parent.type == 'ARMATURE':
+            transform = parent.matrix_local @ transform
+            parent = parent.parent
+        if parent is not None:
+            self.parent_name = parent.name
 
         self.camera_idx = self._idx(camera_idx)
         self.geometry_idx = self._idx(geometry_idx)
         self.material_idx = self._idx(material_idx)
         self.light_idx = self._idx(light_idx)
-        self.transform = object.matrix_local.copy()
+        self.animation_idx = self._idx(animation_idx)
+        self.transform = transform.copy()
 
     def export(self, f, material_keys=None):
         self.export_name(f)
 
-        fmt = FormatSpecifier().u32(4).float(16).format()
+        fmt = FormatSpecifier().u32(5).float(16).format()
         data = (
             self.camera_idx, self.geometry_idx,
             self.material_idx, self.light_idx,
+            self.animation_idx,
             *self.transform.col[0],
             *self.transform.col[1],
             *self.transform.col[2],
@@ -881,6 +1157,8 @@ class BOGLExporter(BOGLEBaseObject):
         self.material_indices = {}
         self.lights = []
         self.light_indices = {}
+        self.animation_collections = []
+        self.animation_collection_indices = {}
 
         self.objects = []
         self.object_tree = None
@@ -892,24 +1170,36 @@ class BOGLExporter(BOGLEBaseObject):
         self.globalAmbientLight = BOGLEAmbientLight(self.config)
         self.globalAmbientLight.convert(self._get_world_color(depsgraph))
 
+        nlights = 0
         for object in self._iterate_objects(depsgraph):
             type = object.original.type
 
             if type == 'MESH':
                 geo = self._convert_geometry(object)
                 mat = self._convert_material(object)
-                self._convert_object(object, None, geo, mat, None)
+                animation_collection = self._convert_animation_collection(
+                    object, depsgraph.scene.render.fps)
+                self._convert_object(object, None, geo, mat, None,
+                                     animation_collection)
             elif type == 'EMPTY':
-                self._convert_object(object, None, None, None, None)
+                self._convert_object(object, None, None, None, None, None)
             elif type == 'CAMERA':
                 cam = self._convert_camera(object, depsgraph.scene)
-                self._convert_object(object, cam, None, None, None)
+                self._convert_object(object, cam, None, None, None, None)
             elif type == 'LIGHT':
                 light = self._convert_light(object)
-                self._convert_object(object, None, None, None, light)
+                # we have a limit on lights, not just on light instances
+                if light is not None:
+                    nlights += 1
+                self._convert_object(object, None, None, None, light, None)
+            elif type == 'ARMATURE':
+                pass  # Done when finding the mesh object
             else:
                 print(f"Not converting object type: {type}")
                 continue
+
+        if nlights > 20:
+            raise BOGLEConversionError("Too many lights!")
 
         self._convert_object_tree()
 
@@ -931,6 +1221,9 @@ class BOGLExporter(BOGLEBaseObject):
 
             for light in self.lights:
                 light.export(f)
+
+            for animation_collection in self.animation_collections:
+                animation_collection.export(f)
 
             for object in self.objects:
                 object.export(f)
@@ -968,6 +1261,13 @@ class BOGLExporter(BOGLEBaseObject):
         return self._convert_indexed(object, BOGLELight,
                                      self.light_indices, self.lights)
 
+    def _convert_animation_collection(self, object, fps):
+        if object.parent is None or object.parent.type != 'ARMATURE':
+            return None
+        return self._convert_indexed(object, BOGLEAnimationCollection,
+                                     self.animation_collection_indices,
+                                     self.animation_collections, fps)
+
     def _convert_indexed(self, object, cls, indices, objects, *args):
         obj = cls(self.config)
         name = obj.get_name(object)
@@ -982,9 +1282,10 @@ class BOGLExporter(BOGLEBaseObject):
         return idx
 
     def _convert_object(self, object, camera_idx, geometry_idx,
-                        material_idx, light_idx):
+                        material_idx, light_idx, animation_idx):
         obj = BOGLEObject(self.config)
-        obj.convert(object, camera_idx, geometry_idx, material_idx, light_idx)
+        obj.convert(object, camera_idx, geometry_idx, material_idx,
+                    light_idx, animation_idx)
         self.objects.append(obj)
 
     def _convert_object_tree(self):
@@ -1017,15 +1318,16 @@ class BOGLExporter(BOGLEBaseObject):
         f.write(tree)
 
     def _export_header(self, f):
-        header_fmt = FormatSpecifier().char(5).u8().u32(5).format()
+        header_fmt = FormatSpecifier().char(5).u8().u32(6).format()
         header_data = (
             b'B', b'O', b'G', b'L', b'E',  # Magic
             0,  # Version
-            len(self.cameras),  # Number of cameras
-            len(self.geometries),  # Number of geometries
-            len(self.materials),  # Number of materials
-            len(self.lights),  # Number of lights
-            len(self.objects),  # Number of objects
+            len(self.cameras),
+            len(self.geometries),
+            len(self.materials),
+            len(self.lights),
+            len(self.animation_collections),
+            len(self.objects),
         )
         header = struct.pack(header_fmt, *header_data)
         f.write(header)

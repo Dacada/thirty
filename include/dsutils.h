@@ -30,7 +30,6 @@ struct growingArray {
 void growingArray_init(struct growingArray *ga,
                        size_t itemSize, size_t initialCapacity)
         __attribute__((access (write_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -44,7 +43,6 @@ void growingArray_init(struct growingArray *ga,
  */
 void *growingArray_append(struct growingArray *ga)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull))
         __attribute__((returns_nonnull));
 
@@ -53,7 +51,6 @@ void *growingArray_append(struct growingArray *ga)
  */
 void *growingArray_get(const struct growingArray *ga, size_t n)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull))
         __attribute__((returns_nonnull));
 
@@ -63,7 +60,6 @@ void *growingArray_get(const struct growingArray *ga, size_t n)
  */
 void growingArray_pack(struct growingArray *ga)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -130,7 +126,6 @@ bool growingArray_contains(const struct growingArray *ga,
  */
 void growingArray_clear(struct growingArray *ga)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -139,7 +134,6 @@ void growingArray_clear(struct growingArray *ga)
  */
 void growingArray_destroy(struct growingArray *ga)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -167,7 +161,6 @@ void varSizeGrowingArray_init(struct varSizeGrowingArray *vga,
                               size_t alignment, size_t initialCapacity,
                               size_t itemSizeHint)
         __attribute__((access (write_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -177,7 +170,6 @@ void varSizeGrowingArray_init(struct varSizeGrowingArray *vga,
 void *varSizeGrowingArray_append(struct varSizeGrowingArray *vga,
                                  size_t size)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull))
         __attribute__((returns_nonnull));
 
@@ -188,7 +180,6 @@ void *varSizeGrowingArray_append(struct varSizeGrowingArray *vga,
 void *varSizeGrowingArray_get(const struct varSizeGrowingArray *vga,
                               size_t n, size_t *s)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull (1)))
         __attribute__((returns_nonnull));
 
@@ -206,7 +197,6 @@ void varSizeGrowingArray_foreach(const struct varSizeGrowingArray *vga,
  */
 void varSizeGrowingArray_destroy(struct varSizeGrowingArray *vga)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -225,7 +215,6 @@ struct stack {
 
 void stack_init(struct stack *s, size_t capacity, size_t itemSize)
         __attribute__((access (write_only, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 /*
@@ -239,7 +228,6 @@ void stack_init(struct stack *s, size_t capacity, size_t itemSize)
  */
 void *stack_push(struct stack *s)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull))
         __attribute__((returns_nonnull));
 
@@ -249,7 +237,6 @@ void *stack_push(struct stack *s)
  */
 void *stack_pop(struct stack *s)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull))
         __attribute__((returns_nonnull));
 
@@ -259,7 +246,6 @@ void *stack_pop(struct stack *s)
  */
 const void *stack_peek(const struct stack *s)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((pure))
         __attribute__((nonnull))
         __attribute__((returns_nonnull));
@@ -269,7 +255,6 @@ const void *stack_peek(const struct stack *s)
  */
 bool stack_full(const struct stack *s)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((pure))
         __attribute__((nonnull));
 
@@ -278,7 +263,6 @@ bool stack_full(const struct stack *s)
  */
 bool stack_empty(const struct stack *s)
         __attribute__((access (read_only, 1)))
-        __attribute__((leaf))
         __attribute__((pure))
         __attribute__((nonnull));
 
@@ -287,7 +271,6 @@ bool stack_empty(const struct stack *s)
  */
 void stack_destroy(struct stack *s)
         __attribute__((access (read_write, 1)))
-        __attribute__((leaf))
         __attribute__((nonnull));
 
 #endif /* DSUTILS_H */
