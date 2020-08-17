@@ -52,20 +52,12 @@ void object_initFromFile(struct object *const object,
         offset += nlights;
         assign_idx(&object->components,
                    COMPONENT_ANIMATIONCOLLECTION, offset, f);
-        offset += nanims;
+        //offset += nanims;
+        (void)nanims;
 
         mat4s model;
         sfread(model.raw, sizeof(float), sizeof(model) / sizeof(float), f);
         object->model = model;
-}
-
-void object_setSkybox(struct object *const skybox,
-                       const size_t geo, const size_t mat) {
-        componentCollection_set(
-                &skybox->components, COMPONENT_GEOMETRY, geo);
-
-        componentCollection_set(
-                &skybox->components, COMPONENT_MATERIAL, mat);
 }
 
 void object_translate(struct object *const object, const vec3s delta) {

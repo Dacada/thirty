@@ -16,7 +16,7 @@
  * Ambient, Emissive, Diffuse, Specular, SpecularPower, Normal, Bump and
  * Opacity textures are used by the Uber material only. Environment textures
  * are used for Skybox material only, but are also used for environment
- * mapping.
+ * mapping (or will be).
  */
 enum material_textureType {
         MATERIAL_TEXTURE_AMBIENT,
@@ -43,7 +43,7 @@ struct material {
 };
 
 /*
- * Initialize the base of the material. Already called by the other materia's
+ * Initialize the base of the material. Already called by the other material's
  * init functions.
  */
 void material_init(struct material *material, const char *name,
@@ -52,10 +52,11 @@ void material_init(struct material *material, const char *name,
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
 
-/*
- * Initialize material from file. File has the information about the material
- * type so this assumes that the pointer points to an area with enough space to
- * fit any material type. Returns the actual used size.
+/* 
+ * Initialize material from a BOGLE file positioned at the correct offset.
+ * File has the information about the material type so this assumes that the
+ * pointer points to an area with enough space to fit any material type. Returns
+ * the actual used size.
  */
 size_t material_initFromFile(struct material *material, FILE *f,
                              enum componentType type)

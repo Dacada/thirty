@@ -218,7 +218,12 @@ size_t scene_setSkybox(struct scene *const scene,
 
         struct object *const skybox = scene_createObject(
                 scene, basename, 0);
-        object_setSkybox(skybox, geoIdx, matIdx);
+
+        componentCollection_set(
+                &skybox->components, COMPONENT_GEOMETRY, geoIdx);
+
+        componentCollection_set(
+                &skybox->components, COMPONENT_MATERIAL, matIdx);
 
         return skybox->idx;
 }

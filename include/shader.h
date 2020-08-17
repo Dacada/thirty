@@ -6,10 +6,9 @@
 
 /*
  * Shaders are created automatically when shader_use is called. Shaders are
- * harcoded in the implementation of this file, and eventually created from
- * various file fragments in the assets directory.
+ * created from various file fragments in the assets directory.
  *
- * In practice, simply call shader_use(SHADER_PHONG) to use a shader. What
+ * In practice, simply call shader_use(SHADER_UBER) to use a shader. What
  * follows is the internal implementation:
  *
  * Creating a shader is internally done by using a hardcoded set of filenames
@@ -34,43 +33,70 @@ enum shaders {
         SHADER_TOTAL
 };
 
+/*
+ * Use the given shader. This might collect, compile and link the shader.
+ */
 void shader_use(enum shaders shader);
 
+/*
+ * Set a boolean uniform to the given shader.
+ */
 void shader_setBool(enum shaders shader,
                     const char *name, bool value)
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
 
+/*
+ * Set a int uniform to the given shader.
+ */
 void shader_setInt(enum shaders shader,
                    const char *name, int value)
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
 
+/*
+ * Set a unsigned int uniform to the given shader.
+ */
 void shader_setUInt(enum shaders shader,
                    const char *name, unsigned value)
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
 
+/*
+ * Set a float uniform to the given shader.
+ */
 void shader_setFloat(enum shaders shader,
                      const char *name, float value)
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
 
+/*
+ * Set a vec3 uniform to the given shader.
+ */
 void shader_setVec3(enum shaders shader,
                     const char *name, vec3s value)
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
 
+/*
+ * Set a vec4 uniform to the given shader.
+ */
 void shader_setVec4(enum shaders shader,
                     const char *name, vec4s value)
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
 
+/*
+ * Set a mat3 uniform to the given shader.
+ */
 void shader_setMat3(enum shaders shader,
                     const char *name, mat3s value)
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
 
+/*
+ * Set a mat4 uniform to the given shader.
+ */
 void shader_setMat4(enum shaders shader,
                     const char *name, mat4s value)
         __attribute__((access (read_only, 2)))

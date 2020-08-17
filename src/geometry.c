@@ -7,6 +7,14 @@
 #include <string.h>
 #include <limits.h>
 
+#define VERTEX_ATTRIB 0
+#define TEXCOORD_ATTRIB 1
+#define NORMAL_ATTRIB 2
+#define TANGENT_ATTRIB 3
+#define BINORMAL_ATTRIB 4
+#define BONEIDX_ATTRIB 5
+#define BONEWGHT_ATTRIB 6
+
 __attribute__((access (write_only, 1)))
 __attribute__((nonnull))
 static void geometry_init(struct geometry *const geometry) {
@@ -38,48 +46,23 @@ void geometry_initFromArray(struct geometry *const geometry,
         glBufferData(GL_ARRAY_BUFFER,
                      (GLsizeiptr)(nvertices * sizeof(*vertices)),
                      vertices, GL_STATIC_DRAW);
-        
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-                              sizeof(struct vertex),
-                              (const void *const)
-                              offsetof(struct vertex, vert));
 
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
-                              sizeof(struct vertex),
-                              (const void *const)
-                              offsetof(struct vertex, tex));
+#define VERTEX_ATTRIB_PTR(idx, name)                                    \
+        glEnableVertexAttribArray(idx);                                 \
+        glVertexAttribPointer(                                          \
+                idx, sizeof(vertices->name)/sizeof(float),              \
+                GL_FLOAT, GL_FALSE, sizeof(struct vertex),              \
+                (const void *const)offsetof(struct vertex, name));
 
-        glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE,
-                              sizeof(struct vertex),
-                              (const void *const)
-                              offsetof(struct vertex, norm));
+        VERTEX_ATTRIB_PTR(VERTEX_ATTRIB, vert);
+        VERTEX_ATTRIB_PTR(TEXCOORD_ATTRIB, tex);
+        VERTEX_ATTRIB_PTR(NORMAL_ATTRIB, norm);
+        VERTEX_ATTRIB_PTR(TANGENT_ATTRIB, tang);
+        VERTEX_ATTRIB_PTR(BINORMAL_ATTRIB, binorm);
+        VERTEX_ATTRIB_PTR(BONEIDX_ATTRIB, bones);
+        VERTEX_ATTRIB_PTR(BONEWGHT_ATTRIB, weights);
 
-        glEnableVertexAttribArray(3);
-        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE,
-                              sizeof(struct vertex),
-                              (const void *const)
-                              offsetof(struct vertex, tang));
-
-        glEnableVertexAttribArray(4);
-        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE,
-                              sizeof(struct vertex),
-                              (const void *const)
-                              offsetof(struct vertex, binorm));
-
-        glEnableVertexAttribArray(5);
-        glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE,
-                              sizeof(struct vertex),
-                              (const void *const)
-                              offsetof(struct vertex, bones));
-
-        glEnableVertexAttribArray(6);
-        glVertexAttribPointer(6, 3, GL_FLOAT, GL_FALSE,
-                              sizeof(struct vertex),
-                              (const void *const)
-                              offsetof(struct vertex, weights));
+#undef VERTEX_ATTRIB_PTR
         
         glGenBuffers(1, &geometry->ibo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geometry->ibo);
@@ -92,7 +75,7 @@ void geometry_initFromArray(struct geometry *const geometry,
         geometry->nindices = (const int)nindices;
 }
 
-void geometry_initCube(struct geometry *skybox, const char *const name) {
+void geometry_initCube(struct geometry *geo, const char *const name) {
         static const struct vertex vertices[] = {
                 {.vert.x =  1, .vert.y =  1, .vert.z =  1,
                  .bones={{0,0,0}}, .weights={{0,0,0}}},
@@ -123,7 +106,7 @@ void geometry_initCube(struct geometry *skybox, const char *const name) {
         };
         static const size_t nindices = sizeof(indices) / sizeof(*indices);
         
-        geometry_initFromArray(skybox, name,
+        geometry_initFromArray(geo, name,
                                vertices, nvertices, indices, nindices);
 }
 

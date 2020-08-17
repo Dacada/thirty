@@ -6,9 +6,8 @@
 #include <stdio.h>
 
 /*
- * Generic prespective camera functions. Initialize camera, either from a BOGLE
- * file or from parameters. The view matrix is simply derived from the model
- * matrix.
+ * This component has a generic prespective camera and an FPS camera which has
+ * added functionality to allow more consistent movement.
  */
 
 struct camera {
@@ -29,6 +28,9 @@ struct camera_fps {
         vec3s position;
 };
 
+/*
+ * Initialize a camera with given parameters.
+ */
 void camera_init(struct camera *cam, const char *name, float aspect,
                  float near, float far, float fov, bool main,
                  enum componentType type)
@@ -36,19 +38,31 @@ void camera_init(struct camera *cam, const char *name, float aspect,
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
 
+/*
+ * Initialize a camera from a BOGLE file positioned at the correct offset.
+ */
 size_t camera_initFromFile(struct camera *cam, FILE *f, enum componentType type)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
         __attribute__((nonnull));
 
+/*
+ * Obtain a camera's view matrix.
+ */
 mat4s camera_viewMatrix(const struct camera *cam, mat4s model)
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 
+/*
+ * Obtain a camera's projection matrix.
+ */
 mat4s camera_projectionMatrix(const struct camera *cam)
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 
+/*
+ * Free resources used by a camera, deinitializing it.
+ */
 void camera_free(struct camera *cam)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));

@@ -205,20 +205,6 @@ static void freeScene(void) {
         componentCollection_shutdown();
 }
 
-
-static const vec3s debugBoneScale = {.x=0.3F, .y=0.3F, .z=0.3F};
-static size_t debugBones[15];
-static void onAnimateSkeleton(const struct skeleton *skel) {
-        for (int i=0; i<15; i++) {
-                struct object *obj = scene_getObjectFromIdx(
-                        scene, debugBones[i]);
-                const struct bone *bone = skel->bones + i;
-
-                obj->model = bone->absoluteTransform;
-                obj->model = glms_scale(obj->model, debugBoneScale);
-        }
-}
-
 int main(void) {
         componentCollection_startup();
         window_init(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -227,60 +213,8 @@ int main(void) {
         scene = smalloc(sizeof(*scene));
         scene_initFromFile(scene, "scene");
         scene_setSkybox(scene, "skybox");
-
-        animation_onAnimateSkeleton = onAnimateSkeleton;
-
-        size_t snek = scene_idxByName(scene, "SnekSkin");
-        assert(snek > 0);
-        snek--;
         
-        for (int i=0; i<15; i++) {
-                char buf[64];
-                
-                snprintf(buf, 64, "debugBone_%d", i);
-                struct object *obj = scene_createObject(scene, buf, snek+1);
-                debugBones[i] = obj->idx;
-                
-                snprintf(buf, 64, "debugBone_%d_geo", i);
-                struct geometry *geo = componentCollection_create(
-                        COMPONENT_GEOMETRY);
-                componentCollection_set(&obj->components, COMPONENT_GEOMETRY,
-                                        geo->base.idx);
-                geometry_initCube(geo, buf);
-
-                snprintf(buf, 64, "debugBone_%d_mat", i);
-                struct material_uber *mat = componentCollection_create(
-                        COMPONENT_MATERIAL_UBER);
-                componentCollection_set(&obj->components, COMPONENT_MATERIAL,
-                                        mat->base.base.idx);
-                material_uber_initDefaults(mat, buf, SHADER_UBER);
-                mat->ambientColor.x = 1;
-                mat->ambientColor.y = 1;
-                mat->ambientColor.z = 1;
-                mat->emissiveColor.x = 1;
-                mat->emissiveColor.y = 1;
-                mat->emissiveColor.z = 1;
-
-                float *c1;
-                float *c2;
-                int v;
-                if (i < 7) {
-                        c1 = &mat->ambientColor.x;
-                        c2 = &mat->emissiveColor.x;
-                        v = i;
-                } else if (i > 7) {
-                        c1 = &mat->ambientColor.y;
-                        c2 = &mat->emissiveColor.y;
-                        v = i - 8;
-                } else {
-                        continue;
-                }
-
-                *c1 = *c2 = (float)v/6.0F;
-        }
-
         struct object *cam = find_camera(&scene->root);
-        object_translateY(cam, 30);
         fpsCameraController_init(&cam_ctrl,
                                  movement_speed, look_sensitivity,
                                  cam);

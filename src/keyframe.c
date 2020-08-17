@@ -11,6 +11,34 @@ void keyframe_initFromFile(struct keyframe *const keyframe, FILE *const f,
         sfread(keyframe->relativeBoneRotations, sizeof(versors), nbones, f);
 }
 
+void keyframe_initFromInterp(const struct keyframe *const prev,
+                             const struct keyframe *const next,
+                             struct keyframe *const keyframe,
+                             const float timestamp) {
+        float interpolationPoint = (timestamp - prev->timestamp)/
+                (next->timestamp - prev->timestamp);
+
+        assert(prev->nbones == next->nbones);
+        size_t nbones = prev->nbones;
+        versors *interpRelBoneRots =
+                smallocarray(nbones, sizeof(*interpRelBoneRots));
+        for (size_t i=0; i<nbones; i++) {
+                interpRelBoneRots[i] =
+                        glms_quat_slerp(prev->relativeBoneRotations[i],
+                                        next->relativeBoneRotations[i],
+                                        interpolationPoint);
+        }
+
+        vec3s interpRootOffset = glms_vec3_lerp(prev->rootOffset,
+                                                next->rootOffset,
+                                                interpolationPoint);
+
+        keyframe->timestamp = timestamp;
+        keyframe->rootOffset = interpRootOffset;
+        keyframe->nbones = prev->nbones;
+        keyframe->relativeBoneRotations = interpRelBoneRots;
+}
+
 void keyframe_free(struct keyframe *const keyframe) {
         free(keyframe->relativeBoneRotations);
 }

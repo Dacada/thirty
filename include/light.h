@@ -8,11 +8,8 @@
 #define NUM_LIGHTS 20
 
 /*
- * Contains definitions for lighting. For now this is forward shading wth 20
- * lights max. Three types of light supported: spot, direction and point. This
- * also keeps the global ambient light, a function to update a shader's
- * lighting data and a function to update the global ambient lighting value in
- * the shader (for when it's changed).
+ * Light component definition. While there are many types of lights, in the end
+ * they all use the same struct and so are the same size.
  */
 
 extern vec4s light_globalAmbientLight;
@@ -30,6 +27,9 @@ struct light {
         float angle;
 };
 
+/*
+ * Initialize a light from a BOGLE file positioned at the correct offset.
+ */
 size_t light_initFromFile(struct light *light, FILE *f, enum componentType type)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
@@ -55,6 +55,9 @@ void light_updateShaderDisabled(size_t which, enum shaders shader)
  */
 void light_updateGlobalAmbient(enum shaders shader, vec4s globalAmbientLight);
 
+/*
+ * Free all resources used by the light, deinitializing it.
+ */
 void light_free(struct light *light)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));

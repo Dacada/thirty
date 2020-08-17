@@ -103,10 +103,9 @@ void skeleton_initFromFile(struct skeleton *const skel, FILE *const f) {
         calcBindPose(skel);
 }
 
-void skeleton_initFromRelativeRotations(
-        struct skeleton *const skel, const struct skeleton *const base,
-        const versors *const relativeRotations, const vec3s rootOffset) {
-
+void skeleton_initFromKeyframe(struct skeleton *const skel,
+                               const struct skeleton *const base,
+                               const struct keyframe *const keyframe) {
         // Copy data
         skel->model = base->model;
         skel->nbones = base->nbones;
@@ -117,15 +116,16 @@ void skeleton_initFromRelativeRotations(
         memcpy(skel->boneOrder, base->boneOrder,
                skel->nbones * sizeof(*skel->boneOrder));
 
-        // Apply rotations and root offset
+        // Apply rotations and root offset from the keyframe
+        assert(skel->nbones == keyframe->nbones);
         for (size_t i=0; i<skel->nbones; i++) {
                 skel->bones[i].rotationRelative =
                         glms_quat_mul(skel->bones[i].rotationRelative,
-                                      relativeRotations[i]);
+                                      keyframe->relativeBoneRotations[i]);
         }
         size_t rootIdx = skel->boneOrder[0];
         skel->bones[rootIdx].positionRelative = glms_vec3_add(
-                skel->bones[rootIdx].positionRelative, rootOffset);
+                skel->bones[rootIdx].positionRelative, keyframe->rootOffset);
 
         // Recalculate absolute transforms
         calcAbsoluteTransforms(skel);

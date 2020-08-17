@@ -1,11 +1,17 @@
 # <pep8-80 compliant>
 
-"""This converter converts the mesh data from a Blender object into a
-representation that is more suitable for OpenGL indexed drawing.
+"""This converter converts the mesh data from a Blender scene into a format
+used by this game engine thing: BOGLE.
 
-Vertices and UVs are extracted from the object, avoiding repetition when
-possible, and the final output is an extremely simple binary file containing
-data that can almost directly be passed on to OpenGL.
+The resulting file is an extremely simple binary format where everything is
+just laid out as is.
+
+Currently, every visible object on the scene is exported. Linked duplicates are
+supported. Meaning that two objects with the same mesh in Blender will have the
+same geometry component in BOGLE and it will only be defined once.
+
+Cameras, meshes, materials, lights, animations and objects are currently
+exported.
 
 """
 

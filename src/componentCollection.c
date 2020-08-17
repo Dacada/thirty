@@ -99,11 +99,10 @@ size_t componentCollection_idxByName(const char *const name,
         };
         varSizeGrowingArray_foreach(&components, findComponent, &args);
 
-        if (args.found) {
-                return args.idx;
-        } else {
+        if (!args.found) {
                 return 0;
         }
+        return args.idx;
 }
 
 void *componentCollection_compByIdx(const size_t idx) {

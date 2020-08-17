@@ -3,8 +3,6 @@
 #include <util.h>
 #include <stdint.h>
 
-void(*animation_onAnimateSkeleton)(const struct skeleton*) = NULL;
-
 void animation_initFromFile(struct animation *const anim,
                             FILE *const f, const size_t nbones) {
         anim->name = strfile(f);
@@ -24,7 +22,6 @@ void animation_bindBones(const struct animation *const anim,
                          const float timestamp, const enum shaders shader) {
         if (anim == NULL) { // No animation: bind pose
                 skeleton_bindBones(skel, shader);
-                animation_onAnimateSkeleton(skel);
                 return;
         }
         
@@ -50,39 +47,20 @@ void animation_bindBones(const struct animation *const anim,
         if (prev == NULL) {
                 // No frames in this animation, don't do anything.
                 skeleton_bindBones(skel, shader);
-                animation_onAnimateSkeleton(skel);
                 return;
         }
-        
+
         assert(prev->timestamp <= timestamp);
         assert(next->timestamp > timestamp);
-        float interpolationPoint = (timestamp - prev->timestamp)/
-                (next->timestamp - prev->timestamp);
-
-        assert(prev->nbones == next->nbones);
-        size_t nbones = prev->nbones;
-        versors *interpRelBoneRots =
-                smallocarray(nbones, sizeof(*interpRelBoneRots));
-        for (size_t i=0; i<nbones; i++) {
-                interpRelBoneRots[i] =
-                        glms_quat_slerp(prev->relativeBoneRotations[i],
-                                        next->relativeBoneRotations[i],
-                                        interpolationPoint);
-        }
-
-        vec3s interpRootOffset = glms_vec3_lerp(prev->rootOffset,
-                                                next->rootOffset,
-                                                interpolationPoint);
+        struct keyframe result;
+        keyframe_initFromInterp(prev, next, &result, timestamp);
 
         struct skeleton posedSkeleton;
-        skeleton_initFromRelativeRotations(
-                &posedSkeleton, skel, interpRelBoneRots, interpRootOffset);
+        skeleton_initFromKeyframe(&posedSkeleton, skel, &result);
         skeleton_bindBones(&posedSkeleton, shader);
-        if (animation_onAnimateSkeleton != NULL) {
-                animation_onAnimateSkeleton(&posedSkeleton);
-        }
         skeleton_free(&posedSkeleton);
-        free(interpRelBoneRots);
+
+        keyframe_free(&result);
 }
 
 void animation_free(struct animation *const anim) {
