@@ -1,10 +1,10 @@
 #ifndef CUTIL_UTIL_H
 #define CUTIL_UTIL_H
 
+#include <stdio.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdarg.h>
-#include <stdbool.h>
-#include <stdio.h>
 #include <limits.h>
 
 // This is usually the actual number, just in case it's not in

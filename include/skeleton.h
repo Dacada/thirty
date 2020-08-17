@@ -5,6 +5,7 @@
 #include <shader.h>
 #include <cglm/struct.h>
 #include <stdio.h>
+#include <stddef.h>
 
 /*
  * A skeleton containing bones for animation, as well as its location in

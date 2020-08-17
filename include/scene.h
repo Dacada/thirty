@@ -4,6 +4,7 @@
 #include <object.h>
 #include <dsutils.h>
 #include <cglm/struct.h>
+#include <stddef.h>
 
 /*
  * A scene contains a collection of objects (all children of 'root'). The scene

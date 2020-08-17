@@ -1,5 +1,4 @@
 #include <material.h>
-#include <material.h>
 #include <texture.h>
 #include <shader.h>
 #include <component.h>
@@ -7,6 +6,7 @@
 #include <glad/glad.h>
 #include <cglm/struct.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define getTextureInfo(cnst, material, tex, textureType)                \
         do {                                                            \

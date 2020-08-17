@@ -6,6 +6,7 @@
 #include <shader.h>
 #include <dsutils.h>
 #include <cglm/struct.h>
+#include <stddef.h>
 
 #define OBJECT_TREE_MAXIMUM_DEPTH 256
 

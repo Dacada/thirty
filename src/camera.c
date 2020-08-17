@@ -2,6 +2,7 @@
 #include <component.h>
 #include <util.h>
 #include <cglm/struct.h>
+#include <stdio.h>
 #include <stdint.h>
 
 void camera_init(struct camera *const cam, const char *const name,

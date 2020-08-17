@@ -1,14 +1,15 @@
 #include <componentCollection.h>
-#include <geometry.h>
-#include <camera.h>
-#include <material.h>
-#include <light.h>
 #include <animationCollection.h>
+#include <camera.h>
+#include <geometry.h>
+#include <light.h>
+#include <material.h>
 #include <texture.h>
 #include <component.h>
 #include <dsutils.h>
 #include <util.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <string.h>
 
 #define COMPONENTS_MIN_SIZE sizeof(struct component)

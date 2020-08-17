@@ -1,11 +1,15 @@
 #include <animationCollection.h>
 #include <animation.h>
+#include <skeleton.h>
 #include <keyframe.h>
 #include <component.h>
+#include <shader.h>
 #include <window.h>
 #include <util.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 
 size_t animationCollection_initFromFile(struct animationCollection *const col,

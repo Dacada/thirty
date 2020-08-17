@@ -4,6 +4,7 @@
 #include <shader.h>
 #include <component.h>
 #include <cglm/struct.h>
+#include <stddef.h>
 
 #define NUM_LIGHTS 20
 

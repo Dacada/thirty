@@ -2,8 +2,6 @@
 #include <scene.h>
 #include <componentCollection.h>
 #include <animationCollection.h>
-#include <animation.h>
-#include <bone.h>
 #include <camera.h>
 #include <geometry.h>
 #include <window.h>

@@ -1,17 +1,18 @@
 #include <scene.h>
 #include <object.h>
 #include <componentCollection.h>
-#include <geometry.h>
+#include <animationCollection.h>
 #include <camera.h>
+#include <geometry.h>
 #include <material.h>
 #include <light.h>
-#include <animationCollection.h>
 #include <dsutils.h>
 #include <util.h>
+#include <cglm/struct.h>
+#include <stddef.h>
 #include <ctype.h>
 #include <string.h>
 #include <limits.h>
-#include <cglm/struct.h>
 
 #define BOGLE_MAGIC_SIZE 5
 #define OBJECT_TREE_NUMBER_BASE 10

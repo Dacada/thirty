@@ -1,4 +1,5 @@
 #include <geometry.h>
+#include <vertex.h>
 #include <component.h>
 #include <util.h>
 #include <cglm/struct.h>
@@ -6,6 +7,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <limits.h>
+#include <stddef.h>
 
 #define VERTEX_ATTRIB 0
 #define TEXCOORD_ATTRIB 1

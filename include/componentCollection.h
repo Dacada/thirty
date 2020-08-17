@@ -3,6 +3,7 @@
 
 #include <component.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 /*
  * A collection of components assigned to an object. Each component exists

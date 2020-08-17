@@ -5,6 +5,7 @@
 #include <component.h>
 #include <cglm/struct.h>
 #include <glad/glad.h>
+#include <stddef.h>
 
 /*
  * This component encapsulates OpenGL geometry, a mesh. Only objects with a

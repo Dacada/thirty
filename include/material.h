@@ -6,6 +6,7 @@
 #include <component.h>
 #include <cglm/struct.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 /*
  * Represents a material. There are two kinds of materials. Uber and
