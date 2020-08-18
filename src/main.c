@@ -5,6 +5,7 @@
 #include <camera.h>
 #include <geometry.h>
 #include <window.h>
+#include <eventBroker.h>
 #include <util.h>
 #include <GLFW/glfw3.h>
 #include <stdbool.h>
@@ -19,8 +20,6 @@ static const float movement_speed = 10.0F;
 static const float look_sensitivity = 0.1F;
 
 static struct scene *scene;
-
-static char title[TITLE_BUFFER_SIZE];
 
 static struct object *find_camera(struct object *const object) {
         struct camera *cam = componentCollection_get(&object->components,
@@ -41,7 +40,11 @@ static struct object *find_camera(struct object *const object) {
 }
 
 static struct fpsCameraController cam_ctrl;
-static void processMouseInput(double xpos, double ypos) {
+static void processMouseInput(void *vargs) {
+        struct eventBrokerMousePosition *args = vargs;
+        const double xpos = args->xpos;
+        const double ypos = args->ypos;
+        
         const vec2s curr = {
                 .x = (float)xpos,
                 .y = (float)ypos,
@@ -59,7 +62,10 @@ static void processMouseInput(double xpos, double ypos) {
 
         prev = curr;
 }
-static void processKeyboardInput(void) {
+
+static void processKeyboardInput(void *args) {
+        (void)args;
+        
         vec2s movement = {.x=0, .y=0};
         
         if (window_keyPressed(GLFW_KEY_LEFT) ||
@@ -84,8 +90,12 @@ static void processKeyboardInput(void) {
         fpsCameraController_move(&cam_ctrl, movement, window_timeDelta());
 }
 
-static void processKeyboardEvent(const int key, const int action,
-                                 const int modifiers) {
+static void processKeyboardEvent(void *vargs) {
+        struct eventBrokerKeyboardEvent *args = vargs;
+        const int key = args->key;
+        const int action = args->action;
+        //const int modifiers = args->modifiers;
+        
         static enum {
                 anim_stop,
                 anim_wiggle,
@@ -119,7 +129,6 @@ static void processKeyboardEvent(const int key, const int action,
         struct animationCollection *anim =
                 componentCollection_compByIdx(animIdx);
                         
-        (void)modifiers;
         if (action == GLFW_PRESS) {
                 if (key == GLFW_KEY_ESCAPE) {
                         window_close();
@@ -169,24 +178,28 @@ static void processKeyboardEvent(const int key, const int action,
         }
 }
 
-static void update(void) {
-        scene_update(scene);
-}
-
-static void draw(void) {
+static void update(void *args) {
+        (void)args;
+        
         static unsigned count = 0;
         if (count == FRAME_PERIOD_FPS_REFRESH) {
                 const int fps = (const int)(1.0F/window_timeDelta());
+                static char title[TITLE_BUFFER_SIZE];
                 snprintf(title, TITLE_BUFFER_SIZE, "[%d] Temple (%s)", fps,
                          cam_ctrl.freefly ?
                          "Freefly camera" :
                          "FPS camera");
-                window_updateTitle();
+                window_updateTitle(title);
                 count = 0;
         } else {
                 count++;
         }
+        
+        scene_update(scene);
+}
 
+static void draw(void *args) {
+        (void)args;
         scene_draw(scene);
 
 #ifndef NDEBUG
@@ -197,7 +210,9 @@ static void draw(void) {
 #endif
 }
 
-static void freeScene(void) {
+static void freeScene(void *args) {
+        (void)args;
+        
         scene_free(scene);
         free(scene);
         componentCollection_shutdown();
@@ -206,7 +221,6 @@ static void freeScene(void) {
 int main(void) {
         componentCollection_startup();
         window_init(SCREEN_WIDTH, SCREEN_HEIGHT);
-        window_title = title;
 
         scene = smalloc(sizeof(*scene));
         scene_initFromFile(scene, "scene");
@@ -217,12 +231,23 @@ int main(void) {
                                  movement_speed, look_sensitivity,
                                  cam);
 
-        window_onKeyboardInput = processKeyboardInput;
-        window_onKeyboardEvent = processKeyboardEvent;
-        window_onMousePosition = processMouseInput;
-        window_onUpdate = update;
-        window_onDraw = draw;
-        window_onTearDown = freeScene;
+        eventBroker_register(processKeyboardInput, EVENT_BROKER_PRIORITY_HIGH,
+                             EVENT_BROKER_KEYBOARD_INPUT);
+
+        eventBroker_register(processKeyboardEvent, EVENT_BROKER_PRIORITY_HIGH,
+                             EVENT_BROKER_KEYBOARD_EVENT);
+
+        eventBroker_register(processMouseInput, EVENT_BROKER_PRIORITY_HIGH,
+                             EVENT_BROKER_MOUSE_POSITION);
+
+        eventBroker_register(update, EVENT_BROKER_PRIORITY_HIGH,
+                             EVENT_BROKER_UPDATE);
+
+        eventBroker_register(draw, EVENT_BROKER_PRIORITY_HIGH,
+                             EVENT_BROKER_DRAW);
+
+        eventBroker_register(freeScene, EVENT_BROKER_PRIORITY_HIGH,
+                             EVENT_BROKER_TEAR_DOWN);
         
         window_run();
         

@@ -23,8 +23,7 @@ struct componentCollection {
  * Initialize the componentCollection module, allowing the creation and
  * management of object components.
  */
-void componentCollection_startup(void)
-        __attribute__((nonnull));
+void componentCollection_startup(void);
 
 /*
  * Allocate memory for a component of the given type and return it. Of course,

@@ -1,5 +1,6 @@
 #include <window.h>
 #include <util.h>
+#include <eventBroker.h>
 #include <cglm/struct.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -8,72 +9,80 @@
 #define DEFAULT_WINDOW_CLEARCOLOR { .x=0.2F, .y=0.3F, .z=0.3F, .w=1.0F }
 #define STARTING_TIMEDELTA (1.0F/60.0F)
 
-void(*window_onKeyboardInput)(void) = NULL;
-void(*window_onKeyboardEvent)(const int, const int, const int) = NULL;
-void(*window_onMousePosition)(const double, const double) = NULL;
-void(*window_onMouseScroll)(const double) = NULL;
-void(*window_onUpdate)(void) = NULL;
-void(*window_onDraw)(void) = NULL;
-void(*window_onTearDown)(void) = NULL;
-
 vec4s window_clearColor = DEFAULT_WINDOW_CLEARCOLOR;
-char *window_title = NULL;
 
-static void onFramebufferSizeChanged(GLFWwindow *const w,
-                                     const int width, const int height) {
-        (void)w;
+static void onFramebufferSizeChanged(void *vargs) {
+        struct eventBrokerWindowResized *args = vargs;
+        const int width = args->width;
+        const int height = args->height;
         glViewport(0, 0, width, height);
 }
 
-static void onKeyboardEvent(GLFWwindow *const w, const int key,
-                            const int scancode, const int action,
-                            const int mods) {
+static void eventFire_windowResized(GLFWwindow *const w,
+                                    const int width, const int height) {
+        (void)w;
+        struct eventBrokerWindowResized args = {
+                .width = width,
+                .height = height,
+        };
+        eventBroker_fire(EVENT_BROKER_WINDOW_RESIZED, &args);
+}
+
+static void eventFire_keyboardEvent(GLFWwindow *const w, const int key,
+                                    const int scancode, const int action,
+                                    const int mods) {
         (void)w;
         (void)scancode;
-        if (window_onKeyboardEvent != NULL) {
-                window_onKeyboardEvent(key, action, mods);
-        }
+        struct eventBrokerKeyboardEvent args = {
+                .key = key,
+                .action = action,
+                .modifiers = mods,
+        };
+        eventBroker_fire(EVENT_BROKER_KEYBOARD_EVENT, &args);
 }
 
-static void onMousePosition(GLFWwindow *const w, const double xpos,
-                            const double ypos) {
+static void eventFire_keyboardInput(void) {
+        eventBroker_fire(EVENT_BROKER_KEYBOARD_INPUT, NULL);
+}
+
+static void eventFire_mousePosition(GLFWwindow *const w,
+                                    const double xpos, const double ypos) {
         (void)w;
-        if (window_onMousePosition != NULL) {
-                window_onMousePosition(xpos, ypos);
-        }
+        struct eventBrokerMousePosition args = {
+                .xpos = xpos,
+                .ypos = ypos,
+        };
+        eventBroker_fire(EVENT_BROKER_MOUSE_POSITION, &args);
 }
 
-static void onMouseScroll(GLFWwindow *const w, const double xoff,
-                          const double yoff) {
+static void eventFire_mouseScroll(GLFWwindow *const w,
+                                  const double xoff, const double yoff) {
         (void)w;
         (void)xoff;
-        if (window_onMouseScroll != NULL) {
-                window_onMouseScroll(yoff);
-        }
+        struct eventBrokerMouseScroll args = {
+                .amount = yoff,
+        };
+        eventBroker_fire(EVENT_BROKER_MOUSE_SCROLL, &args);
 }
 
-static void onUpdate(void) {
-        if (window_onUpdate != NULL) {
-                window_onUpdate();
-        }
+static void eventFire_update(void) {
+        eventBroker_fire(EVENT_BROKER_UPDATE, NULL);
 }
 
-static void onDraw(void) {
-        if (window_onDraw != NULL) {
-                window_onDraw();
-        }
+static void eventFire_draw(void) {
+        eventBroker_fire(EVENT_BROKER_DRAW, NULL);
 }
 
-static void onTearDown(void) {
-        if (window_onTearDown != NULL) {
-                window_onTearDown();
-        }
+static void eventFire_tearDown(void) {
+        eventBroker_fire(EVENT_BROKER_TEAR_DOWN, NULL);
 }
 
 static GLFWwindow *window = NULL;
 static float timeDelta = STARTING_TIMEDELTA;
 
 void window_init(const int width, const int height) {
+        eventBroker_startup();
+        
         glfwInit();
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -99,10 +108,13 @@ void window_init(const int width, const int height) {
         }
 
         glViewport(0, 0, width, height);
-        glfwSetFramebufferSizeCallback(window, onFramebufferSizeChanged);
-        glfwSetKeyCallback(window, onKeyboardEvent);
-        glfwSetCursorPosCallback(window, onMousePosition);
-        glfwSetScrollCallback(window, onMouseScroll);
+        glfwSetFramebufferSizeCallback(window, eventFire_windowResized);
+        glfwSetKeyCallback(window, eventFire_keyboardEvent);
+        glfwSetCursorPosCallback(window, eventFire_mousePosition);
+        glfwSetScrollCallback(window, eventFire_mouseScroll);
+
+        eventBroker_register(onFramebufferSizeChanged, EVENT_BROKER_PRIORITY_HIGH,
+                             EVENT_BROKER_WINDOW_RESIZED);
         
         glEnable(GL_DEPTH_TEST);
 #ifdef NDEBUG
@@ -120,7 +132,7 @@ void window_run(void) {
                 glfwSetTime(0);
 
                 // Update game state
-                onUpdate();
+                eventFire_update();
 
                 // Clear screen
                 glClearColor(window_clearColor.x, window_clearColor.y,
@@ -128,19 +140,20 @@ void window_run(void) {
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 // Draw stuff
-                onDraw();
+                eventFire_draw();
 
                 glfwSwapBuffers(window);
 
                 // Process inputs
                 glfwPollEvents();
-                if (window_onKeyboardInput != NULL) {
-                        window_onKeyboardInput();
-                }
+                eventFire_keyboardInput();
+                
+                eventBroker_runAsyncEvents();
         }
 
         // Clean up
-        onTearDown();
+        eventFire_tearDown();
+        eventBroker_shutdown();
         glfwTerminate();
 }
 
@@ -152,11 +165,11 @@ bool window_keyPressed(const int key) {
         return glfwGetKey(window, key) == GLFW_PRESS;
 }
 
-void window_updateTitle(void) {
-        if (window_title == NULL) {
+void window_updateTitle(const char *const title) {
+        if (title == NULL) {
                 glfwSetWindowTitle(window, "");
         } else {
-                glfwSetWindowTitle(window, window_title);
+                glfwSetWindowTitle(window, title);
         }
 }
 
