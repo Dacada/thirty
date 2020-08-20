@@ -125,6 +125,79 @@ void window_init(const int width, const int height) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
+#ifndef NDEBUG
+#define FRAMES_TIME_INFO 60
+
+static void updateTimingInformation(double deltaTime, double updateTime,
+                                    double drawTime, double buffSwapTime,
+                                    double otherEventsTime) {
+        
+        static double deltaTimes[FRAMES_TIME_INFO];
+        static double updateTimes[FRAMES_TIME_INFO];
+        static double drawTimes[FRAMES_TIME_INFO];
+        static double buffSwapTimes[FRAMES_TIME_INFO];
+        static double otherEventsTimes[FRAMES_TIME_INFO];
+        static unsigned current = 0;
+
+        deltaTimes[current] = deltaTime;
+        updateTimes[current] = updateTime;
+        drawTimes[current] = drawTime - updateTime;
+        buffSwapTimes[current] = buffSwapTime - drawTime;
+        otherEventsTimes[current] = otherEventsTime - buffSwapTime;
+        current++;
+
+        if (current >= FRAMES_TIME_INFO) {
+                current = 0;
+                
+                double avgDeltaTimes = 0;
+                double avgUpdateTimes = 0;
+                double avgDrawTimes = 0;
+                double avgBuffSwapTimes = 0;
+                double avgOtherEventsTimes = 0;
+
+                for (unsigned i=0; i<FRAMES_TIME_INFO; i++) {
+                        avgDeltaTimes += deltaTimes[i];
+                        avgUpdateTimes += updateTimes[i];
+                        avgDrawTimes += drawTimes[i];
+                        avgBuffSwapTimes += buffSwapTimes[i];
+                        avgOtherEventsTimes += otherEventsTimes[i];
+                }
+
+                avgDeltaTimes /= FRAMES_TIME_INFO;
+                avgUpdateTimes /= FRAMES_TIME_INFO;
+                avgDrawTimes /= FRAMES_TIME_INFO;
+                avgBuffSwapTimes /= FRAMES_TIME_INFO;
+                avgOtherEventsTimes /= FRAMES_TIME_INFO;
+
+                double percUpdateTime =
+                        avgUpdateTimes / avgDeltaTimes * 100.0;
+                double percDrawTime =
+                        avgDrawTimes / avgDeltaTimes * 100.0;
+                double percBuffSwapTime =
+                        avgBuffSwapTimes / avgDeltaTimes * 100.0;
+                double percOtherEventsTime =
+                        avgOtherEventsTimes / avgDeltaTimes * 100.0;
+
+                double fps = 1.0 / avgDeltaTimes;
+
+                fprintf(stderr,
+                        "Average timing informatio of the last %u frames:\n",
+                        FRAMES_TIME_INFO);
+                fprintf(stderr, "\tTotal frame time:  %f (%f FPS)\n",
+                        avgDeltaTimes, fps);
+                fprintf(stderr, "\tUpdate time:       %f (%f%%)\n",
+                        avgUpdateTimes, percUpdateTime);
+                fprintf(stderr, "\tDraw time:         %f (%f%%)\n",
+                        avgDrawTimes, percDrawTime);
+                fprintf(stderr, "\tBuffer swap time:  %f (%f%%)\n",
+                        avgBuffSwapTimes, percBuffSwapTime);
+                fprintf(stderr, "\tOther events time: %f (%f%%)\n",
+                        avgOtherEventsTimes, percOtherEventsTime);
+        }
+}
+
+#endif
+
 void window_run(void) {
         while (!glfwWindowShouldClose(window)) {
                 // Update deltatime
@@ -133,6 +206,10 @@ void window_run(void) {
 
                 // Update game state
                 eventFire_update();
+                
+#ifndef NDEBUG
+                double updateTime = glfwGetTime();
+#endif
 
                 // Clear screen
                 glClearColor(window_clearColor.x, window_clearColor.y,
@@ -141,14 +218,33 @@ void window_run(void) {
 
                 // Draw stuff
                 eventFire_draw();
+                
+#ifndef NDEBUG
+                double drawTime = glfwGetTime();
+#endif
 
                 glfwSwapBuffers(window);
+                
+#ifndef NDEBUG
+                double buffSwapTime = glfwGetTime();
+#endif
 
                 // Process inputs
                 glfwPollEvents();
                 eventFire_keyboardInput();
                 
                 eventBroker_runAsyncEvents();
+                
+#ifndef NDEBUG
+                double otherEventsTime = glfwGetTime();
+#endif
+                
+                
+#ifndef NDEBUG
+                updateTimingInformation(
+                        (double)timeDelta, updateTime, drawTime,
+                        buffSwapTime, otherEventsTime);
+#endif
         }
 
         // Clean up
