@@ -4,6 +4,7 @@
 #include <animationCollection.h>
 #include <camera.h>
 #include <geometry.h>
+#include <light.h>
 #include <window.h>
 #include <eventBroker.h>
 #include <util.h>
@@ -16,28 +17,11 @@
 #define FRAME_PERIOD_FPS_REFRESH 10
 #define CAMERA_PITCH_LIMIT_OFFSET 0.1F
 
+static const vec4s globalAmbientLight = {.x=0.3F, .y=0.3F, .z=0.3F, .w=1.0F};
 static const float movement_speed = 10.0F;
 static const float look_sensitivity = 0.1F;
 
 static struct scene *scene;
-
-static struct object *find_camera(struct object *const object) {
-        struct camera *cam = componentCollection_get(&object->components,
-                                                     COMPONENT_CAMERA);
-        if (cam != NULL && cam->main) {
-                return object;
-        }
-
-        growingArray_foreach_START(&object->children, size_t*, child)
-                struct object *obj = scene_getObjectFromIdx(scene, *child);
-                struct object *ret = find_camera(obj);
-                if (ret != NULL) {
-                        return ret;
-                }
-        growingArray_foreach_END
-
-        return NULL;
-}
 
 static struct fpsCameraController cam_ctrl;
 static void processMouseInput(void *vargs) {
@@ -95,92 +79,23 @@ static void processKeyboardEvent(void *vargs) {
         const int key = args->key;
         const int action = args->action;
         //const int modifiers = args->modifiers;
-        
-        static enum {
-                anim_stop,
-                anim_wiggle,
-                anim_move,
-        } animationState = anim_stop;
-        static bool first = true;
-        static size_t wiggleIdx;
-        static size_t moveIdx;
-        static size_t animIdx;
-        
-        if (first) {
-                animIdx = componentCollection_idxByName(
-                        "SnekSkeleton", COMPONENT_ANIMATIONCOLLECTION);
-                assert(animIdx > 0);
-                animIdx--;
-                
-                struct animationCollection *anim =
-                        componentCollection_compByIdx(animIdx);
-                
-                wiggleIdx = animationCollection_idxByName(anim, "SnekRotate");
-                assert(wiggleIdx > 0);
-                wiggleIdx--;
-                
-                moveIdx = animationCollection_idxByName(anim, "SnekMove");
-                assert(moveIdx > 0);
-                moveIdx--;
-                
-                first = false;
-        }
-        
-        struct animationCollection *anim =
-                componentCollection_compByIdx(animIdx);
                         
         if (action == GLFW_PRESS) {
                 if (key == GLFW_KEY_ESCAPE) {
                         window_close();
                 } else if (key == GLFW_KEY_F) {
                         cam_ctrl.freefly = !cam_ctrl.freefly;
-                } else if (key == GLFW_KEY_G) {
-                        animationState = (animationState + 1) % 3;
-                        switch (animationState) {
-                        case anim_stop:
-                                dbg("play stop");
-                                animationCollection_setBindPose(anim);
-                                break;
-                        case anim_wiggle:
-                                dbg("play wiggle");
-                                animationCollection_playAnimation(
-                                        anim, wiggleIdx);
-                                break;
-                        case anim_move:
-                                dbg("play move");
-                                animationCollection_playAnimation(
-                                        anim, moveIdx);
-                                break;
-                        default:
-                                assert_fail();
-                        }
-                } else if (key == GLFW_KEY_SPACE) {
-                        static const float timestamp = 
-                                ANIMATION_FRAME_TO_TIMESTAMP(40.0F, 60.0F);
-                        switch(animationState) {
-                        case anim_stop:
-                                dbg("pose stop");
-                                break;
-                        case anim_wiggle:
-                                dbg("pose wiggle");
-                                animationCollection_poseAnimation(
-                                        anim, wiggleIdx, timestamp);
-                                break;
-                        case anim_move:
-                                dbg("pose move");
-                                animationCollection_poseAnimation(
-                                        anim, moveIdx, timestamp);
-                                break;
-                        default:
-                                assert_fail();
-                        }
                 }
         }
 }
 
-static void update(void *args) {
+static void updateScene(void *args) {
         (void)args;
-        
+        scene_update(scene);
+}
+
+static void updateTitle(void *args) {
+        (void)args;
         static unsigned count = 0;
         if (count == FRAME_PERIOD_FPS_REFRESH) {
                 const int fps = (const int)(1.0F/window_timeDelta());
@@ -194,11 +109,9 @@ static void update(void *args) {
         } else {
                 count++;
         }
-        
-        scene_update(scene);
 }
 
-static void draw(void *args) {
+static void drawScene(void *args) {
         (void)args;
         scene_draw(scene);
 
@@ -223,33 +136,56 @@ int main(void) {
         window_init(SCREEN_WIDTH, SCREEN_HEIGHT);
 
         scene = smalloc(sizeof(*scene));
-        scene_initFromFile(scene, "scene");
-        scene_setSkybox(scene, "skybox");
-        
-        struct object *cam = find_camera(&scene->root);
-        fpsCameraController_init(&cam_ctrl,
-                                 movement_speed, look_sensitivity,
-                                 cam);
+        scene_init(scene, globalAmbientLight, 1);
 
+        // Create sphere
+        struct object *sphere = scene_createObject(scene, "sphere", 0);
+        
+        struct geometry *geo = componentCollection_create(COMPONENT_GEOMETRY);
+        size_t geoIdx = geo->base.idx;
+        geometry_initIcosphere(geo, "sphere_geo", 3);
+        componentCollection_set(&sphere->components, COMPONENT_GEOMETRY, geoIdx);
+        
+        struct material_uber *mat = componentCollection_create(
+                COMPONENT_MATERIAL_UBER);
+        size_t matIdx = mat->base.base.idx;
+        material_uber_initDefaults(mat, "sphere_material", SHADER_UBER);
+        vec4s white = GLMS_VEC4_ONE_INIT;
+        mat->emissiveColor = white;
+        material_setTexture((struct material*)mat,
+                            MATERIAL_TEXTURE_EMISSIVE, "wood");
+        componentCollection_set(&sphere->components, COMPONENT_MATERIAL, matIdx);
+
+        // Create camera
+        struct object *camera = scene_createObject(scene, "camera", 0);
+        object_translateZ(camera, 10.0F);
+
+        struct camera *cam = componentCollection_create(COMPONENT_CAMERA_FPS);
+        size_t camIdx = cam->base.idx;
+        camera_init(cam, "camera", (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT,
+                    0.1F, 100.0F, 45.0F, true, COMPONENT_CAMERA_FPS);
+        componentCollection_set(&camera->components, COMPONENT_CAMERA, camIdx);
+
+        fpsCameraController_init(&cam_ctrl, movement_speed, look_sensitivity,
+                                 camera);
+
+        // Register events
         eventBroker_register(processKeyboardInput, EVENT_BROKER_PRIORITY_HIGH,
                              EVENT_BROKER_KEYBOARD_INPUT);
-
         eventBroker_register(processKeyboardEvent, EVENT_BROKER_PRIORITY_HIGH,
                              EVENT_BROKER_KEYBOARD_EVENT);
-
         eventBroker_register(processMouseInput, EVENT_BROKER_PRIORITY_HIGH,
                              EVENT_BROKER_MOUSE_POSITION);
-
-        eventBroker_register(update, EVENT_BROKER_PRIORITY_HIGH,
+        eventBroker_register(updateScene, EVENT_BROKER_PRIORITY_HIGH,
                              EVENT_BROKER_UPDATE);
-
-        eventBroker_register(draw, EVENT_BROKER_PRIORITY_HIGH,
+        eventBroker_register(updateTitle, EVENT_BROKER_PRIORITY_HIGH,
+                             EVENT_BROKER_UPDATE);
+        eventBroker_register(drawScene, EVENT_BROKER_PRIORITY_HIGH,
                              EVENT_BROKER_DRAW);
-
         eventBroker_register(freeScene, EVENT_BROKER_PRIORITY_HIGH,
                              EVENT_BROKER_TEAR_DOWN);
-        
+
+        // Main loop
         window_run();
-        
         return 0;
 }

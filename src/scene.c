@@ -93,6 +93,17 @@ static void parse_object_tree(struct scene *const scene, FILE *const f) {
         stack_destroy(&stack);
 }
 
+void scene_init(struct scene *const scene, const vec4s globalAmbientLight,
+                const size_t initalObjectCapacity) {
+        object_initEmpty(&scene->root, scene, "root");
+        scene->root.idx = 0;
+
+        growingArray_init(&scene->objects, sizeof(struct object),
+                          initalObjectCapacity);
+
+        scene->globalAmbientLight = globalAmbientLight;
+}
+
 void scene_initFromFile(struct scene *const scene,
                         const char *const filename) {
         char path[PATH_MAX];
@@ -527,7 +538,12 @@ void scene_draw(const struct scene *const scene) {
         const struct material *skyboxMaterial = componentCollection_get(
                 &skybox->object->components,
                 COMPONENT_MATERIAL);
-        material_bindTextures(skyboxMaterial);
+        if (skyboxMaterial != NULL) {
+                // Will be NULL when there's no skybox object. In that case, no
+                // skybox material, no environment texture, hope there's no
+                // object who wants to use it.
+                material_bindTextures(skyboxMaterial);
+        }
 
         // Sort objects by render order
         growingArray_sort(&objects, cmpobj, NULL);

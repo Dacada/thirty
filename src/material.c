@@ -93,6 +93,9 @@ static struct texture *getVarTextureInfo(
 
 void material_init(struct material *material, const char *const name,
                    const enum shaders shader, const enum componentType type) {
+        assert(type == COMPONENT_MATERIAL_SKYBOX ||
+               type == COMPONENT_MATERIAL_UBER);
+        
         component_init((struct component*)material, name);
         material->base.type = type;
         material->shader = shader;
@@ -100,6 +103,9 @@ void material_init(struct material *material, const char *const name,
 
 size_t material_initFromFile(struct material *const material, FILE *const f,
                              const enum componentType type) {
+        assert(type == COMPONENT_MATERIAL_SKYBOX ||
+               type == COMPONENT_MATERIAL_UBER);
+        
         uint8_t shader_type;
         sfread(&shader_type, sizeof(shader_type), 1, f);
 
@@ -118,6 +124,9 @@ size_t material_initFromFile(struct material *const material, FILE *const f,
 void material_setTexture(struct material *const material,
                          const enum material_textureType tex,
                          const char *const name) {
+        assert(material->base.type == COMPONENT_MATERIAL_SKYBOX ||
+               material->base.type == COMPONENT_MATERIAL_UBER);
+        
         GLenum textureSlot = GL_TEXTURE0 + tex;
         GLenum textureType;
         struct texture *texture = getVarTextureInfo(material, tex,
@@ -136,6 +145,9 @@ void material_setTexture(struct material *const material,
 
 void material_unsetTexture(struct material *const material,
                            const enum material_textureType tex) {
+        assert(material->base.type == COMPONENT_MATERIAL_SKYBOX ||
+               material->base.type == COMPONENT_MATERIAL_UBER);
+        
         struct texture *texture = getVarTextureInfo(material, tex, NULL);
         if (texture != NULL) {
                 texture_free(texture);
@@ -143,6 +155,9 @@ void material_unsetTexture(struct material *const material,
 }
 
 bool material_isTransparent(const struct material *const material) {
+        assert(material->base.type == COMPONENT_MATERIAL_SKYBOX ||
+               material->base.type == COMPONENT_MATERIAL_UBER);
+        
         if (material->base.type == COMPONENT_MATERIAL_UBER) {
                 return ((const struct material_uber*)material)->
                         alphaBlendingMode;
@@ -151,6 +166,9 @@ bool material_isTransparent(const struct material *const material) {
 }
 
 void material_updateShader(const struct material *const material) {
+        assert(material->base.type == COMPONENT_MATERIAL_SKYBOX ||
+               material->base.type == COMPONENT_MATERIAL_UBER);
+        
         if (material->base.type == COMPONENT_MATERIAL_UBER) {
                 const struct material_uber *const mat =
                         (const struct material_uber*)material;
@@ -201,6 +219,9 @@ void material_updateShader(const struct material *const material) {
 }
 
 void material_bindTextures(const struct material *const material) {
+        assert(material->base.type == COMPONENT_MATERIAL_SKYBOX ||
+               material->base.type == COMPONENT_MATERIAL_UBER);
+        
         for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
              tex < MATERIAL_TEXTURE_TOTAL; tex++) {
                 const struct texture *texture = getConstTextureInfo(
@@ -212,6 +233,9 @@ void material_bindTextures(const struct material *const material) {
 }
 
 void material_free(struct material *const material) {
+        assert(material->base.type == COMPONENT_MATERIAL_SKYBOX ||
+               material->base.type == COMPONENT_MATERIAL_UBER);
+        
         component_free((struct component*)material);
         for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
              tex < MATERIAL_TEXTURE_TOTAL; tex++) {
@@ -237,10 +261,11 @@ void material_uber_initDefaults(struct material_uber *const material,
                                 const enum shaders shader) {
         material_init(&material->base, name, shader, COMPONENT_MATERIAL_UBER);
 
+        static const vec4s white = GLMS_VEC4_ONE_INIT;
         static const vec4s black = GLMS_VEC4_BLACK_INIT;
         material->ambientColor = black;
         material->emissiveColor = black;
-        material->diffuseColor = black;
+        material->diffuseColor = white;
         material->specularColor = black;
 
         material->opacity = 1.0F;
@@ -259,6 +284,8 @@ void material_uber_initDefaults(struct material_uber *const material,
 
 void material_uber_initFromFile(struct material_uber *const material,
                                 FILE *const f) {
+        assert(material->base.base.type == COMPONENT_MATERIAL_UBER);
+        
         sfread(material->ambientColor.raw, sizeof(float), 4, f);
         sfread(material->emissiveColor.raw, sizeof(float), 4, f);
         sfread(material->diffuseColor.raw, sizeof(float), 4, f);

@@ -19,6 +19,14 @@ struct scene {
 };
 
 /*
+ * Initialize a scene from parameters
+ */
+void scene_init(struct scene *scene,
+                vec4s globalAmbientLight, size_t initalObjectCapacity)
+        __attribute__((access (write_only, 1)))
+        __attribute__((nonnull));
+
+/*
  * Initialize a scene from a BOGLE file postioned at the right offset.
  */
 void scene_initFromFile(struct scene *scene, const char *filename)

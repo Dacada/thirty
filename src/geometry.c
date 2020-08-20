@@ -1,6 +1,7 @@
 #include <geometry.h>
 #include <vertex.h>
 #include <component.h>
+#include <dsutils.h>
 #include <util.h>
 #include <cglm/struct.h>
 #include <glad/glad.h>
@@ -17,6 +18,8 @@
 #define BONEIDX_ATTRIB 5
 #define BONEWGHT_ATTRIB 6
 
+#define SQRT_5 2.23606797749979F
+
 __attribute__((access (write_only, 1)))
 __attribute__((nonnull))
 static void geometry_init(struct geometry *const geometry) {
@@ -31,11 +34,8 @@ void geometry_initFromArray(struct geometry *const geometry,
                             const size_t nvertices,
                             const unsigned *const indices,
                             const size_t nindices) {
-        if (nindices > INT_MAX) {
-                bail("Cannot draw geometry with more than %d "
-                     "indices (attempted geometry has %lu indices)\n",
-                     INT_MAX, nindices);
-        }
+        assert(nindices <= INT_MAX);
+        assert(geometry->base.type == COMPONENT_GEOMETRY);
 
         component_init((struct component *)geometry, name);
         geometry_init(geometry);
@@ -79,42 +79,913 @@ void geometry_initFromArray(struct geometry *const geometry,
 
 void geometry_initCube(struct geometry *geo, const char *const name) {
         static const struct vertex vertices[] = {
-                {.vert.x =  1, .vert.y =  1, .vert.z =  1,
-                 .bones={{0,0,0}}, .weights={{0,0,0}}},
-                {.vert.x =  1, .vert.y =  1, .vert.z = -1,
-                 .bones={{0,0,0}}, .weights={{0,0,0}}},
-                {.vert.x =  1, .vert.y = -1, .vert.z =  1,
-                 .bones={{0,0,0}}, .weights={{0,0,0}}},
-                {.vert.x =  1, .vert.y = -1, .vert.z = -1,
-                 .bones={{0,0,0}}, .weights={{0,0,0}}},
-                {.vert.x = -1, .vert.y =  1, .vert.z =  1,
-                 .bones={{0,0,0}}, .weights={{0,0,0}}},
-                {.vert.x = -1, .vert.y =  1, .vert.z = -1,
-                 .bones={{0,0,0}}, .weights={{0,0,0}}},
-                {.vert.x = -1, .vert.y = -1, .vert.z =  1,
-                 .bones={{0,0,0}}, .weights={{0,0,0}}},
-                {.vert.x = -1, .vert.y = -1, .vert.z = -1,
-                 .bones={{0,0,0}}, .weights={{0,0,0}}},
+                {.vert.x   =-1.0000F,.vert.y   = 1.0000F,.vert.z   =1.0000F,
+                 .tex.x    = 0.8750F,.tex.y    = 0.5000F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   =1.0000F,
+                 .tang.x   =-1.0000F,.tang.y   = 0.0000F,.tang.z   =0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z =0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  =0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z=0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   = 1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.3750F,.tex.y    = 0.2500F,
+                 .norm.x   =-1.0000F,.norm.y   = 0.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 0.0000F,.binorm.y = 1.0000F,.binorm.z =-0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   = 1.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.6250F,.tex.y    = 0.2500F,
+                 .norm.x   = 0.0000F,.norm.y   = 1.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 1.0000F,.binorm.y = 0.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   =-1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.3750F,.tex.y    = 0.7500F,
+                 .norm.x   = 1.0000F,.norm.y   = 0.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   = 1.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.6250F,.tex.y    = 0.5000F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   = 1.0000F,
+                 .tang.x   =-1.0000F,.tang.y   = 0.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   =-1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.3750F,.tex.y    = 0.7500F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   =-1.0000F,
+                 .tang.x   = 1.0000F,.tang.y   = 0.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   = 1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.3750F,.tex.y    = 0.5000F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   =-1.0000F,
+                 .tang.x   = 1.0000F,.tang.y   = 0.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   =-1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.3750F,.tex.y    = 1.0000F,
+                 .norm.x   = 0.0000F,.norm.y   =-1.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x =-1.0000F,.binorm.y = 0.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   =-1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.1250F,.tex.y    = 0.7500F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   =-1.0000F,
+                 .tang.x   = 1.0000F,.tang.y   = 0.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   =-1.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.6250F,.tex.y    = 0.7500F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   = 1.0000F,
+                 .tang.x   =-1.0000F,.tang.y   = 0.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   = 1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.3750F,.tex.y    = 0.5000F,
+                 .norm.x   = 1.0000F,.norm.y   = 0.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   = 1.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.6250F,.tex.y    = 0.5000F,
+                 .norm.x   = 0.0000F,.norm.y   = 1.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 1.0000F,.binorm.y = 0.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   =-1.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.6250F,.tex.y    = 0.7500F,
+                 .norm.x   = 1.0000F,.norm.y   = 0.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   =-1.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.8750F,.tex.y    = 0.7500F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   = 1.0000F,
+                 .tang.x   =-1.0000F,.tang.y   = 0.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   =-1.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.6250F,.tex.y    = 1.0000F,
+                 .norm.x   = 0.0000F,.norm.y   =-1.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x =-1.0000F,.binorm.y = 0.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   =-1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.3750F,.tex.y    = 0.7500F,
+                 .norm.x   = 0.0000F,.norm.y   =-1.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x =-1.0000F,.binorm.y = 0.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   = 1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.1250F,.tex.y    = 0.5000F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   =-1.0000F,
+                 .tang.x   = 1.0000F,.tang.y   = 0.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   = 1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.3750F,.tex.y    = 0.2500F,
+                 .norm.x   = 0.0000F,.norm.y   = 1.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 1.0000F,.binorm.y = 0.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   = 1.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.6250F,.tex.y    = 0.2500F,
+                 .norm.x   =-1.0000F,.norm.y   = 0.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 0.0000F,.binorm.y = 1.0000F,.binorm.z =-0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   =-1.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.6250F,.tex.y    = 0.7500F,
+                 .norm.x   = 0.0000F,.norm.y   =-1.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x =-1.0000F,.binorm.y = 0.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   = 1.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.6250F,.tex.y    = 0.5000F,
+                 .norm.x   = 1.0000F,.norm.y   = 0.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   = 1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.3750F,.tex.y    = 0.5000F,
+                 .norm.x   = 0.0000F,.norm.y   = 1.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 1.0000F,.binorm.y = 0.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   =-1.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.6250F,.tex.y    = 0.0000F,
+                 .norm.x   =-1.0000F,.norm.y   = 0.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 0.0000F,.binorm.y = 1.0000F,.binorm.z =-0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   =-1.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.3750F,.tex.y    = 0.0000F,
+                 .norm.x   =-1.0000F,.norm.y   = 0.0000F,.norm.z   = 0.0000F,
+                 .tang.x   = 0.0000F,.tang.y   = 0.0000F,.tang.z   = 1.0000F,
+                 .binorm.x = 0.0000F,.binorm.y = 1.0000F,.binorm.z =-0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
         };
-        static const size_t nvertices = sizeof(vertices) / sizeof(*vertices);
         
         static const unsigned indices[] = {
-                0, 2, 6,  0, 6, 4,
-                4, 6, 7,  4, 7, 5,
-                5, 7, 3,  5, 3, 1,
-                1, 3, 2,  1, 2, 0,
-                1, 0, 4,  1, 4, 5,
-                2, 3, 7,  2, 7, 6,
+                0, 9, 4,
+                0, 13, 9,
+                19, 7, 15,
+                19, 14, 7,
+                22, 1, 23,
+                22, 18, 1,
+                6, 8, 16,
+                6, 5, 8,
+                20, 3, 10,
+                20, 12, 3,
+                2, 21, 17,
+                2, 11, 21
         };
-        static const size_t nindices = sizeof(indices) / sizeof(*indices);
+        
+        size_t nvertices = sizeof(vertices) / sizeof(*vertices);
+        size_t nindices = sizeof(indices) / sizeof(*indices);
         
         geometry_initFromArray(geo, name,
                                vertices, nvertices, indices, nindices);
 }
 
+void geometry_initIcosphere(struct geometry *const geo,
+                            const char *const name,
+                            const unsigned subdivisions) {
+        static const struct vertex vertices[] = {
+                {.vert.x   =-0.2764F,.vert.y   =-0.8506F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.9091F,.tex.y    = 0.1575F,
+                 .norm.x   =-0.3035F,.norm.y   =-0.9342F,.norm.z   = 0.1876F,
+                 .tang.x   =-0.9511F,.tang.y   = 0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y = 0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.7236F,.vert.y   =-0.5257F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.0909F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.7946F,.norm.y   =-0.5774F,.norm.z   =-0.1876F,
+                 .tang.x   =-0.5878F,.tang.y   = 0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y =-0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.2764F,.vert.y   = 0.8506F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.4545F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.1876F,.norm.y   = 0.5774F,.norm.z   = 0.7947F,
+                 .tang.x   = 0.9511F,.tang.y   = 0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y =-0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.8944F,.vert.y   = 0.0000F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.6364F,.tex.y    = 0.3149F,
+                 .norm.x   = 0.4911F,.norm.y   =-0.3568F,.norm.z   = 0.7947F,
+                 .tang.x   =-0.5878F,.tang.y   =-0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y = 0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.8944F,.vert.y   = 0.0000F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.1818F,.tex.y    = 0.1575F,
+                 .norm.x   =-0.4911F,.norm.y   = 0.3568F,.norm.z   =-0.7947F,
+                 .tang.x   = 0.5878F,.tang.y   = 0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y = 0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.7236F,.vert.y   =-0.5257F,.vert.z   = 0.4472F,
+                 .tex.x    = 1.0000F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.3035F,.norm.y   =-0.9342F,.norm.z   = 0.1876F,
+                 .tang.x   =-0.9511F,.tang.y   = 0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y = 0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.7236F,.vert.y   = 0.5257F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.2727F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.1876F,.norm.y   = 0.5774F,.norm.z   = 0.7947F,
+                 .tang.x   = 0.9511F,.tang.y   = 0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y =-0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.7236F,.vert.y   = 0.5257F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.5455F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.9822F,.norm.y   = 0.0000F,.norm.z   =-0.1876F,
+                 .tang.x   = 0.0000F,.tang.y   =-1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.1876F,.binorm.y = 0.0000F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.8944F,.vert.y   = 0.0000F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.1818F,.tex.y    = 0.1575F,
+                 .norm.x   =-0.7946F,.norm.y   = 0.5774F,.norm.z   =-0.1876F,
+                 .tang.x   = 0.5878F,.tang.y   = 0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y = 0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.2764F,.vert.y   = 0.8506F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.3636F,.tex.y    = 0.1575F,
+                 .norm.x   =-0.7946F,.norm.y   = 0.5774F,.norm.z   =-0.1876F,
+                 .tang.x   = 0.5878F,.tang.y   = 0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y = 0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.2764F,.vert.y   =-0.8506F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.9091F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.1876F,.norm.y   =-0.5774F,.norm.z   =-0.7947F,
+                 .tang.x   =-0.9511F,.tang.y   =-0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y =-0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.2764F,.vert.y   =-0.8506F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.8182F,.tex.y    = 0.3149F,
+                 .norm.x   = 0.4911F,.norm.y   =-0.3568F,.norm.z   = 0.7947F,
+                 .tang.x   =-0.5878F,.tang.y   =-0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y = 0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.7236F,.vert.y   =-0.5257F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.7273F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.6071F,.norm.y   = 0.0000F,.norm.z   =-0.7947F,
+                 .tang.x   = 0.0000F,.tang.y   =-1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.7947F,.binorm.y = 0.0000F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.2764F,.vert.y   = 0.8506F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.3636F,.tex.y    = 0.1575F,
+                 .norm.x   =-0.3035F,.norm.y   = 0.9342F,.norm.z   = 0.1876F,
+                 .tang.x   = 0.9511F,.tang.y   = 0.3090F,.tang.z   =-0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y =-0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.2764F,.vert.y   = 0.8506F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.4545F,.tex.y    = 0.3149F,
+                 .norm.x   = 0.3035F,.norm.y   = 0.9342F,.norm.z   =-0.1876F,
+                 .tang.x   = 0.9511F,.tang.y   =-0.3090F,.tang.z   =-0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y = 0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.7236F,.vert.y   =-0.5257F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.7273F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.9822F,.norm.y   = 0.0000F,.norm.z   =-0.1876F,
+                 .tang.x   = 0.0000F,.tang.y   =-1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.1876F,.binorm.y = 0.0000F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.7236F,.vert.y   =-0.5257F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.7273F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.7946F,.norm.y   =-0.5774F,.norm.z   = 0.1876F,
+                 .tang.x   =-0.5878F,.tang.y   =-0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y = 0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.2764F,.vert.y   =-0.8506F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.8182F,.tex.y    = 0.3149F,
+                 .norm.x   = 0.3035F,.norm.y   =-0.9342F,.norm.z   =-0.1876F,
+                 .tang.x   =-0.9511F,.tang.y   =-0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y =-0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.2764F,.vert.y   = 0.8506F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.4545F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.3035F,.norm.y   = 0.9342F,.norm.z   = 0.1876F,
+                 .tang.x   = 0.9511F,.tang.y   = 0.3090F,.tang.z   =-0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y =-0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.0000F,.vert.y   = 0.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.7273F,.tex.y    = 0.4724F,
+                 .norm.x   = 0.4911F,.norm.y   =-0.3568F,.norm.z   = 0.7947F,
+                 .tang.x   =-0.5878F,.tang.y   =-0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y = 0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.2764F,.vert.y   =-0.8506F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.8182F,.tex.y    = 0.3149F,
+                 .norm.x   = 0.7946F,.norm.y   =-0.5774F,.norm.z   = 0.1876F,
+                 .tang.x   =-0.5878F,.tang.y   =-0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y = 0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.0000F,.vert.y   = 0.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.9091F,.tex.y    = 0.4724F,
+                 .norm.x   =-0.1876F,.norm.y   =-0.5774F,.norm.z   = 0.7947F,
+                 .tang.x   =-0.9511F,.tang.y   = 0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y = 0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.7236F,.vert.y   = 0.5257F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.2727F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.6071F,.norm.y   = 0.0000F,.norm.z   = 0.7947F,
+                 .tang.x   = 0.0000F,.tang.y   = 1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.7947F,.binorm.y =-0.0000F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.7236F,.vert.y   =-0.5257F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.0909F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.9822F,.norm.y   = 0.0000F,.norm.z   = 0.1876F,
+                 .tang.x   = 0.0000F,.tang.y   = 1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.1876F,.binorm.y =-0.0000F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.2764F,.vert.y   = 0.8506F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.3636F,.tex.y    = 0.1575F,
+                 .norm.x   =-0.4911F,.norm.y   = 0.3568F,.norm.z   =-0.7947F,
+                 .tang.x   = 0.5878F,.tang.y   = 0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y = 0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.0000F,.vert.y   = 0.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.1818F,.tex.y    = 0.4724F,
+                 .norm.x   =-0.6071F,.norm.y   = 0.0000F,.norm.z   = 0.7947F,
+                 .tang.x   = 0.0000F,.tang.y   = 1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.7947F,.binorm.y =-0.0000F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.8944F,.vert.y   = 0.0000F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.6364F,.tex.y    = 0.3149F,
+                 .norm.x   = 0.4911F,.norm.y   = 0.3568F,.norm.z   = 0.7947F,
+                 .tang.x   = 0.5878F,.tang.y   =-0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y =-0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.8944F,.vert.y   = 0.0000F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.1818F,.tex.y    = 0.1575F,
+                 .norm.x   =-0.7946F,.norm.y   =-0.5774F,.norm.z   =-0.1876F,
+                 .tang.x   =-0.5878F,.tang.y   = 0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y =-0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.0000F,.vert.y   = 0.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.3636F,.tex.y    = 0.4724F,
+                 .norm.x   =-0.1876F,.norm.y   = 0.5774F,.norm.z   = 0.7947F,
+                 .tang.x   = 0.9511F,.tang.y   = 0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y =-0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.0000F,.vert.y   = 0.0000F,.vert.z   = 1.0000F,
+                 .tex.x    = 0.5455F,.tex.y    = 0.4724F,
+                 .norm.x   = 0.4911F,.norm.y   = 0.3568F,.norm.z   = 0.7947F,
+                 .tang.x   = 0.5878F,.tang.y   =-0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y =-0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.0000F,.vert.y   = 0.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.6364F,.tex.y    = 0.0000F,
+                 .norm.x   = 0.6071F,.norm.y   = 0.0000F,.norm.z   =-0.7947F,
+                 .tang.x   = 0.0000F,.tang.y   =-1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.7947F,.binorm.y = 0.0000F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.7236F,.vert.y   =-0.5257F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.0909F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.6071F,.norm.y   = 0.0000F,.norm.z   = 0.7947F,
+                 .tang.x   = 0.0000F,.tang.y   = 1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.7947F,.binorm.y =-0.0000F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.2764F,.vert.y   =-0.8506F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.0000F,.tex.y    = 0.1575F,
+                 .norm.x   =-0.4911F,.norm.y   =-0.3568F,.norm.z   =-0.7947F,
+                 .tang.x   =-0.5878F,.tang.y   = 0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y =-0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.7236F,.vert.y   = 0.5257F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.5455F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.3035F,.norm.y   = 0.9342F,.norm.z   =-0.1876F,
+                 .tang.x   = 0.9511F,.tang.y   =-0.3090F,.tang.z   =-0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y = 0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.8944F,.vert.y   = 0.0000F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.6364F,.tex.y    = 0.3149F,
+                 .norm.x   = 0.9822F,.norm.y   = 0.0000F,.norm.z   =-0.1876F,
+                 .tang.x   = 0.0000F,.tang.y   =-1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.1876F,.binorm.y = 0.0000F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.7236F,.vert.y   = 0.5257F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.2727F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.7946F,.norm.y   = 0.5774F,.norm.z   =-0.1876F,
+                 .tang.x   = 0.5878F,.tang.y   = 0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y = 0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.8944F,.vert.y   = 0.0000F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.1818F,.tex.y    = 0.1575F,
+                 .norm.x   =-0.9822F,.norm.y   = 0.0000F,.norm.z   = 0.1876F,
+                 .tang.x   = 0.0000F,.tang.y   = 1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.1876F,.binorm.y =-0.0000F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.7236F,.vert.y   = 0.5257F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.5455F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.7946F,.norm.y   = 0.5774F,.norm.z   = 0.1876F,
+                 .tang.x   = 0.5878F,.tang.y   =-0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y =-0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.2764F,.vert.y   =-0.8506F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.0000F,.tex.y    = 0.1575F,
+                 .norm.x   =-0.7946F,.norm.y   =-0.5774F,.norm.z   =-0.1876F,
+                 .tang.x   =-0.5878F,.tang.y   = 0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y =-0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.7236F,.vert.y   = 0.5257F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.2727F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.9822F,.norm.y   = 0.0000F,.norm.z   = 0.1876F,
+                 .tang.x   = 0.0000F,.tang.y   = 1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.1876F,.binorm.y =-0.0000F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.7236F,.vert.y   = 0.5257F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.2727F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.3035F,.norm.y   = 0.9342F,.norm.z   = 0.1876F,
+                 .tang.x   = 0.9511F,.tang.y   = 0.3090F,.tang.z   =-0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y =-0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.2764F,.vert.y   = 0.8506F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.4545F,.tex.y    = 0.3149F,
+                 .norm.x   = 0.7946F,.norm.y   = 0.5774F,.norm.z   = 0.1876F,
+                 .tang.x   = 0.5878F,.tang.y   =-0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y =-0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.8944F,.vert.y   = 0.0000F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.6364F,.tex.y    = 0.3149F,
+                 .norm.x   = 0.7946F,.norm.y   = 0.5774F,.norm.z   = 0.1876F,
+                 .tang.x   = 0.5878F,.tang.y   =-0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y =-0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.8944F,.vert.y   = 0.0000F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.1818F,.tex.y    = 0.1575F,
+                 .norm.x   =-0.4911F,.norm.y   =-0.3568F,.norm.z   =-0.7947F,
+                 .tang.x   =-0.5878F,.tang.y   = 0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y =-0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.7236F,.vert.y   = 0.5257F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.5455F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.6071F,.norm.y   = 0.0000F,.norm.z   =-0.7947F,
+                 .tang.x   = 0.0000F,.tang.y   =-1.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.7947F,.binorm.y = 0.0000F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.2764F,.vert.y   = 0.8506F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.4545F,.tex.y    = 0.3149F,
+                 .norm.x   = 0.4911F,.norm.y   = 0.3568F,.norm.z   = 0.7947F,
+                 .tang.x   = 0.5878F,.tang.y   =-0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y =-0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.2764F,.vert.y   = 0.8506F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.3636F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.1876F,.norm.y   = 0.5774F,.norm.z   =-0.7947F,
+                 .tang.x   = 0.9511F,.tang.y   =-0.3090F,.tang.z   =-0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y = 0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.0000F,.vert.y   = 0.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.8182F,.tex.y    = 0.0000F,
+                 .norm.x   = 0.1876F,.norm.y   =-0.5774F,.norm.z   =-0.7947F,
+                 .tang.x   =-0.9511F,.tang.y   =-0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y =-0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.7236F,.vert.y   = 0.5257F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.5455F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.1876F,.norm.y   = 0.5774F,.norm.z   =-0.7947F,
+                 .tang.x   = 0.9511F,.tang.y   =-0.3090F,.tang.z   =-0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y = 0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.2764F,.vert.y   =-0.8506F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.8182F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.3035F,.norm.y   =-0.9342F,.norm.z   = 0.1876F,
+                 .tang.x   =-0.9511F,.tang.y   = 0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y = 0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.7236F,.vert.y   =-0.5257F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.7273F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.1876F,.norm.y   =-0.5774F,.norm.z   =-0.7947F,
+                 .tang.x   =-0.9511F,.tang.y   =-0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y =-0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.2764F,.vert.y   = 0.8506F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.3636F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.3035F,.norm.y   = 0.9342F,.norm.z   =-0.1876F,
+                 .tang.x   = 0.9511F,.tang.y   =-0.3090F,.tang.z   =-0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y = 0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.0000F,.vert.y   = 0.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.2727F,.tex.y    = 0.0000F,
+                 .norm.x   =-0.4911F,.norm.y   = 0.3568F,.norm.z   =-0.7947F,
+                 .tang.x   = 0.5878F,.tang.y   = 0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y = 0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.2764F,.vert.y   =-0.8506F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.8182F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.1876F,.norm.y   =-0.5774F,.norm.z   = 0.7947F,
+                 .tang.x   =-0.9511F,.tang.y   = 0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y = 0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.0000F,.vert.y   = 0.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.0909F,.tex.y    = 0.0000F,
+                 .norm.x   =-0.4911F,.norm.y   =-0.3568F,.norm.z   =-0.7947F,
+                 .tang.x   =-0.5878F,.tang.y   = 0.8090F,.tang.z   = 0.0000F,
+                 .binorm.x =-0.6429F,.binorm.y =-0.4671F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.0000F,.vert.y   = 0.0000F,.vert.z   =-1.0000F,
+                 .tex.x    = 0.4545F,.tex.y    = 0.0000F,
+                 .norm.x   = 0.1876F,.norm.y   = 0.5774F,.norm.z   =-0.7947F,
+                 .tang.x   = 0.9511F,.tang.y   =-0.3090F,.tang.z   =-0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y = 0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.7236F,.vert.y   =-0.5257F,.vert.z   = 0.4472F,
+                 .tex.x    = 1.0000F,.tex.y    = 0.3149F,
+                 .norm.x   =-0.1876F,.norm.y   =-0.5774F,.norm.z   = 0.7947F,
+                 .tang.x   =-0.9511F,.tang.y   = 0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.2456F,.binorm.y = 0.7558F,.binorm.z = 0.6071F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-0.2764F,.vert.y   =-0.8506F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.9091F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.3035F,.norm.y   =-0.9342F,.norm.z   =-0.1876F,
+                 .tang.x   =-0.9511F,.tang.y   =-0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y =-0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.7236F,.vert.y   =-0.5257F,.vert.z   =-0.4472F,
+                 .tex.x    = 0.7273F,.tex.y    = 0.1575F,
+                 .norm.x   = 0.3035F,.norm.y   =-0.9342F,.norm.z   =-0.1876F,
+                 .tang.x   =-0.9511F,.tang.y   =-0.3090F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0580F,.binorm.y =-0.1784F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 0.8944F,.vert.y   = 0.0000F,.vert.z   = 0.4472F,
+                 .tex.x    = 0.6364F,.tex.y    = 0.3149F,
+                 .norm.x   = 0.7946F,.norm.y   =-0.5774F,.norm.z   = 0.1876F,
+                 .tang.x   =-0.5878F,.tang.y   =-0.8090F,.tang.z   =-0.0000F,
+                 .binorm.x =-0.1518F,.binorm.y = 0.1103F,.binorm.z = 0.9822F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+        };
+        static const size_t nvertices = sizeof(vertices) / sizeof(*vertices);
+
+        static const unsigned indices[] = {
+                47, 50, 10,
+                12, 30, 44,
+                54, 32, 43,
+                52, 4, 24,
+                55, 46, 48,
+                15, 7, 34,
+                57, 58, 17,
+                27, 38, 1,
+                9, 8, 35,
+                33, 51, 14,
+                16, 59, 20,
+                0, 49, 5,
+                36, 23, 39,
+                13, 40, 18,
+                37, 41, 42,
+                11, 3, 19,
+                56, 53, 21,
+                22, 31, 25,
+                2, 6, 28,
+                26, 45, 29,
+        };
+        static const size_t nindices = sizeof(indices) / sizeof(*indices);
+
+        struct growingArray vertexList;
+        struct growingArray indexList;
+        growingArray_init(&vertexList, sizeof(struct vertex), nvertices);
+        growingArray_init(&indexList, sizeof(unsigned), nindices);
+
+        for (size_t i=0; i<nvertices; i++) {
+                struct vertex *v = growingArray_append(&vertexList);
+                *v = vertices[i];
+        }
+        for (size_t i=0; i<nindices; i++) {
+                unsigned *idx = growingArray_append(&indexList);
+                *idx = indices[i];
+        }
+
+        // Subdivide
+        for (unsigned _=0; _<subdivisions; _++) {
+                struct growingArray newVertexList;
+                struct growingArray newIndexList;
+                growingArray_init(&newVertexList,
+                                  sizeof(struct vertex), vertexList.length);
+                growingArray_init(&newIndexList,
+                                  sizeof(unsigned), indexList.length);
+                unsigned lastIdx = 0;
+                for (size_t i=0; i<indexList.length; i+=3) {
+                        unsigned *idxA = growingArray_get(&indexList, i+0);
+                        unsigned *idxB = growingArray_get(&indexList, i+1);
+                        unsigned *idxC = growingArray_get(&indexList, i+2);
+                        
+                        struct vertex *old_vA =
+                                growingArray_get(&vertexList, *idxA);
+                        struct vertex *old_vB =
+                                growingArray_get(&vertexList, *idxB);
+                        struct vertex *old_vC =
+                                growingArray_get(&vertexList, *idxC);
+
+                        struct vertex vA;
+                        struct vertex vB;
+                        struct vertex vC;
+                        struct vertex vAB;
+                        struct vertex vAC;
+                        struct vertex vBC;
+                        
+                        // Calculate vertex positions
+                        vA.vert = glms_normalize(old_vA->vert);
+                        vB.vert = glms_normalize(old_vB->vert);
+                        vC.vert = glms_normalize(old_vC->vert);
+                        vAB.vert = glms_normalize(
+                                glms_vec3_scale(
+                                        glms_vec3_add(
+                                                old_vA->vert,
+                                                old_vB->vert), 0.5F));
+                        vAC.vert = glms_normalize(
+                                glms_vec3_scale(
+                                        glms_vec3_add(
+                                                old_vA->vert,
+                                                old_vC->vert), 0.5F));
+                        vBC.vert = glms_normalize(
+                                glms_vec3_scale(
+                                        glms_vec3_add(
+                                                old_vB->vert,
+                                                old_vC->vert), 0.5F));
+
+                        // Calculate vertex texture coordinates
+                        vA.tex = old_vA->tex;
+                        vB.tex = old_vB->tex;
+                        vC.tex = old_vC->tex;
+                        vAB.tex = glms_vec2_scale(
+                                glms_vec2_add(
+                                        old_vA->tex, old_vB->tex), 0.5F);
+                        vAC.tex = glms_vec2_scale(
+                                glms_vec2_add(
+                                        old_vA->tex, old_vC->tex), 0.5F);
+                        vBC.tex = glms_vec2_scale(
+                                glms_vec2_add(
+                                        old_vB->tex, old_vC->tex), 0.5F);
+                        
+                        // Calculate vertex normals
+                        vA.norm = glms_normalize(
+                                glms_cross(
+                                        glms_vec3_sub(vAB.vert, vA.vert),
+                                        glms_vec3_sub(vAC.vert, vA.vert)));
+                        vB.norm = glms_normalize(
+                                glms_cross(
+                                        glms_vec3_sub(vBC.vert, vB.vert),
+                                        glms_vec3_sub(vAB.vert, vB.vert)));
+                        vC.norm = glms_normalize(
+                                glms_cross(
+                                        glms_vec3_sub(vAC.vert, vC.vert),
+                                        glms_vec3_sub(vBC.vert, vC.vert)));
+                        vAB.norm = glms_normalize(
+                                glms_cross(
+                                        glms_vec3_sub(vBC.vert, vAB.vert),
+                                        glms_vec3_sub(vAC.vert, vAB.vert)));
+                        vAC.norm = glms_normalize(
+                                glms_cross(
+                                        glms_vec3_sub(vAB.vert, vAC.vert),
+                                        glms_vec3_sub(vBC.vert, vAC.vert)));
+                        vBC.norm = glms_normalize(
+                                glms_cross(
+                                        glms_vec3_sub(vAC.vert, vBC.vert),
+                                        glms_vec3_sub(vAB.vert, vBC.vert)));
+                        
+                        // TODO: Tangent, binormal
+                        
+                        // Set bones to 0
+                        vA.bones.x = vA.bones.y = vA.bones.z = 0;
+                        vA.weights.x = vA.weights.y = vA.weights.z = 0;
+                        vB.bones.x = vB.bones.y = vB.bones.z = 0;
+                        vB.weights.x = vB.weights.y = vB.weights.z = 0;
+                        vC.bones.x = vC.bones.y = vC.bones.z = 0;
+                        vC.weights.x = vC.weights.y = vC.weights.z = 0;
+                        vAB.bones.x = vAB.bones.y = vAB.bones.z = 0;
+                        vAB.weights.x = vAB.weights.y = vAB.weights.z = 0;
+                        vAC.bones.x = vAC.bones.y = vAC.bones.z = 0;
+                        vAC.weights.x = vAC.weights.y = vAC.weights.z = 0;
+                        vBC.bones.x = vBC.bones.y = vBC.bones.z = 0;
+                        vBC.weights.x = vBC.weights.y = vBC.weights.z = 0;
+                        
+                        struct vertex *v;
+                        v = growingArray_append(&newVertexList);
+                        *v = vA;
+                        v = growingArray_append(&newVertexList);
+                        *v = vB;
+                        v = growingArray_append(&newVertexList);
+                        *v = vC;
+                        v = growingArray_append(&newVertexList);
+                        *v = vAB;
+                        v = growingArray_append(&newVertexList);
+                        *v = vAC;
+                        v = growingArray_append(&newVertexList);
+                        *v = vBC;
+                        
+                        unsigned *idx;
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 0;
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 3;
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 4;
+                        
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 3;
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 1;
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 5;
+                        
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 4;
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 5;
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 2;
+                        
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 3;
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 5;
+                        idx = growingArray_append(&newIndexList);
+                        *idx = lastIdx + 4;
+                        
+                        lastIdx += 6;
+                }
+                growingArray_destroy(&vertexList);
+                growingArray_destroy(&indexList);
+                vertexList = newVertexList;
+                indexList = newIndexList;
+        }
+
+        geometry_initFromArray(geo, name,
+                               vertexList.data, vertexList.length,
+                               indexList.data, indexList.length);
+
+        growingArray_destroy(&vertexList);
+        growingArray_destroy(&indexList);
+}
+
 size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
                              const enum componentType type) {
-        (void)type;
+        assert(type == COMPONENT_GEOMETRY);
         
         struct {
                 uint32_t vertlen;
@@ -145,12 +1016,16 @@ size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
 }
 
 void geometry_draw(const struct geometry *const geometry) {
+        assert(geometry->base.type == COMPONENT_GEOMETRY);
+        
         glBindVertexArray(geometry->vao);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geometry->ibo);
         glDrawElements(GL_TRIANGLES, geometry->nindices, GL_UNSIGNED_INT, 0);
 }
 
 void geometry_free(struct geometry *const geometry) {
+        assert(geometry->base.type == COMPONENT_GEOMETRY);
+        
         component_free((struct component*)geometry);
         
         glDeleteBuffers(1, &geometry->vbo);

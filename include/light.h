@@ -29,6 +29,15 @@ struct light {
 };
 
 /*
+ * Initialize a light from parameters. Attenuation is constant, linear,
+ * quadratic.
+ */
+void light_init(struct light *light, enum componentType type, const char *name,
+                vec3s attenuation, vec4s color, float intensity, float angle)
+        __attribute__((access (write_only, 1)))
+        __attribute__((nonnull));
+
+/*
  * Initialize a light from a BOGLE file positioned at the correct offset.
  */
 size_t light_initFromFile(struct light *light, FILE *f, enum componentType type)

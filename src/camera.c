@@ -9,6 +9,8 @@ void camera_init(struct camera *const cam, const char *const name,
                  const float aspect, const float near, const float far,
                  const float fov, const bool main,
                  const enum componentType type) {
+        assert(type == COMPONENT_CAMERA_BASIC || type == COMPONENT_CAMERA_FPS);
+        
         component_init((struct component*)cam, name);
         
         cam->base.type = type;
@@ -41,6 +43,8 @@ void camera_init(struct camera *const cam, const char *const name,
 
 size_t camera_initFromFile(struct camera *const cam, FILE *const f,
                            const enum componentType type) {
+        assert(type == COMPONENT_CAMERA_FPS);
+        
         uint32_t width;
         uint32_t height;
         float near;
@@ -80,6 +84,9 @@ size_t camera_initFromFile(struct camera *const cam, FILE *const f,
 }
 
 mat4s camera_viewMatrix(const struct camera *const cam, mat4s model) {
+        assert(cam->base.type == COMPONENT_CAMERA_BASIC ||
+               cam->base.type == COMPONENT_CAMERA_FPS);
+        
         switch (cam->base.type) {
         case COMPONENT_CAMERA_BASIC:
                 return glms_mat4_inv(model);
@@ -106,9 +113,15 @@ mat4s camera_viewMatrix(const struct camera *const cam, mat4s model) {
 }
 
 mat4s camera_projectionMatrix(const struct camera *const cam) {
+        assert(cam->base.type == COMPONENT_CAMERA_BASIC ||
+               cam->base.type == COMPONENT_CAMERA_FPS);
+        
         return glms_perspective(cam->fov, cam->aspect, cam->near, cam->far);
 }
 
 void camera_free(struct camera *cam) {
+        assert(cam->base.type == COMPONENT_CAMERA_BASIC ||
+               cam->base.type == COMPONENT_CAMERA_FPS);
+        
         component_free((struct component*)cam);
 }

@@ -15,7 +15,7 @@
 size_t animationCollection_initFromFile(struct animationCollection *const col,
                                         FILE *const f,
                                         const enum componentType type) {
-        (void)type;
+        assert(type == COMPONENT_ANIMATIONCOLLECTION);
         
         char *name = strfile(f);
         component_init(&col->base, name);
@@ -41,6 +41,8 @@ size_t animationCollection_initFromFile(struct animationCollection *const col,
 
 size_t animationCollection_idxByName(struct animationCollection *const col,
                                      const char *const name) {
+        assert(col->base.type == COMPONENT_ANIMATIONCOLLECTION);
+        
         for (size_t i=0; i<col->nanimations; i++) {
                 if (strcmp(col->animations[i].name, name) == 0) {
                         return i+1;
@@ -51,6 +53,8 @@ size_t animationCollection_idxByName(struct animationCollection *const col,
 
 void animationCollection_playAnimation(struct animationCollection *const col,
                                        const size_t anim) {
+        assert(col->base.type == COMPONENT_ANIMATIONCOLLECTION);
+        
         col->running = true;
         col->current = anim+1;
         col->time = 0.0F;
@@ -59,18 +63,24 @@ void animationCollection_playAnimation(struct animationCollection *const col,
 void animationCollection_poseAnimation(struct animationCollection *const col,
                                        const size_t anim,
                                        const float timestamp) {
+        assert(col->base.type == COMPONENT_ANIMATIONCOLLECTION);
+        
         col->running = false;
         col->current = anim+1;
         col->time = timestamp;
 }
 
 void animationCollection_setBindPose(struct animationCollection *col) {
+        assert(col->base.type == COMPONENT_ANIMATIONCOLLECTION);
+        
         col->running = false;
         col->current = 0;
 }
 
 void animationCollection_bindBones(const struct animationCollection *const col,
                                    const enum shaders shader) {
+        assert(col->base.type == COMPONENT_ANIMATIONCOLLECTION);
+        
         if (col->current > 0) {
                 animation_bindBones(&col->animations[col->current-1],
                                     &col->skeleton, col->time, shader);
@@ -80,6 +90,8 @@ void animationCollection_bindBones(const struct animationCollection *const col,
 }
 
 void animationCollection_update(struct animationCollection *col) {
+        assert(col->base.type == COMPONENT_ANIMATIONCOLLECTION);
+        
         if (col->running && col->current > 0) {
                 col->time += window_timeDelta();
                 
@@ -96,6 +108,8 @@ void animationCollection_update(struct animationCollection *col) {
 }
 
 void animationCollection_free(struct animationCollection *col) {
+        assert(col->base.type == COMPONENT_ANIMATIONCOLLECTION);
+        
         component_free(&col->base);
         skeleton_free(&col->skeleton);
         for (size_t i=0; i<col->nanimations; i++) {

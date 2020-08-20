@@ -7,24 +7,47 @@
 
 #define BUFFER_SIZE 256
 
+void light_init(struct light *const light, const enum componentType type,
+                const char *const name, const vec3s attenuation, const vec4s color,
+                const float intensity, const float angle) {
+        assert(type == COMPONENT_LIGHT_DIRECTION ||
+               type == COMPONENT_LIGHT_POINT ||
+               type == COMPONENT_LIGHT_SPOT);
+        
+        light->enabled = true;
+        light->base.type = type;
+        component_init((struct component*)light, name);
+
+        light->attenuation_constant = attenuation.x;
+        light->attenuation_linear = attenuation.y;
+        light->attenuation_quadratic = attenuation.z;
+
+        light->color = color;
+        
+        light->intensity = intensity;
+        light->angle = angle;
+        
+}
+
 size_t light_initFromFile(struct light *const light,
                           FILE *const f, const enum componentType type) {
-        light->base.type = type;
-        light->enabled = true;
-
         char *name = strfile(f);
-        component_init((struct component*)light, name);
-        free(name);
-        
-        sfread(light->color.raw, sizeof(float), 4, f);
 
-        sfread(&light->attenuation_constant, sizeof(float), 1, f);
-        sfread(&light->attenuation_linear, sizeof(float), 1, f);
-        sfread(&light->attenuation_quadratic, sizeof(float), 1, f);
+        vec3s attenuation;
+        vec4s color;
+        float intensity;
+        float angle;
         
-        sfread(&light->intensity, sizeof(float), 1, f);
-        sfread(&light->angle, sizeof(float), 1, f);
+        sfread(color.raw, sizeof(float), 4, f);
+
+        sfread(attenuation.raw, sizeof(float), 3, f);
         
+        sfread(&intensity, sizeof(float), 1, f);
+        sfread(&angle, sizeof(float), 1, f);
+        
+        light_init(light, type, name, attenuation, color, intensity, angle);
+        
+        free(name);
         return sizeof(struct light);
 }
 
@@ -35,6 +58,10 @@ size_t light_initFromFile(struct light *const light,
 void light_updateShader(const struct light *light,
                         size_t which, mat4s view, mat4s model,
                         enum shaders shader) {
+        assert(light->base.type == COMPONENT_LIGHT_DIRECTION ||
+               light->base.type == COMPONENT_LIGHT_POINT ||
+               light->base.type == COMPONENT_LIGHT_SPOT);
+        
         char buf[BUFFER_SIZE];
         assert(which < NUM_LIGHTS);
         size_t i=which;
@@ -121,5 +148,9 @@ void light_updateGlobalAmbient(const enum shaders shader,
 }
 
 void light_free(struct light *const light) {
+        assert(light->base.type == COMPONENT_LIGHT_DIRECTION ||
+               light->base.type == COMPONENT_LIGHT_POINT ||
+               light->base.type == COMPONENT_LIGHT_SPOT);
+        
         component_free((struct component*)light);
 }
