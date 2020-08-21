@@ -108,8 +108,8 @@ void object_addChild(struct object *parent, struct object *child) {
         child->parent = parent->idx;
 }
 
-void object_update(struct object *const object) {
-        componentCollection_update(&object->components);
+void object_update(struct object *const object, const float timeDelta) {
+        componentCollection_update(&object->components, timeDelta);
 }
 
 bool object_draw(const struct object *const object, mat4s model,

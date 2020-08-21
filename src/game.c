@@ -1,15 +1,16 @@
-#include <window.h>
-#include <util.h>
+#include <game.h>
+#include <scene.h>
+#include <componentCollection.h>
 #include <eventBroker.h>
-#include <cglm/struct.h>
+#include <util.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <stdbool.h>
+#include <stddef.h>
 
-#define DEFAULT_WINDOW_CLEARCOLOR { .x=0.2F, .y=0.3F, .z=0.3F, .w=1.0F }
+#define FUNCTION_SIZE 256
+#define DEFAULT_CLEARCOLOR {.x=0.2F, .y=0.3F, .z=0.3F, .w=1.0F}
 #define STARTING_TIMEDELTA (1.0F/60.0F)
-
-vec4s window_clearColor = DEFAULT_WINDOW_CLEARCOLOR;
 
 static void onFramebufferSizeChanged(void *vargs) {
         struct eventBrokerWindowResized *args = vargs;
@@ -65,8 +66,11 @@ static void eventFire_mouseScroll(GLFWwindow *const w,
         eventBroker_fire(EVENT_BROKER_MOUSE_SCROLL, &args);
 }
 
-static void eventFire_update(void) {
-        eventBroker_fire(EVENT_BROKER_UPDATE, NULL);
+static void eventFire_update(const float timeDelta) {
+        struct eventBrokerUpdate args = {
+                .timeDelta = timeDelta,
+        };
+        eventBroker_fire(EVENT_BROKER_UPDATE, &args);
 }
 
 static void eventFire_draw(void) {
@@ -77,52 +81,23 @@ static void eventFire_tearDown(void) {
         eventBroker_fire(EVENT_BROKER_TEAR_DOWN, NULL);
 }
 
-static GLFWwindow *window = NULL;
-static float timeDelta = STARTING_TIMEDELTA;
+static void doUpdateScene(const size_t sceneIdx,
+                          struct growingArray *scenes, const float timeDelta) {
+        struct scene *scene = growingArray_get(scenes, sceneIdx);
+        scene_update(scene, timeDelta);
+}
 
-void window_init(const int width, const int height) {
-        eventBroker_startup();
-        
-        glfwInit();
+static void doDrawScene(const size_t sceneIdx,
+                        struct growingArray *scenes) {
+        struct scene *scene = growingArray_get(scenes, sceneIdx);
+        scene_draw(scene);
 
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifndef NDEBUG
-        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
-#else
-        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_FALSE);
-#endif
-
-        window = glfwCreateWindow(width, height, "", NULL, NULL);
-        if (window == NULL) {
-                glfwTerminate();
-                die("Failed to create GLFW window.\n");
+        const GLenum error = glGetError();
+        if (error != GL_NO_ERROR) {
+                fprintf(stderr, "OpenGL Error: %u", error);
         }
-
-        glfwMakeContextCurrent(window);
-
-        if (!gladLoadGLLoader((const GLADloadproc)glfwGetProcAddress)) {
-                glfwTerminate();
-                die("Failed to initialize GLAD.\n");
-        }
-
-        glViewport(0, 0, width, height);
-        glfwSetFramebufferSizeCallback(window, eventFire_windowResized);
-        glfwSetKeyCallback(window, eventFire_keyboardEvent);
-        glfwSetCursorPosCallback(window, eventFire_mousePosition);
-        glfwSetScrollCallback(window, eventFire_mouseScroll);
-
-        eventBroker_register(onFramebufferSizeChanged, EVENT_BROKER_PRIORITY_HIGH,
-                             EVENT_BROKER_WINDOW_RESIZED);
-        
-        glEnable(GL_DEPTH_TEST);
-#ifdef NDEBUG
-        glEnable(GL_CULL_FACE);
-#else
-        glDisable(GL_CULL_FACE);
 #endif
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 #ifndef NDEBUG
@@ -198,32 +173,121 @@ static void updateTimingInformation(double deltaTime, double updateTime,
 
 #endif
 
-void window_run(void) {
-        while (!glfwWindowShouldClose(window)) {
+void game_init(struct game *const game,
+               const int width, const int height,
+               const size_t initalSceneCapacity) {
+        eventBroker_startup();
+        componentCollection_startup();
+
+        glfwInit();
+
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifndef NDEBUG
+        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+#else
+        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_FALSE);
+#endif
+
+        game->window = glfwCreateWindow(width, height, "", NULL, NULL);
+        if (game->window == NULL) {
+                glfwTerminate();
+                die("Failed to create GLFW window.\n");
+        }
+        
+        glfwMakeContextCurrent(game->window);
+
+        if (!gladLoadGLLoader((const GLADloadproc)glfwGetProcAddress)) {
+                glfwTerminate();
+                die("Failed to initialize GLAD.\n");
+        }
+
+        glViewport(0, 0, width, height);
+        glfwSetFramebufferSizeCallback(game->window, eventFire_windowResized);
+        glfwSetKeyCallback(game->window, eventFire_keyboardEvent);
+        glfwSetCursorPosCallback(game->window, eventFire_mousePosition);
+        glfwSetScrollCallback(game->window, eventFire_mouseScroll);
+
+        eventBroker_register(onFramebufferSizeChanged,
+                             EVENT_BROKER_PRIORITY_HIGH,
+                             EVENT_BROKER_WINDOW_RESIZED);
+        
+        glEnable(GL_DEPTH_TEST);
+#ifdef NDEBUG
+        glEnable(GL_CULL_FACE);
+#else
+        glDisable(GL_CULL_FACE);
+#endif
+        glfwSetInputMode(game->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+        growingArray_init(&game->scenes,
+                          sizeof(struct scene), initalSceneCapacity);
+
+        game->timeDelta = STARTING_TIMEDELTA;
+        vec4s defaultClearColor = DEFAULT_CLEARCOLOR;
+        game->clearColor = defaultClearColor;
+}
+
+struct scene *game_createScene(struct game *const game) {
+        struct scene *scene = growingArray_append(&game->scenes);
+        scene->idx = game->scenes.length - 1;
+        return scene;
+}
+
+void game_setCurrentScene(struct game *const game, const size_t idx) {
+        game->currentScene = idx;
+}
+
+void game_updateWindowTitle(struct game *game, const char *title) {
+        if (title == NULL) {
+                glfwSetWindowTitle(game->window, "");
+        } else {
+                glfwSetWindowTitle(game->window, title);
+        }
+}
+
+void game_setClearColor(struct game *game, vec4s color) {
+        game->clearColor = color;
+}
+
+float game_timeDelta(const struct game *game) {
+        return game->timeDelta;
+}
+
+bool game_keyPressed(const struct game *game, int key) {
+        return glfwGetKey(game->window, key) == GLFW_PRESS;
+}
+
+void game_run(struct game *game) {
+        while (!glfwWindowShouldClose(game->window)) {
                 // Update deltatime
-                timeDelta = (const float)glfwGetTime();
+                game->timeDelta = (const float)glfwGetTime();
                 glfwSetTime(0);
 
                 // Update game state
-                eventFire_update();
+                doUpdateScene(game->currentScene, &game->scenes,
+                              game->timeDelta);
+                eventFire_update(game->timeDelta);
                 
 #ifndef NDEBUG
                 double updateTime = glfwGetTime();
 #endif
 
                 // Clear screen
-                glClearColor(window_clearColor.x, window_clearColor.y,
-                             window_clearColor.z, window_clearColor.w);
+                glClearColor(game->clearColor.x, game->clearColor.y,
+                             game->clearColor.z, game->clearColor.w);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 // Draw stuff
+                doDrawScene(game->currentScene, &game->scenes);
                 eventFire_draw();
                 
 #ifndef NDEBUG
                 double drawTime = glfwGetTime();
 #endif
 
-                glfwSwapBuffers(window);
+                glfwSwapBuffers(game->window);
                 
 #ifndef NDEBUG
                 double buffSwapTime = glfwGetTime();
@@ -242,33 +306,26 @@ void window_run(void) {
                 
 #ifndef NDEBUG
                 updateTimingInformation(
-                        (double)timeDelta, updateTime, drawTime,
+                        (double)game->timeDelta, updateTime, drawTime,
                         buffSwapTime, otherEventsTime);
 #endif
         }
 
         // Clean up
         eventFire_tearDown();
+}
+
+void game_shouldStop(struct game *game) {
+        glfwSetWindowShouldClose(game->window, 1);
+}
+
+void game_free(struct game *const game) {
+        growingArray_foreach_START(&game->scenes, struct scene *, scene)
+                scene_free(scene);
+        growingArray_foreach_END;
+        growingArray_destroy(&game->scenes);
+        
+        componentCollection_shutdown();
         eventBroker_shutdown();
         glfwTerminate();
-}
-
-float window_timeDelta(void) {
-        return timeDelta;
-}
-
-bool window_keyPressed(const int key) {
-        return glfwGetKey(window, key) == GLFW_PRESS;
-}
-
-void window_updateTitle(const char *const title) {
-        if (title == NULL) {
-                glfwSetWindowTitle(window, "");
-        } else {
-                glfwSetWindowTitle(window, title);
-        }
-}
-
-void window_close(void) {
-        glfwSetWindowShouldClose(window, 1);
 }

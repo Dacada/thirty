@@ -439,7 +439,7 @@ static int cmpobj(const void *const item1,
         return 0;
 }
 
-void scene_update(struct scene *const scene) {
+void scene_update(struct scene *const scene, const float timeDelta) {
         struct stack stack;
         stack_init(&stack, scene->objects.length, sizeof(size_t));
         size_t *ptr = stack_push(&stack);
@@ -448,7 +448,7 @@ void scene_update(struct scene *const scene) {
         while (!stack_empty(&stack)) {
                 size_t *objIdx = stack_pop(&stack);
                 struct object *obj = scene_getObjectFromIdx(scene, *objIdx);
-                object_update(obj);
+                object_update(obj, timeDelta);
 
                 growingArray_foreach_START(&obj->children, size_t *, chldIdx)
                         ptr = stack_push(&stack);

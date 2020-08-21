@@ -86,7 +86,8 @@ bool componentCollection_hasComponent(
 /*
  * Update all components in the collection. To be called once per frame.
  */
-void componentCollection_update(struct componentCollection *collection)
+void componentCollection_update(struct componentCollection *collection,
+                                float timeDelta)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 

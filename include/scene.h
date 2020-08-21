@@ -13,6 +13,7 @@
  */
 
 struct scene {
+        size_t idx;
         struct object root;
         struct growingArray objects;
         vec4s globalAmbientLight;
@@ -74,7 +75,7 @@ size_t scene_setSkybox(struct scene *scene, const char *basename)
 /*
  * Update all objects in the scene, to be called once per frame.
  */
-void scene_update(struct scene *scene)
+void scene_update(struct scene *scene, float timeDelta)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 

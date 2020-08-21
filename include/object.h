@@ -139,7 +139,7 @@ void object_addChild(struct object *parent, struct object *child)
 /*
  * Update all of object's components.
  */
-void object_update(struct object *object)
+void object_update(struct object *object, float timeDelta)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 

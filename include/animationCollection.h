@@ -91,7 +91,8 @@ void animationCollection_bindBones(const struct animationCollection *col,
  * Run on each frame to update the running animation timestamp with the
  * timeDelta.
  */
-void animationCollection_update(struct animationCollection *col)
+void animationCollection_update(struct animationCollection *col,
+                                float timeDelta)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 

@@ -227,11 +227,12 @@ bool componentCollection_hasComponent(
         }
 }
 
-void componentCollection_update(struct componentCollection *const collection) {
+void componentCollection_update(struct componentCollection *const collection,
+                                const float timeDelta) {
         struct animationCollection *anim = componentCollection_get(
                 collection, COMPONENT_ANIMATIONCOLLECTION);
         if (anim != NULL) {
-                animationCollection_update(anim);
+                animationCollection_update(anim, timeDelta);
         }
 }
 

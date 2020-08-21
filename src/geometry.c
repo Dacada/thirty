@@ -849,6 +849,7 @@ void geometry_initIcosphere(struct geometry *const geo,
                         struct vertex vBC;
                         
                         // Calculate vertex positions
+                        const float half = 0.5F;
                         vA.vert = glms_normalize(old_vA->vert);
                         vB.vert = glms_normalize(old_vB->vert);
                         vC.vert = glms_normalize(old_vC->vert);
@@ -856,17 +857,17 @@ void geometry_initIcosphere(struct geometry *const geo,
                                 glms_vec3_scale(
                                         glms_vec3_add(
                                                 old_vA->vert,
-                                                old_vB->vert), 0.5F));
+                                                old_vB->vert), half));
                         vAC.vert = glms_normalize(
                                 glms_vec3_scale(
                                         glms_vec3_add(
                                                 old_vA->vert,
-                                                old_vC->vert), 0.5F));
+                                                old_vC->vert), half));
                         vBC.vert = glms_normalize(
                                 glms_vec3_scale(
                                         glms_vec3_add(
                                                 old_vB->vert,
-                                                old_vC->vert), 0.5F));
+                                                old_vC->vert), half));
 
                         // Calculate vertex texture coordinates
                         vA.tex = old_vA->tex;
@@ -874,13 +875,13 @@ void geometry_initIcosphere(struct geometry *const geo,
                         vC.tex = old_vC->tex;
                         vAB.tex = glms_vec2_scale(
                                 glms_vec2_add(
-                                        old_vA->tex, old_vB->tex), 0.5F);
+                                        old_vA->tex, old_vB->tex), half);
                         vAC.tex = glms_vec2_scale(
                                 glms_vec2_add(
-                                        old_vA->tex, old_vC->tex), 0.5F);
+                                        old_vA->tex, old_vC->tex), half);
                         vBC.tex = glms_vec2_scale(
                                 glms_vec2_add(
-                                        old_vB->tex, old_vC->tex), 0.5F);
+                                        old_vB->tex, old_vC->tex), half);
                         
                         // Calculate vertex normals
                         vA.norm = glms_normalize(
@@ -937,37 +938,45 @@ void geometry_initIcosphere(struct geometry *const geo,
                         *v = vAC;
                         v = growingArray_append(&newVertexList);
                         *v = vBC;
+
+                        const unsigned first = 0;
+                        const unsigned second = 1;
+                        const unsigned third = 2;
+                        const unsigned fourth = 3;
+                        const unsigned fifth = 4;
+                        const unsigned sixth = 5;
+                        const unsigned all = 6;
                         
                         unsigned *idx;
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 0;
+                        *idx = lastIdx + first;
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 3;
+                        *idx = lastIdx + fourth;
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 4;
+                        *idx = lastIdx + fifth;
                         
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 3;
+                        *idx = lastIdx + fourth;
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 1;
+                        *idx = lastIdx + second;
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 5;
+                        *idx = lastIdx + sixth;
                         
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 4;
+                        *idx = lastIdx + fifth;
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 5;
+                        *idx = lastIdx + sixth;
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 2;
+                        *idx = lastIdx + third;
                         
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 3;
+                        *idx = lastIdx + fourth;
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 5;
+                        *idx = lastIdx + sixth;
                         idx = growingArray_append(&newIndexList);
-                        *idx = lastIdx + 4;
+                        *idx = lastIdx + fifth;
                         
-                        lastIdx += 6;
+                        lastIdx += all;
                 }
                 growingArray_destroy(&vertexList);
                 growingArray_destroy(&indexList);

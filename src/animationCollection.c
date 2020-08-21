@@ -4,7 +4,6 @@
 #include <keyframe.h>
 #include <component.h>
 #include <shader.h>
-#include <window.h>
 #include <util.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -89,11 +88,12 @@ void animationCollection_bindBones(const struct animationCollection *const col,
         }
 }
 
-void animationCollection_update(struct animationCollection *col) {
+void animationCollection_update(struct animationCollection *const col,
+                                const float timeDelta) {
         assert(col->base.type == COMPONENT_ANIMATIONCOLLECTION);
         
         if (col->running && col->current > 0) {
-                col->time += window_timeDelta();
+                col->time += timeDelta;
                 
                 struct animation *anim = &col->animations[col->current-1];
                 size_t nkeyframes = anim->nkeyframes;

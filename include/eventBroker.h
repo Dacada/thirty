@@ -74,8 +74,11 @@ struct eventBrokerSetup {
 };
 struct eventBrokerDraw {
 };
+
 struct eventBrokerUpdate {
+        const float timeDelta;
 };
+
 struct eventBrokerTearDown {
 };
 
