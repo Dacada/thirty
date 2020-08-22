@@ -1,7 +1,6 @@
 #include <inputHelpers.h>
 #include <game.h>
-#include <geometry.h>
-#include <camera.h>
+#include <componentCollection.h>
 #include <eventBroker.h>
 #include <util.h>
 #include <cglm/struct.h>

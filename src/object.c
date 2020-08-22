@@ -1,8 +1,5 @@
 #include <object.h>
 #include <componentCollection.h>
-#include <animationCollection.h>
-#include <geometry.h>
-#include <material.h>
 #include <shader.h>
 #include <dsutils.h>
 #include <util.h>

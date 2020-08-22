@@ -1,11 +1,6 @@
 #include <scene.h>
 #include <object.h>
 #include <componentCollection.h>
-#include <animationCollection.h>
-#include <camera.h>
-#include <geometry.h>
-#include <material.h>
-#include <light.h>
 #include <dsutils.h>
 #include <util.h>
 #include <cglm/struct.h>

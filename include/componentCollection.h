@@ -1,7 +1,12 @@
 #ifndef COMPONENT_COLLECTION_H
 #define COMPONENT_COLLECTION_H
 
-#include <component.h>
+#include <animationCollection.h>
+#include <camera.h>
+#include <geometry.h>
+#include <light.h>
+#include <material.h>
+
 #include <stdbool.h>
 #include <stddef.h>
 

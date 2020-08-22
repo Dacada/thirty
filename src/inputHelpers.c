@@ -2,7 +2,6 @@
 #include <scene.h>
 #include <object.h>
 #include <componentCollection.h>
-#include <camera.h>
 #include <util.h>
 #include <dsutils.h>
 #include <cglm/struct.h>

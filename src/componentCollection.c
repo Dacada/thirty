@@ -1,9 +1,4 @@
 #include <componentCollection.h>
-#include <animationCollection.h>
-#include <camera.h>
-#include <geometry.h>
-#include <light.h>
-#include <material.h>
 #include <texture.h>
 #include <component.h>
 #include <dsutils.h>
