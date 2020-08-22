@@ -4,6 +4,7 @@
 #include <componentCollection.h>
 #include <material.h>
 #include <shader.h>
+#include <eventBroker.h>
 #include <dsutils.h>
 #include <cglm/struct.h>
 #include <stddef.h>
@@ -13,9 +14,11 @@
 /*
  * This module offers an implementation of an object. Objects follow a tree
  * organization and each object has one parent (except the root object) and can
- * have several children. An object has a componentCollection associated with it.
- * An object with geometry but without a material will present undefined behavior
- * when trying to draw it and will probably crash.
+ * have several children. An object has a componentCollection associated with
+ * it. An object with geometry but without a material will present undefined
+ * behavior when trying to draw it and will probably crash. The onUpdate method
+ * will be fired with the scene's update event. It's automatically registered
+ * and it's register parameter is the object struct itself.
  */
 
 struct object {
@@ -28,6 +31,8 @@ struct object {
         
         mat4s model;
         struct componentCollection components;
+
+        eventBrokerCallback onUpdate;
 };
 
 enum renderStage {

@@ -10,11 +10,13 @@
  */
 
 /*
- * A callback must accept a void pointer. This pointer contains the parameters
- * of the event. It should correspond with the eventBrokerArgs* struct of that
- * event, or be NULL.
+ * A callback must accept two void pointers. The first pointer are parameters
+ * set up upon event registration. The second pointer contains the parameters
+ * of the event given when fired. The first one can be anything, but the second
+ * one should correspond with the eventBrokerArgs* struct of that event, or be
+ * NULL.
  */
-typedef void(*eventBrokerCallback)(void*);
+typedef void(*eventBrokerCallback)(void*, void*);
 
 /*
  * Event callbacks must be registered with a priority. High priority means they
@@ -67,7 +69,7 @@ enum eventBrokerEvent {
 
 /*
  * These are the structs of the arguments of each event type. Empty ones simply
- * don't have arguments.
+ * don't have arguments and should be NULL.
  */
 
 struct eventBrokerSetup {
@@ -95,7 +97,7 @@ struct eventBrokerKeyboardEvent {
         const int modifiers;
 };
 
-// Use window_keyPressed to check keys
+// Use game_keyPressed to check keys
 struct eventBrokerKeyboardInput {
 };
 
@@ -114,11 +116,14 @@ struct eventBrokerMouseScroll {
 void eventBroker_startup(void);
 
 /*
- * Register a callback to run when an event is fired with the given priority.
+ * Register a callback to run when an event is fired with the given
+ * priority. The event will be called with the argument supplied here and with
+ * the arguments supplied by the one firing it.
  */
-void eventBroker_register(eventBrokerCallback cb, enum eventBrokerPriority prio,
-                          enum eventBrokerEvent event)
-        __attribute__((nonnull));
+void eventBroker_register(eventBrokerCallback cb,
+                          enum eventBrokerPriority prio,
+                          enum eventBrokerEvent event, void *args)
+        __attribute__((nonnull (1)));
 
 /*
  * Fire an event, immediately calling all its high priority callbacks and
@@ -129,7 +134,8 @@ void eventBroker_register(eventBrokerCallback cb, enum eventBrokerPriority prio,
 void eventBroker_fire(enum eventBrokerEvent event, void *args);
 
 /*
- * Run all medium priority events, called at the end of a frame.
+ * Run all medium priority events, called at the end of a frame. Does nothing
+ * now.
  */
 void eventBroker_runAsyncEvents(void);
 

@@ -12,8 +12,9 @@
 #define DEFAULT_CLEARCOLOR {.x=0.2F, .y=0.3F, .z=0.3F, .w=1.0F}
 #define STARTING_TIMEDELTA (1.0F/60.0F)
 
-static void onFramebufferSizeChanged(void *vargs) {
-        struct eventBrokerWindowResized *args = vargs;
+static void onFramebufferSizeChanged(void *registerArgs, void *fireArgs) {
+        (void)registerArgs;
+        struct eventBrokerWindowResized *args = fireArgs;
         const int width = args->width;
         const int height = args->height;
         glViewport(0, 0, width, height);
@@ -211,7 +212,7 @@ void game_init(struct game *const game,
 
         eventBroker_register(onFramebufferSizeChanged,
                              EVENT_BROKER_PRIORITY_HIGH,
-                             EVENT_BROKER_WINDOW_RESIZED);
+                             EVENT_BROKER_WINDOW_RESIZED, NULL);
         
         glEnable(GL_DEPTH_TEST);
 #ifdef NDEBUG

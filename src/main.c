@@ -21,11 +21,10 @@ static const vec4s globalAmbientLight = {.x=0.3F, .y=0.3F, .z=0.3F, .w=1.0F};
 static const float movement_speed = 10.0F;
 static const float look_sensitivity = 0.1F;
 
-struct game *game = NULL;
-
 static struct fpsCameraController cam_ctrl;
-static void processMouseInput(void *vargs) {
-        struct eventBrokerMousePosition *args = vargs;
+static void processMouseInput(void *registerArgs, void *fireArgs) {
+        struct game *game = registerArgs;
+        struct eventBrokerMousePosition *args = fireArgs;
         const double xpos = args->xpos;
         const double ypos = args->ypos;
         
@@ -47,8 +46,9 @@ static void processMouseInput(void *vargs) {
         prev = curr;
 }
 
-static void processKeyboardInput(void *args) {
-        (void)args;
+static void processKeyboardInput(void *registerArgs, void *fireArgs) {
+        struct game *game = registerArgs;
+        (void)fireArgs;
         
         vec2s movement = {.x=0, .y=0};
         
@@ -74,8 +74,10 @@ static void processKeyboardInput(void *args) {
         fpsCameraController_move(&cam_ctrl, movement, game_timeDelta(game));
 }
 
-static void processKeyboardEvent(void *vargs) {
-        struct eventBrokerKeyboardEvent *args = vargs;
+static void processKeyboardEvent(void *registerArgs, void *fireArgs) {
+        struct game *game = registerArgs;
+        struct eventBrokerKeyboardEvent *args = fireArgs;
+        
         const int key = args->key;
         const int action = args->action;
         //const int modifiers = args->modifiers;
@@ -89,8 +91,10 @@ static void processKeyboardEvent(void *vargs) {
         }
 }
 
-static void updateTitle(void *args) {
-        (void)args;
+static void updateTitle(void *registerArgs, void *fireArgs) {
+        struct game *game = registerArgs;
+        (void)fireArgs;
+        
         static unsigned count = 0;
         if (count == FRAME_PERIOD_FPS_REFRESH) {
                 const int fps = (const int)(1.0F/game_timeDelta(game));
@@ -106,17 +110,17 @@ static void updateTitle(void *args) {
         }
 }
 
-static void freeGame(void *args) {
-        (void)args;
+static void freeGame(void *registerArgs, void *fireArgs) {
+        struct game *game = registerArgs;
+        (void)fireArgs;
 
         game_free(game);
         free(game);
 }
 
 int main(void) {
-        game = smalloc(sizeof(struct game));
+        struct game *game = smalloc(sizeof(struct game));
         game_init(game, SCREEN_WIDTH, SCREEN_HEIGHT, 1);
-        assert(game != NULL);
         
         struct scene *scene = game_createScene(game);
         scene_init(scene, globalAmbientLight, 2);
@@ -149,7 +153,8 @@ int main(void) {
         struct camera *cam = componentCollection_create(COMPONENT_CAMERA_FPS);
         size_t camIdx = cam->base.idx;
         camera_init(cam, "camera", (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT,
-                    CAMERA_NEAR, CAMERA_FAR, CAMERA_FOV, true, COMPONENT_CAMERA_FPS);
+                    CAMERA_NEAR, CAMERA_FAR, CAMERA_FOV, true,
+                    COMPONENT_CAMERA_FPS);
         componentCollection_set(&camera->components, COMPONENT_CAMERA, camIdx);
 
         fpsCameraController_init(&cam_ctrl, movement_speed, look_sensitivity,
@@ -157,15 +162,15 @@ int main(void) {
 
         // Register events
         eventBroker_register(processKeyboardInput, EVENT_BROKER_PRIORITY_HIGH,
-                             EVENT_BROKER_KEYBOARD_INPUT);
+                             EVENT_BROKER_KEYBOARD_INPUT, game);
         eventBroker_register(processKeyboardEvent, EVENT_BROKER_PRIORITY_HIGH,
-                             EVENT_BROKER_KEYBOARD_EVENT);
+                             EVENT_BROKER_KEYBOARD_EVENT, game);
         eventBroker_register(processMouseInput, EVENT_BROKER_PRIORITY_HIGH,
-                             EVENT_BROKER_MOUSE_POSITION);
+                             EVENT_BROKER_MOUSE_POSITION, game);
         eventBroker_register(updateTitle, EVENT_BROKER_PRIORITY_HIGH,
-                             EVENT_BROKER_UPDATE);
+                             EVENT_BROKER_UPDATE, game);
         eventBroker_register(freeGame, EVENT_BROKER_PRIORITY_HIGH,
-                             EVENT_BROKER_TEAR_DOWN);
+                             EVENT_BROKER_TEAR_DOWN, game);
 
         // Main loop
         game_run(game);

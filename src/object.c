@@ -18,6 +18,7 @@ void object_initEmpty(struct object *const object, struct scene *const scene,
         growingArray_init(&object->children, sizeof(size_t), 1);
         object->model = GLMS_MAT4_IDENTITY;
         componentCollection_init(&object->components);
+        object->onUpdate = NULL;
 }
 
 static inline void assign_idx(struct componentCollection *const collection,
@@ -109,6 +110,12 @@ void object_addChild(struct object *parent, struct object *child) {
 }
 
 void object_update(struct object *const object, const float timeDelta) {
+        if (object->onUpdate != NULL) {
+                struct eventBrokerUpdate args = {
+                        .timeDelta = timeDelta,
+                };
+                object->onUpdate(object, &args);
+        }
         componentCollection_update(&object->components, timeDelta);
 }
 
