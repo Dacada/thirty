@@ -119,6 +119,7 @@ void light_updateShader(const struct light *light,
                                    shader_setVec4, direction_vs);
                         break;
 
+                case COMPONENT_TRANSFORM:
                 case COMPONENT_CAMERA_BASIC:
                 case COMPONENT_CAMERA_FPS:
                 case COMPONENT_GEOMETRY:

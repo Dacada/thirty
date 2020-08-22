@@ -6,6 +6,7 @@
 #include <geometry.h>
 #include <light.h>
 #include <material.h>
+#include <transform.h>
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -17,6 +18,7 @@
  */
 
 struct componentCollection {
+        size_t transform;
         size_t camera;
         size_t geometry;
         size_t material;

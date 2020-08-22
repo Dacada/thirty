@@ -13,9 +13,14 @@ void object_initEmpty(struct object *const object, struct scene *const scene,
         object->name = sstrdup(name);
         object->scene = scene;
         growingArray_init(&object->children, sizeof(size_t), 1);
-        object->model = GLMS_MAT4_IDENTITY;
         componentCollection_init(&object->components);
         object->onUpdate = NULL;
+
+        struct transform *trans = componentCollection_create(
+                COMPONENT_TRANSFORM);
+        componentCollection_set(&object->components,
+                                COMPONENT_TRANSFORM, trans->base.idx);
+        transform_init(trans, GLMS_MAT4_IDENTITY);
 }
 
 static inline void assign_idx(struct componentCollection *const collection,
@@ -56,48 +61,9 @@ void object_initFromFile(struct object *const object,
 
         mat4s model;
         sfread(model.raw, sizeof(float), sizeof(model) / sizeof(float), f);
-        object->model = model;
-}
-
-void object_translate(struct object *const object, const vec3s delta) {
-        object->model = glms_translate(object->model, delta);
-}
-
-void object_translateX(struct object *const object, const float delta) {
-        object->model = glms_translate_x(object->model, delta);
-}
-
-void object_translateY(struct object *const object, const float delta) {
-        object->model = glms_translate_y(object->model, delta);
-}
-
-void object_translateZ(struct object *const object, const float delta) {
-        object->model = glms_translate_z(object->model, delta);
-}
-
-void object_rotate(struct object *const object, const float angle,
-                   const vec3s axis) {
-        object->model = glms_rotate(object->model, angle, axis);
-}
-
-void object_rotateX(struct object *object, float angle) {
-        object->model = glms_rotate_x(object->model, angle);
-}
-
-void object_rotateY(struct object *object, float angle) {
-        object->model = glms_rotate_y(object->model, angle);
-}
-
-void object_rotateZ(struct object *object, float angle) {
-        object->model = glms_rotate_z(object->model, angle);
-}
-
-void object_rotateMat(struct object *object, mat4s rotation) {
-        object->model = glms_mat4_mul(object->model, rotation);
-}
-
-void object_scale(struct object *const object, const vec3s scale) {
-        object->model = glms_scale(object->model, scale);
+        struct transform *trans = componentCollection_get(
+                &object->components, COMPONENT_TRANSFORM);
+        trans->model = model;
 }
 
 void object_addChild(struct object *parent, struct object *child) {

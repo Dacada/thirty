@@ -147,7 +147,9 @@ int main(void) {
 
         // Create camera
         struct object *camera = scene_createObject(scene, "camera", 0);
-        object_translateZ(camera, STARTING_CAMERA_Z_POSITION);
+        struct transform *camTrans = componentCollection_get(
+                &camera->components, COMPONENT_TRANSFORM);
+        transform_translateZ(camTrans, STARTING_CAMERA_Z_POSITION);
 
         struct camera *cam = componentCollection_create(COMPONENT_CAMERA_FPS);
         size_t camIdx = cam->base.idx;

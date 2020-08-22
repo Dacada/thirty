@@ -292,7 +292,9 @@ static void gatherObjectTree(struct growingArray *const objects,
                              struct growingArray *const shaders) {
 
         // Apply model matrix
-        const mat4s model = glms_mat4_mul(parentModel, object->model);
+        const struct transform *const trans = componentCollection_get(
+                &object->components, COMPONENT_TRANSFORM);
+        const mat4s model = glms_mat4_mul(parentModel, trans->model);
 
         // Add to objects array
         struct objectModelAndDistance *const objmod =

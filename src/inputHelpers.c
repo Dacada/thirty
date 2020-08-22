@@ -22,11 +22,18 @@ void fpsCameraController_init(struct fpsCameraController *const ctrl,
 }
 
 static mat4s get_model(const struct object *obj) {
-        mat4s model = obj->model;
+        struct transform *trans = componentCollection_get(
+                &obj->components, COMPONENT_TRANSFORM);
+        assert(trans != NULL);
+        mat4s model = trans->model;
+        
         while (obj->idx != 0) {
                 struct object *parent = scene_getObjectFromIdx(
                         obj->scene, obj->parent);
-                model = glms_mat4_mul(parent->model, model);
+                struct transform *parentTrans = componentCollection_get(
+                        &parent->components, COMPONENT_TRANSFORM);
+                mat4s parentModel = parentTrans->model;
+                model = glms_mat4_mul(parentModel, model);
                 obj = parent;
         }
         return model;

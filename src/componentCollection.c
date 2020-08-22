@@ -21,6 +21,10 @@ void componentCollection_startup(void) {
 void *componentCollection_create(const enum componentType type) {
         size_t size;
         switch(type) {
+        case COMPONENT_TRANSFORM:
+                size = sizeof(struct transform);
+                break;
+                
         case COMPONENT_CAMERA_BASIC:
                 size = sizeof(struct camera_basic);
                 break;
@@ -106,6 +110,7 @@ void *componentCollection_compByIdx(const size_t idx) {
 }
 
 void componentCollection_init(struct componentCollection *const collection) {
+        collection->transform = 0;
         collection->camera = 0;
         collection->geometry = 0;
         collection->material = 0;
@@ -119,6 +124,10 @@ void *componentCollection_get(
 
         size_t idx;
         switch (type) {
+        case COMPONENT_TRANSFORM:
+                idx = collection->transform;
+                break;
+                
         case COMPONENT_CAMERA:
         case COMPONENT_CAMERA_FPS:
                 idx = collection->camera;
@@ -161,6 +170,10 @@ void componentCollection_set(struct componentCollection *const collection,
                              const enum componentType type,
                              const size_t idx) {
         switch (type) {
+        case COMPONENT_TRANSFORM:
+                collection->transform = idx+1;
+                break;
+                
         case COMPONENT_CAMERA:
         case COMPONENT_CAMERA_FPS:
                 collection->camera = idx+1;
@@ -197,6 +210,9 @@ bool componentCollection_hasComponent(
         const enum componentType type) {
         
         switch (type) {
+        case COMPONENT_TRANSFORM:
+                return collection->transform != 0;
+                
         case COMPONENT_CAMERA:
         case COMPONENT_CAMERA_FPS:
                 return collection->camera != 0;
@@ -242,6 +258,10 @@ static bool freeComponent(void *compPtr, size_t size, void *args) {
         struct component *comp = compPtr;
         
         switch(comp->type) {
+        case COMPONENT_TRANSFORM:
+                transform_free((struct transform*)comp);
+                break;
+                
         case COMPONENT_CAMERA:
         case COMPONENT_CAMERA_FPS:
                 camera_free((struct camera*)comp);

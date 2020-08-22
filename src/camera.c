@@ -28,6 +28,7 @@ void camera_init(struct camera *const cam, const char *const name,
                 ((struct camera_fps*)cam)->yaw = 0;
                 ((struct camera_fps*)cam)->position = GLMS_VEC3_ZERO;
                 break;
+        case COMPONENT_TRANSFORM:
         case COMPONENT_GEOMETRY:
         case COMPONENT_LIGHT_DIRECTION:
         case COMPONENT_LIGHT_POINT:
@@ -70,6 +71,7 @@ size_t camera_initFromFile(struct camera *const cam, FILE *const f,
                 return sizeof(struct camera_basic);
         case COMPONENT_CAMERA_FPS:
                 return sizeof(struct camera_fps);
+        case COMPONENT_TRANSFORM:
         case COMPONENT_GEOMETRY:
         case COMPONENT_LIGHT_DIRECTION:
         case COMPONENT_LIGHT_POINT:
@@ -99,6 +101,7 @@ mat4s camera_viewMatrix(const struct camera *const cam, mat4s model) {
                 model = glms_rotate_y(model, yaw);
                 model = glms_rotate_x(model, pitch);
                 return glms_mat4_inv(model);
+        case COMPONENT_TRANSFORM:
         case COMPONENT_GEOMETRY:
         case COMPONENT_LIGHT_DIRECTION:
         case COMPONENT_LIGHT_POINT:

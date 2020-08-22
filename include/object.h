@@ -28,10 +28,9 @@ struct object {
         
         size_t parent;
         struct growingArray children;
-        
-        mat4s model;
-        struct componentCollection components;
 
+        struct componentCollection components;
+        
         eventBrokerCallback onUpdate;
 };
 
@@ -62,75 +61,6 @@ void object_initFromFile(struct object *object, struct scene *scene,
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
         __attribute__((access (read_write, 8)))
-        __attribute__((nonnull));
-
-/*
- * Translate object model matrix by given vector.
- */
-void object_translate(struct object *object, vec3s delta)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-
-/*
- * Translate object model matrix by given X component.
- */
-void object_translateX(struct object *object, float delta)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-
-/*
- * Translate object model matrix by given Y component.
- */
-void object_translateY(struct object *object, float delta)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-
-/*
- * Translate object model matrix by given Z component.
- */
-void object_translateZ(struct object *object, float delta)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-
-/*
- * Rotate object model matrix by given angle and axis.
- */
-void object_rotate(struct object *object, float angle, vec3s axis)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-
-/*
- * Rotate object model matrix by given X Euler angle.
- */
-void object_rotateX(struct object *object, float angle)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-
-/*
- * Rotate object model matrix by given Y Euler angle.
- */
-void object_rotateY(struct object *object, float angle)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-
-/*
- * Rotate object model matrix by given Z Euler angle.
- */
-void object_rotateZ(struct object *object, float angle)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-
-/*
- * Rotate object model matrix by given rotation matrix.
- */
-void object_rotateMat(struct object *object, mat4s rotation)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-/*
- * Scale object model matrix by given vector.
- */
-void object_scale(struct object *object, vec3s scale)
-        __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 /*
