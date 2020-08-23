@@ -20,7 +20,7 @@ struct geometry {
 
 /*
  * Initialize a geometry from an array of indices and vertices. Them and the
- * name ca be freed after initialization.
+ * name can be freed after initialization.
  */
 void geometry_initFromArray(struct geometry *geometry,
                             const char *name,
@@ -43,7 +43,8 @@ void geometry_initCube(struct geometry *geo, const char *name)
         __attribute__((nonnull));
 
 /*
- * Initializes a geometry to be a radius 1 icosahedron.
+ * Initializes a geometry to be a radius 1 icosphere with as many subdivisions
+ * as given.
  */
 void geometry_initIcosphere(struct geometry *geo, const char *name,
                             unsigned subdivisions)
