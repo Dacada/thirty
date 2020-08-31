@@ -14,6 +14,7 @@
 
 struct scene {
         size_t idx;
+        struct game *game;
         struct object root;
         struct growingArray objects;
         vec4s globalAmbientLight;
@@ -22,7 +23,7 @@ struct scene {
 /*
  * Initialize a scene from parameters
  */
-void scene_init(struct scene *scene,
+void scene_init(struct scene *scene, struct game *game,
                 vec4s globalAmbientLight, size_t initalObjectCapacity)
         __attribute__((access (write_only, 1)))
         __attribute__((nonnull));
@@ -30,7 +31,7 @@ void scene_init(struct scene *scene,
 /*
  * Initialize a scene from a BOGLE file postioned at the right offset.
  */
-void scene_initFromFile(struct scene *scene, const char *filename)
+void scene_initFromFile(struct scene *scene, struct game *game, FILE *f)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
@@ -44,7 +45,8 @@ void scene_initFromFile(struct scene *scene, const char *filename)
 struct object *scene_createObject(struct scene *scene, const char *name,
                                   size_t parent_idx)
         __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
+        __attribute__((nonnull))
+        __attribute__((returns_nonnull));
 
 /*
  * Get an object's idx by the name.
@@ -59,6 +61,10 @@ size_t scene_idxByName(const struct scene *scene, const char *name)
  */
 struct object *scene_getObjectFromIdx(struct scene *scene,
                                       size_t object_idx)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull));
+const struct object *scene_getObjectFromIdxConst(const struct scene *scene,
+                                                 size_t object_idx)
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 

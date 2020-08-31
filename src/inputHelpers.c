@@ -1,3 +1,4 @@
+#include <game.h>
 #include <inputHelpers.h>
 #include <scene.h>
 #include <object.h>
@@ -14,24 +15,24 @@ void fpsCameraController_init(struct fpsCameraController *const ctrl,
         ctrl->move_sensitivity = move;
         ctrl->look_sensitivity = look;
         ctrl->camera_obj = camera;
-        ctrl->camera = componentCollection_get(&camera->components,
-                                               COMPONENT_CAMERA);
+        ctrl->camera = object_getComponent(camera, COMPONENT_CAMERA);
 
         assert(ctrl->camera != NULL);
         assert(ctrl->camera->base.base.type == COMPONENT_CAMERA_FPS);
 }
 
 static mat4s get_model(const struct object *obj) {
-        struct transform *trans = componentCollection_get(
-                &obj->components, COMPONENT_TRANSFORM);
+        struct transform *trans = object_getComponent(
+                obj, COMPONENT_TRANSFORM);
         assert(trans != NULL);
         mat4s model = trans->model;
         
         while (obj->idx != 0) {
+                struct scene *scene = game_getCurrentScene(obj->game);
                 struct object *parent = scene_getObjectFromIdx(
-                        obj->scene, obj->parent);
-                struct transform *parentTrans = componentCollection_get(
-                        &parent->components, COMPONENT_TRANSFORM);
+                        scene, obj->parent);
+                struct transform *parentTrans = object_getComponent(
+                        parent, COMPONENT_TRANSFORM);
                 mat4s parentModel = parentTrans->model;
                 model = glms_mat4_mul(parentModel, model);
                 obj = parent;

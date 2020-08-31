@@ -24,7 +24,8 @@
 struct object {
         size_t idx;
         char *name;
-        struct scene *scene;
+        size_t scene;
+        struct game *game;
         
         size_t parent;
         struct growingArray children;
@@ -44,7 +45,7 @@ enum renderStage {
  * Initialize an empty object with default paramters. WARNING! This object has
  * no parent or children defined! Use object_addChild for that.
  */
-void object_initEmpty(struct object *object, struct scene *scene,
+void object_initEmpty(struct object *object, struct game *game, size_t scene,
                       const char *name)
         __attribute__((access (write_only, 1)))
         __attribute__((nonnull));
@@ -54,13 +55,14 @@ void object_initEmpty(struct object *object, struct scene *scene,
  * is expected to be a BOGLE file that's already pointing at an object header,
  * and it will read all of the header and the data.
  */
-void object_initFromFile(struct object *object, struct scene *scene,
+void object_initFromFile(struct object *object, struct game *game,
+                         size_t scene,
                          unsigned ncams, unsigned ngeos,
                          unsigned nmats, unsigned nlights,
                          unsigned nanims, FILE *f)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
-        __attribute__((access (read_write, 8)))
+        __attribute__((access (read_write, 9)))
         __attribute__((nonnull));
 
 /*
@@ -69,6 +71,23 @@ void object_initFromFile(struct object *object, struct scene *scene,
 void object_addChild(struct object *parent, struct object *child)
         __attribute__((access (read_write, 1)))
         __attribute__((access (read_write, 2)))
+        __attribute__((nonnull));
+
+/*
+ * Assign a component to the object's component collection.
+ */
+void object_setComponent(struct object *object, struct component *comp)
+        __attribute__((access (read_write, 1)))
+        __attribute__((access (read_write, 2)))
+        __attribute__((nonnull));
+
+/*
+ * Retrieve the component in the object's collection, or NULL if there's no
+ * component in that slot.
+ */
+void *object_getComponent(const struct object *object,
+                          enum componentType type)
+        __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 
 /*

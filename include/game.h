@@ -32,12 +32,20 @@ void game_init(struct game *game, int width, int height,
         __attribute__((access (write_only, 1)))
         __attribute__((nonnull));
 
+// TODO
+void game_initFromFile(struct game *game, const char *filename);
+
 /*
  * Return a pointer to a newly allocated scene. It's completely uninitialized
  * except for the idx member.
  */
 struct scene *game_createScene(struct game *game)
         __attribute__((access (read_write, 1)))
+        __attribute__((nonnull))
+        __attribute__((returns_nonnull));
+
+struct scene *game_getCurrentScene(struct game *game)
+        __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 
 /*

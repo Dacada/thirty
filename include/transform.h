@@ -28,36 +28,35 @@ void transform_initFromFile(struct transform *trans, FILE *f,
 /*
  * Translate object model matrix by given vector.
  */
-void transform_translate(struct transform *const trans, const vec3s delta)
+void transform_translate(struct transform *trans, vec3s delta)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 /*
  * Translate object model matrix by given X component.
  */
-void transform_translateX(struct transform *const trans, const float delta)
+void transform_translateX(struct transform *trans, float delta)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 /*
  * Translate object model matrix by given Y component.
  */
-void transform_translateY(struct transform *const trans, const float delta)
+void transform_translateY(struct transform *trans, float delta)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 /*
  * Translate object model matrix by given Z component.
  */
-void transform_translateZ(struct transform *const trans, const float delta)
+void transform_translateZ(struct transform *trans, float delta)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 /*
  * Rotate object model matrix by given angle and axis.
  */
-void transform_rotate(struct transform *const trans, const float angle,
-                   const vec3s axis)
+void transform_rotate(struct transform *trans, float angle, vec3s axis)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
@@ -92,7 +91,7 @@ void transform_rotateMat(struct transform *trans, mat4s rotation)
 /*
  * Scale object model matrix by given vector.
  */
-void transform_scale(struct transform *const trans, const vec3s scale)
+void transform_scale(struct transform *trans, vec3s scale)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 

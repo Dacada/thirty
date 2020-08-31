@@ -992,6 +992,53 @@ void geometry_initIcosphere(struct geometry *const geo,
         growingArray_destroy(&indexList);
 }
 
+void geometry_initPlane(struct geometry *geo, const char *name) {
+        static const struct vertex vertices[] = {
+                {.vert.x   =-1.0000F,.vert.y   = 1.0000F,.vert.z   = 0.0000F,
+                 .tex.x    = 0.0000F,.tex.y    = 0.0000F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   = 1.0000F,
+                 .tang.x   = 1.0000F,.tang.y   = 0.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   = 1.0000F,.vert.z   = 0.0000F,
+                 .tex.x    = 1.0000F,.tex.y    = 0.0000F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   = 1.0000F,
+                 .tang.x   = 1.0000F,.tang.y   = 0.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   =-1.0000F,.vert.y   =-1.0000F,.vert.z   = 0.0000F,
+                 .tex.x    = 0.0000F,.tex.y    = 1.0000F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   = 1.0000F,
+                 .tang.x   = 1.0000F,.tang.y   = 0.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+                {.vert.x   = 1.0000F,.vert.y   =-1.0000F,.vert.z   = 0.0000F,
+                 .tex.x    = 1.0000F,.tex.y    = 1.0000F,
+                 .norm.x   = 0.0000F,.norm.y   = 0.0000F,.norm.z   = 1.0000F,
+                 .tang.x   = 1.0000F,.tang.y   = 0.0000F,.tang.z   = 0.0000F,
+                 .binorm.x = 0.0000F,.binorm.y =-1.0000F,.binorm.z = 0.0000F,
+                 .bones.x  = 0.0000F,.bones.y  = 0.0000F,.bones.z  = 0.0000F,
+                 .weights.x= 0.0000F,.weights.y= 0.0000F,.weights.z= 0.0000F,
+                },
+        };
+        
+        static const unsigned indices[] = {
+                2, 1, 0,     1, 2, 3
+        };
+        
+        static const size_t nvertices = sizeof(vertices)/sizeof(*vertices);
+        static const size_t nindices = sizeof(indices)/sizeof(*indices);
+        
+        geometry_initFromArray(geo, name,
+                               vertices, nvertices, indices, nindices);
+}
+
 size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
                              const enum componentType type) {
         assert(type == COMPONENT_GEOMETRY);

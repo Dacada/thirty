@@ -53,6 +53,14 @@ void geometry_initIcosphere(struct geometry *geo, const char *name,
         __attribute__((nonnull));
 
 /*
+ * Initializes a geometry to be a 1x1 plane on XY.
+ */
+void geometry_initPlane(struct geometry *geo, const char *name)
+        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_only, 2)))
+        __attribute__((nonnull));
+
+/*
  * Initialize a geometry from a BOGLE file positioned at the correct offset.
  */
 size_t geometry_initFromFile(struct geometry *geometry, FILE *f,

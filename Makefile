@@ -12,7 +12,7 @@ SOURCES := $(filter-out $(SRC_DIR)/glad_rel.c,$(SOURCES))
 SOURCES := $(filter-out $(SRC_DIR)/glad_dbg.c,$(SOURCES))
 
 # Sources to analyze for tidying up (only file names)
-TIDY_SOURCES := $(filter-out $(SRC_DIR)/stb_image.c,$(SOURCES))
+TIDY_SOURCES := $(filter-out $(SRC_DIR)/stb_image.c $(SRC_DIR)/main.c,$(SOURCES))
 TIDY_SOURCES := $(patsubst $(SRC_DIR)/%,%,$(TIDY_SOURCES))
 
 # Header files to analyze for tidying up (only file names)

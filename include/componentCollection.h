@@ -6,6 +6,7 @@
 #include <geometry.h>
 #include <light.h>
 #include <material.h>
+#include <physicalEntity.h>
 #include <transform.h>
 
 #include <stdbool.h>
@@ -24,6 +25,7 @@ struct componentCollection {
         size_t material;
         size_t light;
         size_t animationCollection;
+        size_t physicalEntity;
 };
 
 /*
@@ -36,7 +38,8 @@ void componentCollection_startup(void);
  * Allocate memory for a component of the given type and return it. Of course,
  * different types will have different sizes.
  */
-void *componentCollection_create(enum componentType type);
+void *componentCollection_create(struct game *game, enum componentType type)
+        __attribute__((returns_nonnull));
 
 /*
  * Obtain a component's idx by their name and optionally type. If type is
@@ -73,9 +76,11 @@ void *componentCollection_get(
         __attribute__((nonnull));
 
 /*
- * Set the component for the given type slot to the given idx.
+ * Set the component for the given type slot to the given idx for the given
+ * object.
  */
 void componentCollection_set(struct componentCollection *collection,
+                             size_t object,
                              enum componentType type,
                              size_t idx)
         __attribute__((access (read_only, 1)))

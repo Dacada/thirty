@@ -31,6 +31,8 @@ enum componentType {
         COMPONENT_LIGHT_POINT,
 
         COMPONENT_ANIMATIONCOLLECTION,
+
+        COMPONENT_PHYSICALENTITY,
         
         COMPONENT_TOTAL
 };
@@ -39,6 +41,8 @@ struct component {
         enum componentType type;
         size_t idx;
         char *name;
+        size_t object;
+        struct game *game;
 } __attribute__((aligned (COMPONENT_STRUCT_ALIGNMENT)));
 
 /*

@@ -126,6 +126,7 @@ void light_updateShader(const struct light *light,
                 case COMPONENT_MATERIAL_UBER:
                 case COMPONENT_MATERIAL_SKYBOX:
                 case COMPONENT_ANIMATIONCOLLECTION:
+                case COMPONENT_PHYSICALENTITY:
                 case COMPONENT_TOTAL:
                 default:
                         assert_fail();

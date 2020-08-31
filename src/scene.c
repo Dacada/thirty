@@ -12,6 +12,7 @@
 #define BOGLE_MAGIC_SIZE 5
 #define OBJECT_TREE_NUMBER_BASE 10
 
+/*
 __attribute__((access (write_only, 2, 1)))
 __attribute__((access (read_only, 3)))
 __attribute__((nonnull))
@@ -24,19 +25,20 @@ static void buildpathObj(const size_t destsize, char *const dest,
         }
         strcpy(dest+len-2, ".bgl");
 }
+*/
 
 __attribute__((access (write_only, 1, 2)))
 __attribute__((access (read_only, 3)))
-__attribute__((access (read_write, 9)))
+__attribute__((access (read_write, 10)))
 __attribute__((nonnull))
 static void parse_objects(struct growingArray *objects, unsigned nobjs,
-                          struct scene *scene,
+                          struct game *game, size_t scene,
                           unsigned ncams, unsigned ngeos, unsigned nmats,
                           unsigned nlights, unsigned nanims, FILE *const f) {
         for (unsigned i=0; i<nobjs; i++) {
                 struct object *obj = growingArray_append(objects);
                 obj->idx = objects->length;  // idx 0 is root
-                object_initFromFile(obj, scene,
+                object_initFromFile(obj, game, scene,
                                     ncams, ngeos, nmats, nlights, nanims, f);
         }
 }
@@ -88,9 +90,11 @@ static void parse_object_tree(struct scene *const scene, FILE *const f) {
         stack_destroy(&stack);
 }
 
-void scene_init(struct scene *const scene, const vec4s globalAmbientLight,
+void scene_init(struct scene *const scene, struct game *const game,
+                const vec4s globalAmbientLight,
                 const size_t initalObjectCapacity) {
-        object_initEmpty(&scene->root, scene, "root");
+        scene->game = game;
+        object_initEmpty(&scene->root, game, scene->idx, "root");
         scene->root.idx = 0;
 
         growingArray_init(&scene->objects, sizeof(struct object),
@@ -100,14 +104,22 @@ void scene_init(struct scene *const scene, const vec4s globalAmbientLight,
 }
 
 void scene_initFromFile(struct scene *const scene,
-                        const char *const filename) {
-        char path[PATH_MAX];
-        buildpathObj(PATH_MAX, path, filename);
-        if (!accessible(path, true, false, false)) {
-                bail("Cannot read scene file.\n");
-        }
+                        struct game *const game,
+                        FILE *const f) {
+        scene->game = game;
 
-        FILE *const f = sfopen(path, "rb");
+        /*
+          TODO: Move this to game_initFromFile, also some part of the
+          header...
+
+          char path[PATH_MAX];
+          buildpathObj(PATH_MAX, path, filename);
+          if (!accessible(path, true, false, false)) {
+                bail("Cannot read scene file.\n");
+          }
+          FILE *const f = sfopen(path, "rb");
+        */
+        
         struct {
                 uint8_t magic[BOGLE_MAGIC_SIZE];
                 uint8_t version;
@@ -121,7 +133,8 @@ void scene_initFromFile(struct scene *const scene,
 
         sfread(&header.magic, sizeof(uint8_t), BOGLE_MAGIC_SIZE, f);
         if (strncmp((char*)(header.magic), "BOGLE", BOGLE_MAGIC_SIZE) != 0) {
-                bail("Malformatted scene file: %s\n", path);
+                // TODO: Move this too
+                //bail("Malformatted game file: %s\n", path);
         }
 
         sfread(&header.version, sizeof(header.version), 1, f);
@@ -149,7 +162,7 @@ void scene_initFromFile(struct scene *const scene,
                         sfread(&type, sizeof(type), 1, f);              \
                         struct which *comp =                            \
                                 componentCollection_create(             \
-                                        (baseType) + type);             \
+                                        game, (baseType) + type);       \
                         which##_initFromFile(comp, f, (baseType) + type); \
                 }                                                       \
         } while (0)
@@ -165,9 +178,9 @@ void scene_initFromFile(struct scene *const scene,
         growingArray_init(&scene->objects,
                           sizeof(struct object), header.nobjs);
 
-        object_initEmpty(&scene->root, scene, "root");
+        object_initEmpty(&scene->root, game, scene->idx, "root");
         scene->root.idx = 0;
-        parse_objects(&scene->objects, header.nobjs, scene,
+        parse_objects(&scene->objects, header.nobjs, game, scene->idx,
                       header.ncams, header.ngeos, header.nmats,
                       header.nlights, header.nanims, f);
         parse_object_tree(scene, f);
@@ -186,7 +199,7 @@ struct object *scene_createObject(struct scene *scene,
                                   const size_t parent_idx) {
         struct object *const child = growingArray_append(&scene->objects);
         size_t child_idx = scene->objects.length;  // idx 0 is root
-        object_initEmpty(child, scene, name);
+        object_initEmpty(child, scene->game, scene->idx, name);
         child->idx = child_idx;
         struct object *const parent = scene_getObjectFromIdx(
                 scene, parent_idx);
@@ -211,26 +224,30 @@ struct object *scene_getObjectFromIdx(struct scene *const scene,
         return growingArray_get(&scene->objects, object_idx-1);
 }
 
+const struct object *scene_getObjectFromIdxConst(
+        const struct scene *const scene,
+        const size_t object_idx) {
+        
+        if (object_idx == 0) {
+                return &scene->root;
+        }
+        return growingArray_get(&scene->objects, object_idx-1);
+}
+
 size_t scene_setSkybox(struct scene *const scene,
                        const char *const basename) {
-        struct geometry *geo = componentCollection_create(
-                COMPONENT_GEOMETRY);
-        geometry_initCube(geo, basename);
-        size_t geoIdx = geo->base.idx;
-
-        struct material_skybox *mat = componentCollection_create(
-                COMPONENT_MATERIAL_SKYBOX);
-        material_skybox_initFromName(mat, basename);
-        size_t matIdx = mat->base.base.idx;
-
         struct object *const skybox = scene_createObject(
                 scene, basename, 0);
+        
+        struct geometry *geo = componentCollection_create(
+                scene->game, COMPONENT_GEOMETRY);
+        geometry_initCube(geo, basename);
+        object_setComponent(skybox, &geo->base);
 
-        componentCollection_set(
-                &skybox->components, COMPONENT_GEOMETRY, geoIdx);
-
-        componentCollection_set(
-                &skybox->components, COMPONENT_MATERIAL, matIdx);
+        struct material_skybox *mat = componentCollection_create(
+                scene->game, COMPONENT_MATERIAL_SKYBOX);
+        material_skybox_initFromName(mat, basename);
+        object_setComponent(skybox, &mat->base.base);
 
         return skybox->idx;
 }
@@ -276,14 +293,16 @@ static int cmpshdr(const void *const item1,
         return (int)*shader1 - (int)*shader2;
 }
 
-__attribute__((access (read_write, 1)))
-__attribute__((access (read_only, 2)))
-__attribute__((access (write_only, 4)))
+__attribute__((access (read_only, 1)))
+__attribute__((access (read_write, 2)))
+__attribute__((access (read_only, 3)))
 __attribute__((access (write_only, 5)))
-__attribute__((access (read_write, 6)))
+__attribute__((access (write_only, 6)))
 __attribute__((access (read_write, 7)))
+__attribute__((access (read_write, 8)))
 __attribute__((nonnull))
-static void gatherObjectTree(struct growingArray *const objects,
+static void gatherObjectTree(const struct scene *const scene,
+                             struct growingArray *const objects,
                              const struct object *const object,
                              const mat4s parentModel,
                              size_t *const cameraIdx,
@@ -292,8 +311,8 @@ static void gatherObjectTree(struct growingArray *const objects,
                              struct growingArray *const shaders) {
 
         // Apply model matrix
-        const struct transform *const trans = componentCollection_get(
-                &object->components, COMPONENT_TRANSFORM);
+        const struct transform *const trans = object_getComponent(
+                object, COMPONENT_TRANSFORM);
         const mat4s model = glms_mat4_mul(parentModel, trans->model);
 
         // Add to objects array
@@ -303,15 +322,15 @@ static void gatherObjectTree(struct growingArray *const objects,
         objmod->model = model;
         
         // Detect camera
-        const struct camera *cameraComp = componentCollection_get(
-                &object->components, COMPONENT_CAMERA);
+        const struct camera *cameraComp = object_getComponent(
+                object, COMPONENT_CAMERA);
         if (cameraComp != NULL && cameraComp->main) {
                 *cameraIdx = objects->length - 1;
         }
 
         // Detect skybox
-        const struct component *materialComp = componentCollection_get(
-                &object->components, COMPONENT_MATERIAL);
+        const struct component *materialComp = object_getComponent(
+                object, COMPONENT_MATERIAL);
         if (materialComp != NULL &&
             materialComp->type == COMPONENT_MATERIAL_SKYBOX) {
                 *skyboxIdx = objects->length - 1;
@@ -336,9 +355,9 @@ static void gatherObjectTree(struct growingArray *const objects,
 
         // Recurse
         growingArray_foreach_START(&object->children, size_t*, child_idx)
-                struct object *child = scene_getObjectFromIdx(
-                        object->scene, *child_idx);
-                gatherObjectTree(objects, child, model,
+                const struct object *child = scene_getObjectFromIdxConst(
+                        scene, *child_idx);
+                gatherObjectTree(scene, objects, child, model,
                                  cameraIdx, skyboxIdx, lightIdxs, shaders);
         growingArray_foreach_END;
 }
@@ -354,13 +373,10 @@ static int cmpobj(const void *const item1,
         const struct objectModelAndDistance *const obj1 = item1;
         const struct objectModelAndDistance *const obj2 = item2;
 
-        const struct componentCollection *comps1 = &obj1->object->components;
-        const struct componentCollection *comps2 = &obj2->object->components;
-
-        const struct geometry *geo1 = componentCollection_get(
-                comps1, COMPONENT_GEOMETRY);
-        const struct geometry *geo2 = componentCollection_get(
-                comps2, COMPONENT_GEOMETRY);
+        const struct geometry *geo1 = object_getComponent(
+                obj1->object, COMPONENT_GEOMETRY);
+        const struct geometry *geo2 = object_getComponent(
+                obj2->object, COMPONENT_GEOMETRY);
         
         const bool hasgeo1 = geo1 != NULL;
         const bool hasgeo2 = geo2 != NULL;
@@ -378,10 +394,10 @@ static int cmpobj(const void *const item1,
                 return -1;
         }
 
-        const struct material *mat1 = componentCollection_get(
-                comps1, COMPONENT_MATERIAL);
-        const struct material *mat2 = componentCollection_get(
-                comps2, COMPONENT_MATERIAL);
+        const struct material *mat1 = object_getComponent(
+                obj1->object, COMPONENT_MATERIAL);
+        const struct material *mat2 = object_getComponent(
+                obj2->object, COMPONENT_MATERIAL);
 
         const bool isSkybox1 = mat1->base.type == COMPONENT_MATERIAL_SKYBOX;
         const bool isSkybox2 = mat2->base.type == COMPONENT_MATERIAL_SKYBOX;
@@ -483,7 +499,7 @@ void scene_draw(const struct scene *const scene) {
 
         // Populate 'objects' array, calculate model matrices, gather shaders,
         // lights, main camera and skybox.
-        gatherObjectTree(&objects, &scene->root, GLMS_MAT4_IDENTITY,
+        gatherObjectTree(scene, &objects, &scene->root, GLMS_MAT4_IDENTITY,
                          &cameraIdx, &skyboxIdx, &lightIdxs, &shaders);
 
         struct objectModelAndDistance *camera = growingArray_get(
@@ -502,8 +518,7 @@ void scene_draw(const struct scene *const scene) {
 
         // Get view and projection matrices from main camera
         const struct camera *const cameraComp =
-                componentCollection_get(&camera->object->components,
-                                        COMPONENT_CAMERA);
+                object_getComponent(camera->object, COMPONENT_CAMERA);
         assert(cameraComp != NULL);
         assert(cameraComp->main);
         const mat4s view = camera_viewMatrix(cameraComp, camera->model);
@@ -518,9 +533,8 @@ void scene_draw(const struct scene *const scene) {
                         const struct objectModelAndDistance *const objMod =
                                 growingArray_get(&objects, *objModIdx);
                         const struct light *const light =
-                                componentCollection_get(
-                                        &objMod->object->components,
-                                        COMPONENT_LIGHT);
+                                object_getComponent(
+                                        objMod->object, COMPONENT_LIGHT);
                         assert(light != NULL);
                         light_updateShader(light, i, view,
                                            objMod->model, *shader);
@@ -532,9 +546,8 @@ void scene_draw(const struct scene *const scene) {
         // No environment mapping yet, just the skybox, so make sure the
         // texture for the environment slot is loaded since some objects might
         // use it.
-        const struct material *skyboxMaterial = componentCollection_get(
-                &skybox->object->components,
-                COMPONENT_MATERIAL);
+        const struct material *skyboxMaterial = object_getComponent(
+                skybox->object, COMPONENT_MATERIAL);
         if (skyboxMaterial != NULL) {
                 // Will be NULL when there's no skybox object. In that case, no
                 // skybox material, no environment texture, hope there's no

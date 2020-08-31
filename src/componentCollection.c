@@ -18,7 +18,8 @@ void componentCollection_startup(void) {
                                  COMPONENTS_MIN_SIZE);
 }
 
-void *componentCollection_create(const enum componentType type) {
+void *componentCollection_create(struct game *game,
+                                 const enum componentType type) {
         size_t size;
         switch(type) {
         case COMPONENT_TRANSFORM:
@@ -54,6 +55,10 @@ void *componentCollection_create(const enum componentType type) {
         case COMPONENT_ANIMATIONCOLLECTION:
                 size = sizeof(struct animationCollection);
                 break;
+                
+        case COMPONENT_PHYSICALENTITY:
+                size = sizeof(struct physicalEntity);
+                break;
         
         case COMPONENT_TOTAL:
         default:
@@ -65,6 +70,7 @@ void *componentCollection_create(const enum componentType type) {
         assert(components.offsets.length > 0);
         ((struct component*)ptr)->type = type;
         ((struct component*)ptr)->idx = components.offsets.length - 1;
+        ((struct component*)ptr)->game = game;
         return ptr;
 }
 
@@ -116,6 +122,7 @@ void componentCollection_init(struct componentCollection *const collection) {
         collection->material = 0;
         collection->light = 0;
         collection->animationCollection = 0;
+        collection->physicalEntity = 0;
 }
 
 void *componentCollection_get(
@@ -152,6 +159,10 @@ void *componentCollection_get(
                 idx = collection->animationCollection;
                 break;
                 
+        case COMPONENT_PHYSICALENTITY:
+                idx = collection->physicalEntity;
+                break;
+                
         case COMPONENT_TOTAL:
         default:
                 return NULL;
@@ -167,6 +178,7 @@ void *componentCollection_get(
 }
 
 void componentCollection_set(struct componentCollection *const collection,
+                             const size_t object,
                              const enum componentType type,
                              const size_t idx) {
         switch (type) {
@@ -198,11 +210,19 @@ void componentCollection_set(struct componentCollection *const collection,
                 collection->animationCollection = idx+1;
                 break;
                 
+        case COMPONENT_PHYSICALENTITY:
+                collection->physicalEntity = idx+1;
+                break;
+                
         case COMPONENT_TOTAL:
         default:
                 assert_fail();
                 break;
         }
+
+        struct component *component = varSizeGrowingArray_get(
+                &components, idx, NULL);
+        component->object = object;
 }
 
 bool componentCollection_hasComponent(
@@ -231,6 +251,9 @@ bool componentCollection_hasComponent(
                 
         case COMPONENT_ANIMATIONCOLLECTION:
                 return collection->animationCollection != 0;
+                
+        case COMPONENT_PHYSICALENTITY:
+                return collection->physicalEntity != 0;
                 
         case COMPONENT_TOTAL:
         default:
@@ -284,6 +307,10 @@ static bool freeComponent(void *compPtr, size_t size, void *args) {
                 
         case COMPONENT_ANIMATIONCOLLECTION:
                 animationCollection_free((struct animationCollection*)comp);
+                break;
+                
+        case COMPONENT_PHYSICALENTITY:
+                physicalEntity_free((struct physicalEntity*)comp);
                 break;
                 
         case COMPONENT_TOTAL:

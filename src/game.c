@@ -1,5 +1,6 @@
 #include <game.h>
 #include <scene.h>
+#include <physicalWorld.h>
 #include <componentCollection.h>
 #include <eventBroker.h>
 #include <util.h>
@@ -179,6 +180,7 @@ void game_init(struct game *const game,
                const size_t initalSceneCapacity) {
         eventBroker_startup();
         componentCollection_startup();
+        physicalWorld_startup();
 
         glfwInit();
 
@@ -234,6 +236,10 @@ struct scene *game_createScene(struct game *const game) {
         struct scene *scene = growingArray_append(&game->scenes);
         scene->idx = game->scenes.length - 1;
         return scene;
+}
+
+struct scene *game_getCurrentScene(struct game *game) {
+        return growingArray_get(&game->scenes, game->currentScene);
 }
 
 void game_setCurrentScene(struct game *const game, const size_t idx) {
@@ -325,7 +331,8 @@ void game_free(struct game *const game) {
                 scene_free(scene);
         growingArray_foreach_END;
         growingArray_destroy(&game->scenes);
-        
+
+        physicalWorld_shutdown();
         componentCollection_shutdown();
         eventBroker_shutdown();
         glfwTerminate();

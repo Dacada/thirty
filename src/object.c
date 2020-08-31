@@ -8,8 +8,9 @@
 #include <stddef.h>
 #include <string.h>
 
-void object_initEmpty(struct object *const object, struct scene *const scene,
-                      const char *const name) {
+void object_initEmpty(struct object *const object, struct game *const game,
+                      const size_t scene, const char *const name) {
+        object->game = game;
         object->name = sstrdup(name);
         object->scene = scene;
         growingArray_init(&object->children, sizeof(size_t), 1);
@@ -17,52 +18,51 @@ void object_initEmpty(struct object *const object, struct scene *const scene,
         object->onUpdate = NULL;
 
         struct transform *trans = componentCollection_create(
-                COMPONENT_TRANSFORM);
-        componentCollection_set(&object->components,
-                                COMPONENT_TRANSFORM, trans->base.idx);
+                game, COMPONENT_TRANSFORM);
+        object_setComponent(object, &trans->base);
         transform_init(trans, GLMS_MAT4_IDENTITY);
 }
 
-static inline void assign_idx(struct componentCollection *const collection,
+static inline void assign_idx(struct object *const object,
                               const enum componentType component,
                               const unsigned offset,
                               FILE *const f) {
         uint32_t idx;
         sfread(&idx, sizeof(idx), 1, f);
         if (idx != 0) {
-                componentCollection_set(
-                        collection, component, offset + idx - 1);
+                componentCollection_set(&object->components, object->idx,
+                                        component, offset + idx - 1);
         }
 }
 
 void object_initFromFile(struct object *const object,
-                         struct scene *const scene, 
+                         struct game *const game,
+                         const size_t scene, 
                          const unsigned ncams, const unsigned ngeos,
                          const unsigned nmats, const unsigned nlights,
                          const unsigned nanims,
                          FILE *const f) {
         char *name = strfile(f);
-        object_initEmpty(object, scene, name);
+        object_initEmpty(object, game, scene, name);
         free(name);
 
         unsigned offset = 0;
-        assign_idx(&object->components, COMPONENT_CAMERA, offset, f);
+        assign_idx(object, COMPONENT_CAMERA, offset, f);
         offset += ncams;
-        assign_idx(&object->components, COMPONENT_GEOMETRY, offset, f);
+        assign_idx(object, COMPONENT_GEOMETRY, offset, f);
         offset += ngeos;
-        assign_idx(&object->components, COMPONENT_MATERIAL, offset, f);
+        assign_idx(object, COMPONENT_MATERIAL, offset, f);
         offset += nmats;
-        assign_idx(&object->components, COMPONENT_LIGHT, offset, f);
+        assign_idx(object, COMPONENT_LIGHT, offset, f);
         offset += nlights;
-        assign_idx(&object->components,
-                   COMPONENT_ANIMATIONCOLLECTION, offset, f);
+        assign_idx(object, COMPONENT_ANIMATIONCOLLECTION, offset, f);
         //offset += nanims;
         (void)nanims;
 
         mat4s model;
         sfread(model.raw, sizeof(float), sizeof(model) / sizeof(float), f);
-        struct transform *trans = componentCollection_get(
-                &object->components, COMPONENT_TRANSFORM);
+        struct transform *trans = object_getComponent(
+                object, COMPONENT_TRANSFORM);
         trans->model = model;
 }
 
@@ -70,6 +70,16 @@ void object_addChild(struct object *parent, struct object *child) {
         size_t *const child_idx_ptr = growingArray_append(&parent->children);
         *child_idx_ptr = child->idx;
         child->parent = parent->idx;
+}
+
+void object_setComponent(struct object *object, struct component *comp) {
+        componentCollection_set(&object->components, object->idx,
+                                comp->type, comp->idx);
+}
+
+void *object_getComponent(const struct object *object,
+                          enum componentType type) {
+        return componentCollection_get(&object->components, type);
 }
 
 void object_update(struct object *const object, const float timeDelta) {
@@ -87,11 +97,8 @@ bool object_draw(const struct object *const object, mat4s model,
                  enum renderStage *const lastRenderStage,
                  const struct material **const lastMaterial,
                  enum shaders *const lastShader) {
-
-        const struct componentCollection *const comps = &object->components;
-
-        const struct geometry *const geometry = componentCollection_get(
-                comps, COMPONENT_GEOMETRY);
+        const struct geometry *const geometry = object_getComponent(
+                object, COMPONENT_GEOMETRY);
 
         if (geometry == NULL) {
                 // All objects without geometry are lumped at the end. If we
@@ -99,8 +106,8 @@ bool object_draw(const struct object *const object, mat4s model,
                 return false;
         }
 
-        const struct material *const material = componentCollection_get(
-                comps, COMPONENT_MATERIAL);
+        const struct material *const material = object_getComponent(
+                object, COMPONENT_MATERIAL);
         assert(material != NULL);
 
         // Sanity checks, if objects are well sorted this should always pass
@@ -138,8 +145,8 @@ bool object_draw(const struct object *const object, mat4s model,
                 *lastMaterial = material;
         }
 
-        struct animationCollection *anims = componentCollection_get(
-                &object->components, COMPONENT_ANIMATIONCOLLECTION);
+        struct animationCollection *anims = object_getComponent(
+                object, COMPONENT_ANIMATIONCOLLECTION);
         if (anims != NULL) {
                 animationCollection_bindBones(anims, shader);
         }
