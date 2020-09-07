@@ -50,6 +50,32 @@ void growingArray_sort(struct growingArray *const ga,
         qsort_r(ga->data, ga->length, ga->itemSize, cmp, args);
 }
 
+static void *bsearch_r(const void *key, void *base,
+                       size_t num, size_t size, cmp_cb cmp, void *args) {
+	char *pivot;
+	int result;
+
+	while (num > 0) {
+		pivot = (char*)base + (num >> 1) * size;
+		result = cmp(key, pivot, args);
+
+		if (result == 0)
+			return (void *)pivot;
+
+		if (result > 0) {
+			base = pivot + size;
+			num--;
+		}
+		num >>= 1;
+	}
+
+	return NULL;
+}
+
+void *growingArray_bsearch(struct growingArray *ga, const void *key, cmp_cb cmp, void *args) {
+        return bsearch_r(key, ga->data, ga->length, ga->itemSize, cmp, args);
+}
+
 struct contain_args {
         cmp_cb cmp;
         const void *element;

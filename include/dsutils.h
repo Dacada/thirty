@@ -100,7 +100,20 @@ void growingArray_foreach(const struct growingArray *ga,
 void growingArray_sort(struct growingArray *ga, cmp_cb cmp, void *args)
         __attribute__((access (read_write, 1)))
         __attribute__((access (read_write, 3)))
-        __attribute__((nonnull (1)));
+        __attribute__((nonnull (1,2)));
+
+/*
+ * Search array for an element that compares equal to the given key. This is
+ * the same cmp as growingArray_sort. The key will be the first parameter in
+ * each call to this function and the second will be a pointer to an element of
+ * the array.
+ */
+void *growingArray_bsearch(struct growingArray *ga, const void *key,
+                           cmp_cb cmp, void *args)
+        __attribute__((access (read_write, 1)))
+        __attribute__((access (read_only, 2)))
+        __attribute__((access (read_write, 4)))
+        __attribute__((nonnull (1,3)));
 
 /*
  * Return whether the growing array contains the value pointed to. The value

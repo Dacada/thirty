@@ -1,9 +1,104 @@
 #include <texture.h>
+#include <dsutils.h>
 #include <util.h>
 #include <stb_image.h>
 #include <glad/glad.h>
 #include <stdbool.h>
 #include <string.h>
+
+struct loadedTextureInfo {
+        const char *name;
+        GLuint idx;
+        unsigned refcount;
+};
+
+static bool loadedTexturesInit = false;
+static struct growingArray loadedTextures;
+
+__attribute__((access (read_only, 1)))
+__attribute__((access (read_only, 2)))
+static int nameCompare(const void *a, const void *b, void *args) {
+        // a and b will wither be pointers to a char pointer or pointers to the
+        // loadedTextureInfo, which can also be interpreted as a pointer to its
+        // first element, a char pointer
+        const char *const *const name1 = a;
+        const char *const *const name2 = b;
+        (void)args;
+        
+        return strcmp(*name1, *name2);
+}
+
+__attribute__((access (read_write, 1)))
+static bool assignLoadedTexture(struct texture *const tex) {
+        if (!loadedTexturesInit) {
+                return false;
+        }
+
+        struct loadedTextureInfo *info = growingArray_bsearch(
+                &loadedTextures, &tex->name, nameCompare, NULL);
+        if (info == NULL) {
+                return false;
+        }
+
+        tex->idx = info->idx;
+        tex->loaded = true;
+        info->refcount++;
+        return true;
+}
+
+__attribute__((access (read_only, 1)))
+static void setLoadedTexture(const struct texture *const tex) {
+        if (!loadedTexturesInit) {
+                growingArray_init(&loadedTextures,
+                                  sizeof(struct loadedTextureInfo), 2);
+                loadedTexturesInit = true;
+        }
+        struct loadedTextureInfo *info = growingArray_append(&loadedTextures);
+        info->name = sstrdup(tex->name);
+        info->idx = tex->idx;
+        info->refcount = 1;
+
+        growingArray_sort(&loadedTextures, nameCompare, NULL);
+}
+
+__attribute__((access (read_only, 1)))
+static void unsetLoadedTexture(const struct texture *const tex) {
+        if (!loadedTexturesInit) {
+                return;
+        }
+        
+        struct loadedTextureInfo *info = growingArray_bsearch(
+                &loadedTextures, &tex->name, nameCompare, NULL);
+        
+        if (info == NULL) {
+#ifndef NDEBUG
+                assert(false);
+#else
+                return;
+#endif
+        }
+        if (info->refcount == 0) {
+#ifndef NDEBUG
+                assert(false);
+#else
+                return;
+#endif
+        }
+
+        info->refcount--;
+        bool cleanup = true;
+        growingArray_foreach_START(&loadedTextures,
+                                   struct loadedTextureInfo*, inf)
+                if (inf->refcount > 0) {
+                        cleanup = false;
+                        return;
+                }
+        growingArray_foreach_END;
+        if (cleanup) {
+                growingArray_destroy(&loadedTextures);
+                loadedTexturesInit = false;
+        }
+}
 
 __attribute__((access (read_only, 1)))
 __attribute__((access (read_only, 2)))
@@ -78,10 +173,15 @@ static void loadImageIntoGl(const char *const filename,
 }
 
 void texture_load(struct texture *const tex) {
+        if (assignLoadedTexture(tex)) {
+                texture_bind(tex);
+                return;
+        }
+        
         glGenTextures(1, &tex->idx);
         glActiveTexture(tex->slot);
         glBindTexture(tex->type, tex->idx);
-
+        
         if (tex->type == GL_TEXTURE_2D) {
                 char *filepath = buildpathTex(tex->name, ".png");
                 loadImageIntoGl(filepath, tex->type, true,
@@ -148,6 +248,7 @@ void texture_load(struct texture *const tex) {
         }
         
         tex->loaded = true;
+        setLoadedTexture(tex);
 }
 
 void texture_bind(const struct texture *const tex) {
@@ -159,6 +260,7 @@ void texture_bind(const struct texture *const tex) {
 
 void texture_free(struct texture *const tex) {
         if (tex->loaded) {
+                unsetLoadedTexture(tex);
                 glDeleteTextures(1, &tex->idx);
                 free(tex->name);
                 tex->loaded = false;
