@@ -29,6 +29,7 @@
 enum shaders {
         SHADER_UBER,
         SHADER_SKYBOX,
+        SHADER_UI,
         
         SHADER_TOTAL
 };
@@ -67,6 +68,14 @@ void shader_setUInt(enum shaders shader,
  */
 void shader_setFloat(enum shaders shader,
                      const char *name, float value)
+        __attribute__((access (read_only, 2)))
+        __attribute__((nonnull));
+
+/*
+ * Set a vec2 uniform to the given shader.
+ */
+void shader_setVec2(enum shaders shader,
+                    const char *name, vec2s value)
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
 

@@ -4,6 +4,7 @@ SRC_DIR := src
 BIN_DIR := bin
 OBJ_DIR := obj
 INCLUDE_DIR := include
+ASSETS_DIR := assets
 
 SOURCES := $(wildcard $(SRC_DIR)/*.c)
 
@@ -37,11 +38,15 @@ DEPENDS_DEVELOP := $(OBJECTS_DEVELOP:.o=.d)
 
 TARGETS := $(BIN_DIR)/main_dbg $(BIN_DIR)/main_rel $(BIN_DIR)/main_dev
 
+FONTS_FTD := $(ASSETS_DIR)/fonts/Cabin-Regular_36_latin-1.ftd
+FONTS_FTD += $(ASSETS_DIR)/fonts/CutiveMono-Regular_24_latin-1.ftd
+FONTS_PNG := $(patsubst $(ASSETS_DIR)/fonts/%.ftd,$(ASSETS_DIR)/textures/%.png,$(FONTS_FTD))
+
 
 CC := gcc
 
 # Common flags
-CFLAGS := -DASSETSPATH=\"$(realpath assets)\" -I$(realpath $(INCLUDE_DIR)) `pkg-config --cflags glfw3` `pkg-config --cflags cglm` -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wmissing-prototypes -Wwrite-strings -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wimplicit-fallthrough -Wstringop-overflow=4 -std=c11
+CFLAGS := -DASSETSPATH=\"$(realpath $(ASSETS_DIR))\" -I$(realpath $(INCLUDE_DIR)) `pkg-config --cflags glfw3` `pkg-config --cflags cglm` -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wmissing-prototypes -Wwrite-strings -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wimplicit-fallthrough -Wstringop-overflow=4 -std=c11
 LDFLAGS := `pkg-config --libs glfw3` `pkg-config --libs cglm` -lm -ldl -std=c11
 
 # Flags for generating glad files (also common)
@@ -73,28 +78,38 @@ define FIND_SYSHEADERS_CMD
 )
 endef
 
-.PHONY: dbg dev rel clean veryclean purify impolute etags valgrind static-analysis tidy_src tidy_include line-count
+.PHONY: dbg dev rel clearfonts clean veryclean purify impolute etags glad_rel glad_dbg fonts valgrind static-analysis tidy_src tidy_include line-count
 
-rel: $(BIN_DIR)/main
-dev: etags $(BIN_DIR)/main_dev
-dbg: $(BIN_DIR)/main_dbg
+rel: fonts glad_rel $(BIN_DIR)/main
+dev: fonts glad_dbg etags $(BIN_DIR)/main_dev
+dbg: fonts glad_dbg $(BIN_DIR)/main_dbg
 
-clean:
+clearfonts:
+	-rm -f $(FONTS_PNG)
+	-rm -rf $(ASSETS_DIR)/fonts
+clean: clearfonts
 	-rm -f $(BIN_DIR)/* $(OBJ_DIR)/*.o
 veryclean: clean
 	-rm -f $(OBJ_DIR)/*
 	-rm -f TAGS
-purify: veryclean
+purify: clearfonts veryclean
 	-rm -f $(SRC_DIR)/glad_dbg.c $(SRC_DIR)/glad_rel.c
 	-rm -f $(INCLUDE_DIR)/glad/glad_dbg.h $(INCLUDE_DIR)/glad/glad_rel.h
 	-rm -rf $(INCLUDE_DIR)/KHR/
 	-rm -f sysh_TAGS
 impolute: purify
 	-rm -rf venv
+	-rm -rf BitmapFontGenerator/venv
+
+glad_rel: $(INCLUDE_DIR)/KHR/khrplatform.h $(INCLUDE_DIR)/glad/glad_rel.h $(SRC_DIR)/glad_rel.c
+
+glad_dbg: $(INCLUDE_DIR)/glad/glad_dbg.h $(SRC_DIR)/glad_dbg.c
 
 etags: sysh_TAGS
 	-rm -f TAGS
 	$(FIND_HEADERS_CMD) | etags --include=$< -
+
+fonts: $(FONTS_FTD) $(FONTS_PNG)
 
 valgrind: $(BIN_DIR)/main_dbg
 	valgrind --leak-check=full           			\
@@ -216,6 +231,28 @@ $(INCLUDE_DIR)/stb_image.h:
 
 $(SRC_DIR)/.clang_complete $(INCLUDE_DIR)/.clang_complete: Makefile
 	echo $(CFLAGS) | tr " " "\n" > $@
+
+
+$(ASSETS_DIR)/fonts/Cabin-Regular.ttf:
+	mkdir -p $(ASSETS_DIR)/fonts
+	wget -q -O $@ "https://raw.githubusercontent.com/impallari/Cabin/master/fonts/TTF/Cabin-Bold.ttf"
+$(ASSETS_DIR)/fonts/CutiveMono-Regular.ttf:
+	mkdir -p $(ASSETS_DIR)/fonts
+	wget -q -O $@ "https://raw.githubusercontent.com/vernnobile/CutiveFont/master/CutiveMono/GWF-1.001/CutiveMono-Regular.ttf"
+
+$(ASSETS_DIR)/textures/Cabin-Regular_36_latin-1.png $(ASSETS_DIR)/fonts/Cabin-Regular_36_latin-1.ftd &: $(ASSETS_DIR)/fonts/Cabin-Regular.ttf BitmapFontGenerator/venv
+	set -e; \
+	source BitmapFontGenerator/venv/bin/activate; \
+	python BitmapFontGenerator/BitmapFontGenerator.py --basedir $(ASSETS_DIR) --height 36 --encoding latin-1 $<
+$(ASSETS_DIR)/textures/CutiveMono-Regular_24_latin-1.png $(ASSETS_DIR)/fonts/CutiveMono-Regular_24_latin-1.ftd &: $(ASSETS_DIR)/fonts/CutiveMono-Regular.ttf BitmapFontGenerator/venv
+	set -e; \
+	source BitmapFontGenerator/venv/bin/activate; \
+	python BitmapFontGenerator/BitmapFontGenerator.py --basedir $(ASSETS_DIR) --height 24 --encoding latin-1 $<
+
+BitmapFontGenerator/venv: BitmapFontGenerator/requirements.txt
+	virtualenv BitmapFontGenerator/venv
+	source BitmapFontGenerator/venv/bin/activate; \
+	pip install -r BitmapFontGenerator/requirements.txt
 
 
 -include $(DEPENDS_DEBUG)

@@ -26,3 +26,4 @@ sysh_TAGS
 # Generated files
 assets/textures/*.png
 assets/scenes/*.bgl
+assets/fonts/*

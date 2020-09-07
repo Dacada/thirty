@@ -14,11 +14,13 @@
 #define STARTING_TIMEDELTA (1.0F/60.0F)
 
 static void onFramebufferSizeChanged(void *registerArgs, void *fireArgs) {
-        (void)registerArgs;
+        struct ui *ui = registerArgs;
         struct eventBrokerWindowResized *args = fireArgs;
         const int width = args->width;
         const int height = args->height;
+        
         glViewport(0, 0, width, height);
+        ui_resize(ui, width, height);
 }
 
 static void eventFire_windowResized(GLFWwindow *const w,
@@ -181,6 +183,7 @@ void game_init(struct game *const game,
         eventBroker_startup();
         componentCollection_startup();
         physicalWorld_startup();
+        ui_startup();
 
         glfwInit();
 
@@ -214,7 +217,7 @@ void game_init(struct game *const game,
 
         eventBroker_register(onFramebufferSizeChanged,
                              EVENT_BROKER_PRIORITY_HIGH,
-                             EVENT_BROKER_WINDOW_RESIZED, NULL);
+                             EVENT_BROKER_WINDOW_RESIZED, &game->ui);
         
         glEnable(GL_DEPTH_TEST);
 #ifdef NDEBUG
@@ -230,6 +233,9 @@ void game_init(struct game *const game,
         game->timeDelta = STARTING_TIMEDELTA;
         vec4s defaultClearColor = DEFAULT_CLEARCOLOR;
         game->clearColor = defaultClearColor;
+
+        game->ui = smalloc(sizeof(*game->ui));
+        ui_init(game->ui, width, height);
 }
 
 struct scene *game_createScene(struct game *const game) {
@@ -332,8 +338,11 @@ void game_free(struct game *const game) {
         growingArray_foreach_END;
         growingArray_destroy(&game->scenes);
 
+        ui_shutdown();
         physicalWorld_shutdown();
         componentCollection_shutdown();
         eventBroker_shutdown();
+        ui_free(game->ui);
+        free(game->ui);
         glfwTerminate();
 }

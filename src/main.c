@@ -1,6 +1,7 @@
 #include <inputHelpers.h>
 #include <game.h>
 #include <physicalWorld.h>
+#include <font.h>
 #include <componentCollection.h>
 #include <eventBroker.h>
 #include <util.h>
@@ -126,6 +127,7 @@ static void freeGame(void *registerArgs, void *fireArgs) {
 }
 
 int main(void) {
+        static const vec4s black = GLMS_VEC4_BLACK_INIT;
         static const vec4s white = GLMS_VEC4_ONE_INIT;
         static const vec4s red = {.x = 1, .y = 0, .z = 0, .w = 1};
         static const vec4s green = {.x = 0, .y = 1, .z = 0, .w = 1};
@@ -270,6 +272,13 @@ int main(void) {
 
         fpsCameraController_init(&cam_ctrl, movement_speed, look_sensitivity,
                                  camera);
+
+        // Create UI
+        ui_addQuad(game->ui, 10,10, 100,30, 0.0F, "ui_test_texture");
+        struct font *font = ui_getFont("CutiveMono-Regular", 24, "latin-1");
+        font_load(font);
+        ui_addText(game->ui, 35,45, 0.1F, (const unsigned char*)"Something.",
+                   font, black);
 
         // Register events
         eventBroker_register(processKeyboardInput, EVENT_BROKER_PRIORITY_HIGH,

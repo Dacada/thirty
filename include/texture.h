@@ -15,6 +15,8 @@ struct texture {
         GLenum slot;
         GLuint idx;
         GLenum type;
+        int width;
+        int height;
 };
 
 /*

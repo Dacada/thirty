@@ -18,6 +18,9 @@ static const int bumpTextureSampler = 6;
 static const int opacityTextureSampler = 7;
 static const int environmentTextureSampler = 8;
 
+static const int uiQuadTextureSampler = 0;
+static const int uiFontTextureSampler = 1;
+
 // Holds currently created shaders, or 0 if the shader hasn't been created yet.
 static unsigned shaders[SHADER_TOTAL];
 
@@ -182,6 +185,10 @@ static void init_shader(const enum shaders shader) {
         case SHADER_SKYBOX:
                 shader_setInt(shader, "skybox", environmentTextureSampler);
                 break;
+        case SHADER_UI:
+                shader_setInt(shader, "quadTexture", uiQuadTextureSampler);
+                shader_setInt(shader, "maskTexture", uiFontTextureSampler);
+                break;
         case SHADER_TOTAL:
         default:
                 die("Unexpected Shader");
@@ -202,6 +209,8 @@ static unsigned get_shader_id(const enum shaders shader) {
         SHADERFILES(frag, uber, {"header", "uber"});
         SHADERFILES(vert, skybox, {"header", "skybox"});
         SHADERFILES(frag, skybox, {"header", "skybox"});
+        SHADERFILES(vert, ui, {"ui"});
+        SHADERFILES(frag, ui, {"ui"});
 
         size_t nvertfiles;
         size_t nfragfiles;
@@ -220,6 +229,12 @@ static unsigned get_shader_id(const enum shaders shader) {
                 nfragfiles = skybox_nfragfiles;
                 vertfiles = skybox_vertfiles;
                 fragfiles = skybox_fragfiles;
+                break;
+        case SHADER_UI:
+                nvertfiles = ui_nvertfiles;
+                nfragfiles = ui_nfragfiles;
+                vertfiles = ui_vertfiles;
+                fragfiles = ui_fragfiles;
                 break;
         case SHADER_TOTAL:
         default:
@@ -259,6 +274,10 @@ void shader_setUInt(const enum shaders shader, const char *const name,
 void shader_setFloat(const enum shaders shader, const char *const name,
 		     const float value) {
         glUniform1f(getloc(shader, name), value);
+}
+void shader_setVec2(const enum shaders shader, const char *const name,
+                    const vec2s value) {
+        glUniform2fv(getloc(shader, name), 1, value.raw);
 }
 void shader_setVec3(const enum shaders shader, const char *const name,
                     const vec3s value) {

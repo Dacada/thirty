@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <limits.h>
 #include <string.h>
+#include <errno.h>
 
 #define BUFFER_SIZE 256
 
@@ -105,6 +106,23 @@ char *sstrdup(const char *const s) {
         return ptr;
 }
 
+size_t strlenu(const unsigned char *s) {
+        size_t len;
+        for (len = 0;; len++) {
+                if (s[len] == '\0') {
+                        return len;
+                }
+        }
+}
+
+unsigned char *sstrdupu(const unsigned char *s) {
+        size_t len = strlenu(s);
+
+        unsigned char *ptr = smallocarray(len, sizeof(unsigned char));
+        memcpy(ptr, s, len * sizeof(unsigned char));
+        return ptr;
+}
+
 FILE *sfopen(const char *const pathname, const char *const mode) {
         FILE *const f = fopen(pathname, mode);
         if (f == NULL) {
@@ -112,6 +130,15 @@ FILE *sfopen(const char *const pathname, const char *const mode) {
                 die("Failed to open file.");
         }
         return f;
+}
+
+DIR *sopendir(const char *const pathname) {
+        DIR *const d = opendir(pathname);
+        if (d == NULL) {
+                perror(pathname);
+                die("Failed to open directory.");
+        }
+        return d;
 }
 
 void sfseek(FILE *const stream, const long offset, const int whence) {
@@ -142,6 +169,16 @@ void sfread(void *const ptr, const size_t size, const size_t nmemb,
                 perror("fread");
                 die(NULL);
         }
+}
+
+struct dirent *sreaddir(DIR *stream) {
+        errno = 0;
+        struct dirent *dirent = readdir(stream);
+        if (dirent == NULL && errno != 0) {
+                perror("readdir");
+                die(NULL);
+        }
+        return dirent;
 }
 
 void sfclose(FILE *const stream) {

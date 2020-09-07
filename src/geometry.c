@@ -18,8 +18,6 @@
 #define BONEIDX_ATTRIB 5
 #define BONEWGHT_ATTRIB 6
 
-#define SQRT_5 2.23606797749979F
-
 __attribute__((access (write_only, 1)))
 __attribute__((nonnull))
 static void geometry_init(struct geometry *const geometry) {

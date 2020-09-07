@@ -53,7 +53,7 @@ void geometry_initIcosphere(struct geometry *geo, const char *name,
         __attribute__((nonnull));
 
 /*
- * Initializes a geometry to be a 1x1 plane on XY.
+ * Initializes a geometry to be a NxM plane on XY.
  */
 void geometry_initPlane(struct geometry *geo, const char *name)
         __attribute__((access (write_only, 1)))

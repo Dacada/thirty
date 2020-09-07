@@ -1,4 +1,5 @@
 #include <scene.h>
+#include <game.h>
 #include <object.h>
 #include <componentCollection.h>
 #include <dsutils.h>
@@ -574,6 +575,8 @@ void scene_draw(const struct scene *const scene) {
                         break;
                 }
         growingArray_foreach_END;
+
+        ui_draw(scene->game->ui);
 
         // Cleanup
         glDisable(GL_BLEND);

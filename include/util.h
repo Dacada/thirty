@@ -1,10 +1,12 @@
 #ifndef CUTIL_UTIL_H
 #define CUTIL_UTIL_H
 
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include <dirent.h>
 #include <limits.h>
 
 // This is usually the actual number, just in case it's not in
@@ -106,9 +108,22 @@ char *sstrdup(const char *s)
         __attribute__((warn_unused_result))
         __attribute__((nonnull));
 
+size_t strlenu(const unsigned char *s)
+        __attribute__((nonnull));
+
+unsigned char *sstrdupu(const unsigned char *s)
+        __attribute__((warn_unused_result))
+        __attribute__((nonnull));
+
 FILE *sfopen(const char *pathname, const char *mode)
         __attribute__((access (read_only, 1)))
         __attribute__((access (read_only, 2)))
+        __attribute__((nonnull))
+        __attribute__((returns_nonnull))
+        __attribute__((warn_unused_result));
+
+DIR *sopendir(const char *pathname)
+        __attribute__((access (read_only, 1)))
         __attribute__((nonnull))
         __attribute__((returns_nonnull))
         __attribute__((warn_unused_result));
@@ -123,8 +138,12 @@ size_t sftell(FILE *stream)
 
 void sfread(void *ptr, size_t size, size_t nmemb,
             FILE *stream)
-        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_write, 1)))
         __attribute__((access (read_write, 4)))
+        __attribute__((nonnull));
+
+struct dirent *sreaddir(DIR *stream)
+        __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 void sfclose(FILE *stream)

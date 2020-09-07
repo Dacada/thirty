@@ -34,14 +34,15 @@ void texture_init(struct texture *const tex, const char *const name,
 }
 
 __attribute__((access (read_only, 1)))
-__attribute__((nonnull))
+__attribute__((nonnull (1)))
 static void loadImageIntoGl(const char *const filename,
-                            const GLenum type, const bool flip) {
+                            const GLenum type, const bool flip,
+                            int *const outWidth, int *const outHeight) {
         // TODO: Remove this and use callbacks instead
         fprintf(stderr, "Loading texture %s ...\n", filename);
         
         stbi_set_flip_vertically_on_load(flip);
-        
+
         int width;
         int height;
         int nrChannels;
@@ -51,18 +52,27 @@ static void loadImageIntoGl(const char *const filename,
                 bail("Can't read texture image data.\n");
         }
 
-        GLenum internalFormat;
-        if (nrChannels == 3) { // PNG without transparency data
-                internalFormat = GL_RGB;
+        GLenum format;
+        if (nrChannels == 1) { // Monochrome PNG (mask)
+                format = GL_RED;
+        } else if (nrChannels == 3) { // PNG without transparency data
+                format = GL_RGB;
         } else if (nrChannels == 4) { // PNG with transparency data
-                internalFormat =  GL_RGBA;
+                format =  GL_RGBA;
         } else { // Abomination
                 die("Failing to load png texture. I expected 3 or 4 "
                     "channels but this thing has %d?\n", nrChannels);
         }
 
-        glTexImage2D(type, 0, GL_RGB, width, height, 0,
-                     internalFormat, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(type, 0, GL_RGBA, width, height, 0,
+                     format, GL_UNSIGNED_BYTE, data);
+
+        if (outWidth != NULL) {
+                *outWidth = width;
+        }
+        if (outHeight != NULL) {
+                *outHeight = height;
+        }
         
         stbi_image_free(data);
 }
@@ -74,7 +84,8 @@ void texture_load(struct texture *const tex) {
 
         if (tex->type == GL_TEXTURE_2D) {
                 char *filepath = buildpathTex(tex->name, ".png");
-                loadImageIntoGl(filepath, tex->type, true);
+                loadImageIntoGl(filepath, tex->type, true,
+                                &tex->width, &tex->height);
                 free(filepath);
                 
                 glTexParameteri(tex->type, GL_TEXTURE_WRAP_S,
@@ -90,32 +101,38 @@ void texture_load(struct texture *const tex) {
                 char *filepath;
                 filepath = buildpathTex(tex->name, "_right.png");
                 loadImageIntoGl(filepath,
-                                GL_TEXTURE_CUBE_MAP_POSITIVE_X, false);
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_X, false,
+                                &tex->width, &tex->height);
                 free(filepath);
                 
                 filepath = buildpathTex(tex->name, "_left.png");
                 loadImageIntoGl(filepath,
-                                GL_TEXTURE_CUBE_MAP_NEGATIVE_X, false);
+                                GL_TEXTURE_CUBE_MAP_NEGATIVE_X, false,
+                                NULL, NULL);
                 free(filepath);
                 
                 filepath = buildpathTex(tex->name, "_top.png");
                 loadImageIntoGl(filepath,
-                                GL_TEXTURE_CUBE_MAP_POSITIVE_Y, false);
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_Y, false,
+                                NULL, NULL);
                 free(filepath);
                 
                 filepath = buildpathTex(tex->name, "_bottom.png");
                 loadImageIntoGl(filepath,
-                                GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, false);
+                                GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, false,
+                                NULL, NULL);
                 free(filepath);
                 
                 filepath = buildpathTex(tex->name, "_front.png");
                 loadImageIntoGl(filepath,
-                                GL_TEXTURE_CUBE_MAP_POSITIVE_Z, false);
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_Z, false,
+                                NULL, NULL);
                 free(filepath);
                 
                 filepath = buildpathTex(tex->name, "_back.png");
                 loadImageIntoGl(filepath,
-                                GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, false);
+                                GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, false,
+                                NULL, NULL);
                 free(filepath);
                 
                 glTexParameteri(tex->type, GL_TEXTURE_WRAP_S,

@@ -2,6 +2,7 @@
 #define GAME_H
 
 #include <scene.h>
+#include <ui.h>
 #include <eventBroker.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -20,6 +21,8 @@ struct game {
         
         size_t currentScene;
         struct growingArray scenes;
+
+        struct ui *ui;
 };
 
 /*
