@@ -124,13 +124,13 @@ void ui_addQuad(struct ui *const ui,
         quad->model = GLMS_MAT4_IDENTITY;
 
         vec3s scale;
-        scale.x = (float)(brx - tlx);
-        scale.y = (float)(bry - tly);
+        scale.x = (float)(brx - tlx)/2;
+        scale.y = (float)(bry - tly)/2;
         scale.z = 1.0F;
         quad->model = glms_scale(quad->model, scale);
         
-        quad->model.col[3].x = (float)tlx + (float)brx;
-        quad->model.col[3].y = (float)tly + (float)bry;
+        quad->model.col[3].x = (float)tlx + (float)brx/2;
+        quad->model.col[3].y = (float)tly + (float)bry/2;
         quad->model.col[3].z = z;
         
         texture_init(&quad->texture, texture,

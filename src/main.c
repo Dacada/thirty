@@ -274,7 +274,7 @@ int main(void) {
                                  camera);
 
         // Create UI
-        ui_addQuad(game->ui, 10,10, 100,30, 0.0F, "ui_test_texture");
+        ui_addQuad(game->ui, 10,10, 200,60, 0.0F, "ui_test_texture");
         struct font *font = ui_getFont("CutiveMono-Regular", 24, "latin-1");
         font_load(font);
         ui_addText(game->ui, 35,45, 0.1F, (const unsigned char*)"Something.",
