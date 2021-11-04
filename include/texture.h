@@ -27,7 +27,7 @@ void texture_init(struct texture *tex, const char *name,
                   GLenum slot, GLenum type)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
-        __attribute__((nonnull));
+        __attribute__((nonnull (1)));
 
 /*
  * Load a texture from its file.

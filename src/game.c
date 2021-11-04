@@ -14,13 +14,13 @@
 #define STARTING_TIMEDELTA (1.0F/60.0F)
 
 static void onFramebufferSizeChanged(void *registerArgs, void *fireArgs) {
-        struct ui *ui = registerArgs;
+        struct ui **ui = registerArgs;
         struct eventBrokerWindowResized *args = fireArgs;
         const int width = args->width;
         const int height = args->height;
         
         glViewport(0, 0, width, height);
-        ui_resize(ui, width, height);
+        ui_resize(*ui, width, height);
 }
 
 static void eventFire_windowResized(GLFWwindow *const w,

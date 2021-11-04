@@ -99,6 +99,15 @@ void material_init(struct material *material, const char *const name,
         component_init((struct component*)material, name);
         material->base.type = type;
         material->shader = shader;
+
+        for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
+             tex < MATERIAL_TEXTURE_TOTAL; tex++) {
+                struct texture *texture = getVarTextureInfo(
+                        material, tex, NULL);
+                if (texture != NULL) {
+                        texture_init(texture, NULL, 0, 0);
+                }
+        }
 }
 
 size_t material_initFromFile(struct material *const material, FILE *const f,

@@ -7,7 +7,7 @@
 #include <string.h>
 
 struct loadedTextureInfo {
-        const char *name;
+        char *name;
         GLuint idx;
         unsigned refcount;
 };
@@ -18,14 +18,40 @@ static struct growingArray loadedTextures;
 __attribute__((access (read_only, 1)))
 __attribute__((access (read_only, 2)))
 static int nameCompare(const void *a, const void *b, void *args) {
+        // it is important that NULLs go first, since when we begin unsetting
+        // textures we set the first ones to a null name until one with a
+        // positive reference count is found
+        if (a == NULL && b != NULL) {
+                return -1;
+        }
+        if (a != NULL && b == NULL) {
+                return 1;
+        }
+        if (a == NULL && b == NULL) {
+                return 0;
+        }
+        
         // a and b will wither be pointers to a char pointer or pointers to the
         // loadedTextureInfo, which can also be interpreted as a pointer to its
         // first element, a char pointer
-        const char *const *const name1 = a;
-        const char *const *const name2 = b;
+        const char *const *const name1_ptr = a;
+        const char *const *const name2_ptr = b;
         (void)args;
+
+        const char *const name1 = *name1_ptr;
+        const char *const name2 = *name2_ptr;
+
+        if (name1 == NULL && name2 != NULL) {
+                return -1;
+        }
+        if (name1 != NULL && name2 == NULL) {
+                return 1;
+        }
+        if (name1 == NULL && name2 == NULL) {
+                return 0;
+        }
         
-        return strcmp(*name1, *name2);
+        return strcmp(name1, name2);
 }
 
 __attribute__((access (read_write, 1)))
@@ -53,7 +79,20 @@ static void setLoadedTexture(const struct texture *const tex) {
                                   sizeof(struct loadedTextureInfo), 2);
                 loadedTexturesInit = true;
         }
-        struct loadedTextureInfo *info = growingArray_append(&loadedTextures);
+
+        struct loadedTextureInfo *info = NULL;
+        growingArray_foreach_START(&loadedTextures,
+                                   struct loadedTextureInfo*, inf)
+                if (inf->name == NULL) {
+                        info = inf;
+                        break;
+                }
+        growingArray_foreach_END;
+
+        if (info == NULL) {
+                info = growingArray_append(&loadedTextures);
+        }
+        
         info->name = sstrdup(tex->name);
         info->idx = tex->idx;
         info->refcount = 1;
@@ -62,9 +101,9 @@ static void setLoadedTexture(const struct texture *const tex) {
 }
 
 __attribute__((access (read_only, 1)))
-static void unsetLoadedTexture(const struct texture *const tex) {
+static bool unsetLoadedTexture(const struct texture *const tex) {
         if (!loadedTexturesInit) {
-                return;
+                return false;
         }
         
         struct loadedTextureInfo *info = growingArray_bsearch(
@@ -74,30 +113,37 @@ static void unsetLoadedTexture(const struct texture *const tex) {
 #ifndef NDEBUG
                 assert(false);
 #else
-                return;
+                return true;
 #endif
         }
         if (info->refcount == 0) {
 #ifndef NDEBUG
                 assert(false);
 #else
-                return;
+                return true;
 #endif
         }
 
         info->refcount--;
-        bool cleanup = true;
+        bool ret = info->refcount == 0;
+        if (!ret) {
+                return ret;
+        }
+        
         growingArray_foreach_START(&loadedTextures,
                                    struct loadedTextureInfo*, inf)
                 if (inf->refcount > 0) {
-                        cleanup = false;
-                        return;
+                        return ret;
                 }
+        
+                free(inf->name);
+                inf->name = NULL;
         growingArray_foreach_END;
-        if (cleanup) {
-                growingArray_destroy(&loadedTextures);
-                loadedTexturesInit = false;
-        }
+        
+        growingArray_destroy(&loadedTextures);
+        loadedTexturesInit = false;
+
+        return ret;
 }
 
 __attribute__((access (read_only, 1)))
@@ -125,7 +171,11 @@ void texture_init(struct texture *const tex, const char *const name,
         tex->loaded = false;
         tex->slot = slot;
         tex->type = type;
-        tex->name = sstrdup(name);
+        if (name == NULL) {
+                tex->name = NULL;
+        } else {
+                tex->name = sstrdup(name);
+        }
 }
 
 __attribute__((access (read_only, 1)))
@@ -260,9 +310,10 @@ void texture_bind(const struct texture *const tex) {
 
 void texture_free(struct texture *const tex) {
         if (tex->loaded) {
-                unsetLoadedTexture(tex);
-                glDeleteTextures(1, &tex->idx);
-                free(tex->name);
+                if (unsetLoadedTexture(tex)) {
+                        glDeleteTextures(1, &tex->idx);
+                }
                 tex->loaded = false;
         }
+        free(tex->name);
 }

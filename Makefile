@@ -142,7 +142,7 @@ tidy_include: $(INCLUDE_DIR)/.clang_complete
 	cd $(INCLUDE_DIR) && clang-tidy $(TIDY_INCLUDES) $(TIDY_CHECKS) -- $$(<.clang_complete)
 
 line-count:
-	wc -l $(addprefix $(SRC_DIR)/,$(TIDY_SOURCES)) $(addprefix $(INCLUDE_DIR)/,$(TIDY_INCLUDES))
+	wc -l $(addprefix $(SRC_DIR)/,$(TIDY_SOURCES)) $(addprefix $(INCLUDE_DIR)/,$(TIDY_INCLUDES)) BOGLE/exporter_BOGLE.py BitmapFontGenerator/BitmapFontGenerator.py
 
 sysh_TAGS:
 	$(FIND_SYSHEADERS_CMD) | etags -o $@ -

@@ -59,8 +59,9 @@ static void *bsearch_r(const void *key, void *base,
 		pivot = (char*)base + (num >> 1) * size;
 		result = cmp(key, pivot, args);
 
-		if (result == 0)
+		if (result == 0) {
 			return (void *)pivot;
+                }
 
 		if (result > 0) {
 			base = pivot + size;
