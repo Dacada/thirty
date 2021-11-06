@@ -1,12 +1,5 @@
 #include <object.h>
-#include <componentCollection.h>
-#include <shader.h>
-#include <dsutils.h>
 #include <util.h>
-#include <cglm/struct.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <string.h>
 
 void object_initEmpty(struct object *const object, struct game *const game,
                       const size_t scene, const char *const name) {

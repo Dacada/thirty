@@ -2,9 +2,6 @@
 
 #include <dsutils.h>
 #include <util.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stddef.h>
 
 void growingArray_init(struct growingArray *const ga,
                        const size_t itemSize, const size_t initialCapacity) {

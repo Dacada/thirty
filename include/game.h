@@ -3,10 +3,9 @@
 
 #include <scene.h>
 #include <ui.h>
-#include <eventBroker.h>
+#include <physicalWorld.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <stddef.h>
 
 /*
  * Implementation of an overarching "game" structure that keeps global data

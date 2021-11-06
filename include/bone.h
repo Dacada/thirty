@@ -2,7 +2,6 @@
 #define BONE_H
 
 #include <cglm/struct.h>
-#include <stdio.h>
 
 /*
  * Represents a single bone in a skeleton.

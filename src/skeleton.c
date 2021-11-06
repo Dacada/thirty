@@ -1,13 +1,5 @@
 #include <skeleton.h>
-#include <bone.h>
-#include <keyframe.h>
-#include <shader.h>
 #include <util.h>
-#include <cglm/struct.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <stddef.h>
 
 #define BUFFSIZE 256
 

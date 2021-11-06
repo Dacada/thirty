@@ -1,9 +1,5 @@
 #include <ui.h>
-#include <font.h>
-#include <texture.h>
-#include <shader.h>
 #include <util.h>
-#include <string.h>
 
 #define UIQUAD_TEXTURE_SLOT GL_TEXTURE0
 

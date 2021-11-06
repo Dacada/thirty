@@ -1,11 +1,5 @@
 #include <componentCollection.h>
-#include <texture.h>
-#include <component.h>
-#include <dsutils.h>
 #include <util.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <string.h>
 
 #define COMPONENTS_MIN_SIZE sizeof(struct component)
 #define COMPONENTS_INITIAL_CAPACITY (4*COMPONENTS_MIN_SIZE)

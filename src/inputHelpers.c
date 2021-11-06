@@ -1,53 +1,25 @@
-#include <game.h>
 #include <inputHelpers.h>
-#include <scene.h>
-#include <object.h>
-#include <componentCollection.h>
 #include <util.h>
-#include <dsutils.h>
-#include <cglm/struct.h>
-#include <stdbool.h>
 
 void fpsCameraController_init(struct fpsCameraController *const ctrl,
-                              const float move, const float look,
-                              const struct object *const camera) {
+                              struct scene *const scene,
+                              const float move, const float look) {
         ctrl->freefly = false;
         ctrl->move_sensitivity = move;
         ctrl->look_sensitivity = look;
-        ctrl->camera_obj = camera;
-        ctrl->camera = object_getComponent(camera, COMPONENT_CAMERA);
-
-        assert(ctrl->camera != NULL);
-        assert(ctrl->camera->base.base.type == COMPONENT_CAMERA_FPS);
-}
-
-static mat4s get_model(const struct object *obj) {
-        struct transform *trans = object_getComponent(
-                obj, COMPONENT_TRANSFORM);
-        assert(trans != NULL);
-        mat4s model = trans->model;
-        
-        while (obj->idx != 0) {
-                struct scene *scene = game_getCurrentScene(obj->game);
-                struct object *parent = scene_getObjectFromIdx(
-                        scene, obj->parent);
-                struct transform *parentTrans = object_getComponent(
-                        parent, COMPONENT_TRANSFORM);
-                mat4s parentModel = parentTrans->model;
-                model = glms_mat4_mul(parentModel, model);
-                obj = parent;
-        }
-        return model;
+        ctrl->scene = scene;
 }
 
 void fpsCameraController_move(const struct fpsCameraController *const ctrl,
-                              const vec2s direction, const float timeDelta) {
+                              const vec2s direction, const float timeDelta,
+                              struct object *const camera_obj) {
+        struct camera_fps *camera = object_getComponent(camera_obj, COMPONENT_CAMERA);
         const float move = ctrl->move_sensitivity * timeDelta;
 
         static const vec3s worldUp = {.x=0, .y=1, .z=0};
         static const vec3s worldForward = {.x=0, .y=0, .z=-1};
 
-        mat4s model = get_model(ctrl->camera_obj);
+        mat4s model = scene_getObjectAbsoluteTransform(ctrl->scene, camera_obj);
         mat4s r;
         vec3s s;
         glms_decompose_rs(model, &r, &s);

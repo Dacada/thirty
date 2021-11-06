@@ -1,14 +1,5 @@
 #include <scene.h>
-#include <game.h>
-#include <object.h>
-#include <componentCollection.h>
-#include <dsutils.h>
 #include <util.h>
-#include <cglm/struct.h>
-#include <stddef.h>
-#include <ctype.h>
-#include <string.h>
-#include <limits.h>
 
 #define BOGLE_MAGIC_SIZE 5
 #define OBJECT_TREE_NUMBER_BASE 10

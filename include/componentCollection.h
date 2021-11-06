@@ -9,9 +9,6 @@
 #include <physicalEntity.h>
 #include <transform.h>
 
-#include <stdbool.h>
-#include <stddef.h>
-
 /*
  * A collection of components assigned to an object. Each component exists
  * within a memory area managed by the componentCollection module, so they must

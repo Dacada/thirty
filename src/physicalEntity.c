@@ -1,7 +1,5 @@
-#include <game.h>
-#include <object.h>
 #include <physicalEntity.h>
-#include <transform.h>
+#include <game.h> // TODO: recursive error if moved to physicalEntity.h
 
 void physicalEntity_init(struct physicalEntity *const phys,
                          const float mass,

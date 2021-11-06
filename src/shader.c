@@ -1,12 +1,5 @@
 #include <shader.h>
 #include <util.h>
-#include <cglm/struct.h>
-#include <glad/glad.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <limits.h>
 
 static const int ambientTextureSampler = 0;
 static const int emissiveTextureSampler = 1;

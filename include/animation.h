@@ -2,8 +2,6 @@
 #define ANIMATION_H
 
 #include <skeleton.h>
-#include <shader.h>
-#include <stdio.h>
 
 /*
  * Represents a single animation. These are contaned and managed by an

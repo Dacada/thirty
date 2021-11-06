@@ -1,10 +1,5 @@
 #include <animation.h>
-#include <skeleton.h>
-#include <keyframe.h>
-#include <shader.h>
 #include <util.h>
-#include <stdio.h>
-#include <stdint.h>
 
 void animation_initFromFile(struct animation *const anim,
                             FILE *const f, const size_t nbones) {

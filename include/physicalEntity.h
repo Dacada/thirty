@@ -3,7 +3,6 @@
 
 #include <component.h>
 #include <collider.h>
-#include <cglm/struct.h>
 
 struct physicalEntity {
         struct component base;

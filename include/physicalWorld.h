@@ -2,7 +2,6 @@
 #define PHYSICAL_WORLD_H
 
 #include <dsutils.h>
-#include <stddef.h>
 
 struct physicalWorld {
         size_t idx;

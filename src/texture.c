@@ -1,10 +1,5 @@
 #include <texture.h>
-#include <dsutils.h>
 #include <util.h>
-#include <stb_image.h>
-#include <glad/glad.h>
-#include <stdbool.h>
-#include <string.h>
 
 struct loadedTextureInfo {
         char *name;

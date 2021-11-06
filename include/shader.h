@@ -2,7 +2,7 @@
 #define SHADER_H
 
 #include <cglm/struct.h>
-#include <stdbool.h>
+#include <glad/glad.h>
 
 /*
  * Shaders are created automatically when shader_use is called. Shaders are

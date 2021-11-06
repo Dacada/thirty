@@ -1,8 +1,5 @@
 #include <eventBroker.h>
-#include <dsutils.h>
 #include <util.h>
-#include <stdlib.h>
-#include <string.h>
 
 #define EVENTS_INITIAL_CAPACITY 4
 

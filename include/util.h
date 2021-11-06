@@ -1,13 +1,17 @@
 #ifndef CUTIL_UTIL_H
 #define CUTIL_UTIL_H
 
+#include <dsutils.h>
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <dirent.h>
 #include <limits.h>
+#include <string.h>
+#include <ctype.h>
 
 // This is usually the actual number, just in case it's not in
 // limits.h
@@ -138,7 +142,7 @@ size_t sftell(FILE *stream)
 
 void sfread(void *ptr, size_t size, size_t nmemb,
             FILE *stream)
-        __attribute__((access (read_write, 1)))
+        __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 4)))
         __attribute__((nonnull));
 

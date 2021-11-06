@@ -1,12 +1,9 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
-#include <texture.h>
 #include <shader.h>
 #include <component.h>
-#include <cglm/struct.h>
-#include <stdbool.h>
-#include <stddef.h>
+#include <texture.h>
 
 /*
  * Represents a material. There are two kinds of materials. Uber and

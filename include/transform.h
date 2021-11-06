@@ -3,7 +3,6 @@
 
 #include <component.h>
 #include <cglm/struct.h>
-#include <stdio.h>
 
 /*
  * This component implements the transform (model) matrix of an object. Every

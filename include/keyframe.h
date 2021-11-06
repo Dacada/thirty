@@ -2,7 +2,6 @@
 #define KEYFRAME_H
 
 #include <cglm/struct.h>
-#include <stdio.h>
 
 /*
  * Represents an animation keyframe. They contain all the relative rotations of

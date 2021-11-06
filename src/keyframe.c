@@ -1,7 +1,5 @@
 #include <keyframe.h>
 #include <util.h>
-#include <cglm/struct.h>
-#include <stdio.h>
 
 void keyframe_initFromFile(struct keyframe *const keyframe, FILE *const f,
                            const size_t nbones) {

@@ -1,8 +1,8 @@
 #ifndef INPUT_HELPERS_H
 #define INPUT_HELPERS_H
 
+#include <scene.h>
 #include <cglm/struct.h>
-#include <stdbool.h>
 
 /*
  * This file contins various structs and functions to help with various input

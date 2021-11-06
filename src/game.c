@@ -1,26 +1,20 @@
 #include <game.h>
-#include <scene.h>
-#include <physicalWorld.h>
-#include <componentCollection.h>
-#include <eventBroker.h>
 #include <util.h>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-#include <stdbool.h>
-#include <stddef.h>
 
 #define FUNCTION_SIZE 256
 #define DEFAULT_CLEARCOLOR {.x=0.2F, .y=0.3F, .z=0.3F, .w=1.0F}
 #define STARTING_TIMEDELTA (1.0F/60.0F)
 
 static void onFramebufferSizeChanged(void *registerArgs, void *fireArgs) {
-        struct ui **ui = registerArgs;
+        struct game *game = registerArgs;
         struct eventBrokerWindowResized *args = fireArgs;
         const int width = args->width;
         const int height = args->height;
         
         glViewport(0, 0, width, height);
-        ui_resize(*ui, width, height);
+
+        struct ui *ui = game_getCurrentUi(game);
+        ui_resize(ui, width, height);
 }
 
 static void eventFire_windowResized(GLFWwindow *const w,

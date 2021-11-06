@@ -1,11 +1,9 @@
 #ifndef ANIMATION_COLLECTION_H
 #define ANIMATION_COLLECTION_H
 
-#include <skeleton.h>
 #include <component.h>
 #include <shader.h>
-#include <stdio.h>
-#include <stdbool.h>
+#include <animation.h>
 
 /*
  * A collection of animations. This component handles playing, stopping,

@@ -3,7 +3,6 @@
 
 #include <component.h>
 #include <cglm/struct.h>
-#include <stdio.h>
 
 /*
  * This component has a generic prespective camera and an FPS camera which has

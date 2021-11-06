@@ -2,12 +2,8 @@
 #define OBJECT_H
 
 #include <componentCollection.h>
-#include <material.h>
-#include <shader.h>
 #include <eventBroker.h>
 #include <dsutils.h>
-#include <cglm/struct.h>
-#include <stddef.h>
 
 #define OBJECT_TREE_MAXIMUM_DEPTH 256
 
@@ -89,7 +85,6 @@ void *object_getComponent(const struct object *object,
                           enum componentType type)
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
-
 /*
  * Update all of object's components.
  */

@@ -1,9 +1,5 @@
 #include <light.h>
-#include <component.h>
-#include <shader.h>
 #include <util.h>
-#include <cglm/struct.h>
-#include <stddef.h>
 
 #define BUFFER_SIZE 256
 

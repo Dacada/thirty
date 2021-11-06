@@ -1,11 +1,13 @@
 #ifndef UI_H
 #define UI_H
 
-#include <geometry.h>
 #include <dsutils.h>
-#include <cglm/struct.h>
+#include <geometry.h>
+#include <font.h>
+#include <shader.h>
 
 struct ui {
+        size_t idx;
         int width;
         int height;
         mat4s ortho;
@@ -41,6 +43,10 @@ void ui_addText(struct ui *ui, int posx, int posy, float z,
         __attribute__((access (read_write, 1)))
         __attribute__((access (read_only, 5)))
         __attribute__((access (read_only, 6)))
+        __attribute__((nonnull));
+
+void ui_update(struct ui *ui, float timeDelta)
+        __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 void ui_draw(const struct ui *ui)

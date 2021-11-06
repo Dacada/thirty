@@ -1,10 +1,6 @@
 #include <physicalWorld.h>
-#include <game.h>
-#include <physicalEntity.h>
-#include <componentCollection.h>
-#include <eventBroker.h>
-#include <dsutils.h>
 #include <util.h>
+#include <game.h> // TODO: recursive error when moving it to physicalWorld.h
 
 #define INTEGRATION_STEP 0.01F
 #define GRAVITY (-9.81F)

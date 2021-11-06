@@ -1,12 +1,7 @@
 #include <inputHelpers.h>
 #include <game.h>
-#include <physicalWorld.h>
 #include <font.h>
-#include <componentCollection.h>
-#include <eventBroker.h>
 #include <util.h>
-#include <cglm/struct.h>
-#include <GLFW/glfw3.h>
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600

@@ -1,11 +1,10 @@
 #ifndef SKELETON_H
 #define SKELETON_H
 
-#include <keyframe.h>
 #include <shader.h>
+#include <keyframe.h>
+#include <bone.h>
 #include <cglm/struct.h>
-#include <stdio.h>
-#include <stddef.h>
 
 /*
  * A skeleton containing bones for animation, as well as its location in

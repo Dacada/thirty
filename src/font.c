@@ -1,7 +1,5 @@
 #include <font.h>
 #include <util.h>
-#include <stdlib.h>
-#include <string.h>
 
 #define UIFONT_TEXTURE_SLOT GL_TEXTURE1
 

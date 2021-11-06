@@ -1,11 +1,9 @@
 #ifndef GEOMETRY_H
 #define GEOMETRY_H
 
-#include <vertex.h>
 #include <component.h>
-#include <cglm/struct.h>
+#include <vertex.h>
 #include <glad/glad.h>
-#include <stddef.h>
 
 /*
  * This component encapsulates OpenGL geometry, a mesh. Only objects with a
