@@ -16,8 +16,7 @@ struct fpsCameraController {
         bool freefly;
         float move_sensitivity;
         float look_sensitivity;
-        const struct object *camera_obj;
-        struct camera_fps *camera;
+        struct scene *scene;
 };
 
 /*
@@ -26,11 +25,11 @@ struct fpsCameraController {
  * calibrated. The camera object should be an object with a camera component
  * (must be FPS camera component).
  */
-void fpsCameraController_init(struct fpsCameraController *ctrl,
-                              float move, float look,
-                              const struct object *camera)
+void fpsCameraController_init(struct fpsCameraController *const ctrl,
+                              struct scene *const scene,
+                              const float move, const float look)
         __attribute__((access (write_only, 1)))
-        __attribute__((access (read_only, 4)))
+        __attribute__((access (read_write, 2)))
         __attribute__((nonnull));
 
 /*
@@ -38,8 +37,10 @@ void fpsCameraController_init(struct fpsCameraController *ctrl,
  * timeDelta.
  */
 void fpsCameraController_move(const struct fpsCameraController *ctrl,
-                              vec2s direction, float timeDelta)
+                              vec2s direction, float timeDelta,
+                              struct object *const camera_obj)
         __attribute__((access (read_only, 1)))
+        __attribute__((access (read_write, 4)))
         __attribute__((nonnull));
 
 /*
@@ -47,8 +48,10 @@ void fpsCameraController_move(const struct fpsCameraController *ctrl,
  * timeDelta.
  */
 void fpsCameraController_look(const struct fpsCameraController *ctrl,
-                              vec2s direction, float timeDelta)
+                              vec2s direction, float timeDelta,
+                              struct object *const camera_obj)
         __attribute__((access (read_only, 1)))
+        __attribute__((access (read_write, 4)))
         __attribute__((nonnull));
 
 #endif /* INPUT_HELPERS */

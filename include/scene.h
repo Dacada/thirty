@@ -46,6 +46,18 @@ struct object *scene_createObject(struct scene *scene, const char *name,
         __attribute__((returns_nonnull));
 
 /*
+ * Get an object's absolute transform by going up the scene tree until root. If
+ * at any point an object doesn't have a transform component, returns the
+ * identity matrix. Otherwise returnsthe result of multiplying the transforms
+ * of every object up to the root.
+ */
+mat4s scene_getObjectAbsoluteTransform(struct scene *scene,
+                                       const struct object *object)
+        __attribute__((access (read_only, 1)))
+        __attribute__((access (read_only, 2)))
+        __attribute__((nonnull));
+
+/*
  * Get an object's idx by the name.
  */
 size_t scene_idxByName(const struct scene *scene, const char *name)

@@ -12,16 +12,20 @@
 #define CAMERA_FAR 100.0F
 #define CAMERA_FOV 45.0F
 
-/* static const vec4s globalAmbientLight = {.x=0.3F, .y=0.3F, .z=0.3F, .w=1.0F}; */
 static const float movement_speed = 10.0F;
 static const float look_sensitivity = 0.1F;
 
+static size_t camera_idx = 0;
 static struct fpsCameraController cam_ctrl;
+
 static void processMouseInput(void *registerArgs, void *fireArgs) {
         struct game *game = registerArgs;
         struct eventBrokerMousePosition *args = fireArgs;
         const double xpos = args->xpos;
         const double ypos = args->ypos;
+
+        struct scene *scene = game_getCurrentScene(game);
+        struct object *camera = scene_getObjectFromIdx(scene, camera_idx);
         
         const vec2s curr = {
                 .x = (float)xpos,
@@ -36,7 +40,7 @@ static void processMouseInput(void *registerArgs, void *fireArgs) {
         }
 
         const vec2s offset = glms_vec2_sub(prev, curr);
-        fpsCameraController_look(&cam_ctrl, offset, game_timeDelta(game));
+        fpsCameraController_look(&cam_ctrl, offset, game_timeDelta(game), camera);
 
         prev = curr;
 }
@@ -65,11 +69,17 @@ static void processKeyboardInput(void *registerArgs, void *fireArgs) {
                 movement.y -= 1;
         }
 
+        struct scene *scene = game_getCurrentScene(game);
+        struct object *camera = scene_getObjectFromIdx(scene, camera_idx);
+
         movement = glms_vec2_normalize(movement);
-        fpsCameraController_move(&cam_ctrl, movement, game_timeDelta(game));
+        fpsCameraController_move(&cam_ctrl, movement, game_timeDelta(game), camera);
 }
 
 static void processKeyboardEvent(void *registerArgs, void *fireArgs) {
+        static bool playingQ = false;
+        static bool playingE = false;
+        
         struct game *game = registerArgs;
         struct eventBrokerKeyboardEvent *args = fireArgs;
         
@@ -82,14 +92,28 @@ static void processKeyboardEvent(void *registerArgs, void *fireArgs) {
                         game_shouldStop(game);
                 } else if (key == GLFW_KEY_F) {
                         cam_ctrl.freefly = !cam_ctrl.freefly;
-                } else if (key == GLFW_KEY_SPACE) {
-                        size_t idx = componentCollection_idxByName(
-                                "physF", COMPONENT_PHYSICALENTITY);
-                        assert(idx > 0);
-                        idx -= 1;
-                        struct physicalEntity *phys =
-                                componentCollection_compByIdx(idx);
-                        phys->collider.type = COLLIDER_NONE;
+                } else if (key == GLFW_KEY_E || key == GLFW_KEY_Q) {
+                        struct scene *scene = game_getCurrentScene(game);
+                        size_t idx = scene_idxByName(scene, "SnekSkin");
+                        struct object *object = scene_getObjectFromIdx(scene, idx);
+                        struct animationCollection *animationCollection = object_getComponent(object, COMPONENT_ANIMATIONCOLLECTION);
+                        if (key == GLFW_KEY_Q) {
+                                if (playingQ) {
+                                        animationCollection_poseAnimation(animationCollection, 0, 0);
+                                        playingQ = false;
+                                } else {
+                                        animationCollection_playAnimation(animationCollection, 0);
+                                        playingQ = true;
+                                }
+                        } else {
+                                if (playingE) {
+                                        animationCollection_poseAnimation(animationCollection, 1, 0);
+                                        playingE = false;
+                                } else {
+                                        animationCollection_playAnimation(animationCollection, 1);
+                                        playingE = true;
+                                }
+                        }
                 }
         }
 }
@@ -129,17 +153,15 @@ int main(void) {
         /* static const vec4s blue = {.x = 0, .y = 0, .z = 1, .w = 1}; */
         
         struct game *game = smalloc(sizeof(struct game));
-        game_init(game, SCREEN_WIDTH, SCREEN_HEIGHT, 1);
+        game_init(game, SCREEN_WIDTH, SCREEN_HEIGHT, 1, 1);
 
         /* struct physicalWorld *world = physicalWorld_create(); */
         /* physicalWorld_init(world); */
         
         struct scene *scene = game_createScene(game);
-
         /* scene_init(scene, game, globalAmbientLight, 4); */
         FILE *f = fopen("assets/scenes/scene.bgl", "r");
         scene_initFromFile(scene, game, f);
-        
         game_setCurrentScene(game, scene->idx);
 
         /* // Create spheres */
@@ -269,16 +291,21 @@ int main(void) {
         /*             COMPONENT_CAMERA_FPS); */
         /* object_setComponent(camera, &cam->base); */
 
-        size_t cameraId = scene_idxByName(scene, "Camera");
-        fpsCameraController_init(&cam_ctrl, movement_speed, look_sensitivity,
-                                 scene_getObjectFromIdxConst(scene, cameraId));
+        
+        camera_idx = scene_idxByName(scene, "Camera");
+        fpsCameraController_init(&cam_ctrl, scene, movement_speed, look_sensitivity);
 
         // Create UI
-        ui_addQuad(game->ui, 10,10, 200,60, 0.0F, "ui_test_texture");
+        struct ui *ui = game_createUi(game);
+        ui_init(ui, SCREEN_WIDTH, SCREEN_HEIGHT);
+        ui_addQuad(ui, 10,10, 200,60, 0.0F, "ui_test_texture");
         struct font *font = ui_getFont("CutiveMono-Regular", 24, "latin-1");
         font_load(font);
-        ui_addText(game->ui, 35,45, 0.1F, (const unsigned char*)"Something.",
+        ui_addText(ui, 35,45, 0.1F, (const unsigned char*)"Something.",
                    font, black);
+        game_setCurrentUi(game, ui->idx);
+
+        scene_setSkybox(scene, "skybox");
 
         // Register events
         eventBroker_register(processKeyboardInput, EVENT_BROKER_PRIORITY_HIGH,

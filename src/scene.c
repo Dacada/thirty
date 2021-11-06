@@ -199,6 +199,29 @@ struct object *scene_createObject(struct scene *scene,
         return child;
 }
 
+mat4s scene_getObjectAbsoluteTransform(struct scene *scene,
+                                       const struct object *object) {
+        struct transform *trans = object_getComponent(object, COMPONENT_TRANSFORM);
+        if (trans == NULL) {
+                return GLMS_MAT4_IDENTITY;
+        }
+
+        mat4s model = trans->model;
+        while (object->idx != 0) {
+                const struct object *parent = scene_getObjectFromIdx(scene, object->parent);
+                struct transform *parentTrans = object_getComponent(parent, COMPONENT_TRANSFORM);
+                if (parentTrans == NULL) {
+                        return GLMS_MAT4_IDENTITY;
+                }
+                
+                mat4s parentModel = parentTrans->model;
+                model = glms_mat4_mul(parentModel, model);
+                object = parent;
+        }
+        
+        return model;
+}
+
 size_t scene_idxByName(const struct scene *scene, const char *name) {
         growingArray_foreach_START(&scene->objects, struct object*, obj)
                 if (strcmp(name, obj->name) == 0) {
@@ -566,8 +589,6 @@ void scene_draw(const struct scene *const scene) {
                         break;
                 }
         growingArray_foreach_END;
-
-        ui_draw(scene->game->ui);
 
         // Cleanup
         glDisable(GL_BLEND);

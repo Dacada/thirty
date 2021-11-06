@@ -244,6 +244,14 @@ void ui_draw(const struct ui *ui) {
         growingArray_foreach_END;
 }
 
+void ui_update(struct ui *ui, float timeDelta) {
+        (void)ui;
+        (void)timeDelta;
+        // TODO: Make each UI element its own thing and have an update method
+        // and call update in the same way that scene does so UI objects can do
+        // stuff.
+}
+
 void ui_free(struct ui *ui) {
         growingArray_foreach_START(&ui->quads, struct uiQuad*, quad)
                 texture_free(&quad->texture);

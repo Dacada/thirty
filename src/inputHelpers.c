@@ -27,26 +27,28 @@ void fpsCameraController_move(const struct fpsCameraController *const ctrl,
         const vec3s cameraForward = glms_vec3_rotate_m4(r, worldForward);
 
         vec3s forward = glms_vec3_rotate(
-                cameraForward, ctrl->camera->yaw, cameraUp);
+                cameraForward, camera->yaw, cameraUp);
         vec3s right = glms_vec3_cross(forward, cameraUp);
         if (ctrl->freefly) {
                 forward = glms_vec3_rotate(
-                        forward, ctrl->camera->pitch, right);
+                        forward, camera->pitch, right);
         }
         forward = glms_vec3_normalize(forward);
         right = glms_vec3_normalize(right);
 
-        ctrl->camera->position = glms_vec3_muladds(
-                forward, direction.y * move, ctrl->camera->position);
-        ctrl->camera->position = glms_vec3_muladds(
-                right, direction.x * move, ctrl->camera->position);
+        camera->position = glms_vec3_muladds(
+                forward, direction.y * move, camera->position);
+        camera->position = glms_vec3_muladds(
+                right, direction.x * move, camera->position);
 }
 
 void fpsCameraController_look(const struct fpsCameraController *const ctrl,
-                              const vec2s direction, const float timeDelta) {
+                              const vec2s direction, const float timeDelta,
+                              struct object *const camera_obj) {
+        struct camera_fps *camera = object_getComponent(camera_obj, COMPONENT_CAMERA);
         const float look = ctrl->look_sensitivity * timeDelta;
-        ctrl->camera->yaw += direction.x * look;
-        ctrl->camera->pitch += direction.y * look;
-        ctrl->camera->pitch = glm_clamp(ctrl->camera->pitch,
-                                        -GLM_PI_2f, GLM_PI_2f);
+        camera->yaw += direction.x * look;
+        camera->pitch += direction.y * look;
+        camera->pitch = glm_clamp(camera->pitch,
+                                  -GLM_PI_2f, GLM_PI_2f);
 }

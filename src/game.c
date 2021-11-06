@@ -85,10 +85,29 @@ static void doUpdateScene(const size_t sceneIdx,
         scene_update(scene, timeDelta);
 }
 
+static void doUpdateUi(const size_t uiIdx,
+                       struct growingArray *uis, const float timeDelta) {
+        struct ui *ui = growingArray_get(uis, uiIdx);
+        ui_update(ui, timeDelta);
+}
+
 static void doDrawScene(const size_t sceneIdx,
                         struct growingArray *scenes) {
         struct scene *scene = growingArray_get(scenes, sceneIdx);
         scene_draw(scene);
+
+#ifndef NDEBUG
+        const GLenum error = glGetError();
+        if (error != GL_NO_ERROR) {
+                fprintf(stderr, "OpenGL Error: %u", error);
+        }
+#endif
+}
+
+static void doDrawUi(const size_t uiIdx,
+                     struct growingArray *uis) {
+        struct ui *ui = growingArray_get(uis, uiIdx);
+        ui_draw(ui);
 
 #ifndef NDEBUG
         const GLenum error = glGetError();
@@ -173,7 +192,8 @@ static void updateTimingInformation(double deltaTime, double updateTime,
 
 void game_init(struct game *const game,
                const int width, const int height,
-               const size_t initalSceneCapacity) {
+               const size_t initalSceneCapacity,
+               const size_t initialUiCapacity) {
         eventBroker_startup();
         componentCollection_startup();
         physicalWorld_startup();
@@ -211,7 +231,7 @@ void game_init(struct game *const game,
 
         eventBroker_register(onFramebufferSizeChanged,
                              EVENT_BROKER_PRIORITY_HIGH,
-                             EVENT_BROKER_WINDOW_RESIZED, &game->ui);
+                             EVENT_BROKER_WINDOW_RESIZED, game);
         
         glEnable(GL_DEPTH_TEST);
 #ifdef NDEBUG
@@ -223,13 +243,12 @@ void game_init(struct game *const game,
 
         growingArray_init(&game->scenes,
                           sizeof(struct scene), initalSceneCapacity);
+        growingArray_init(&game->uis,
+                          sizeof(struct ui), initialUiCapacity);
 
         game->timeDelta = STARTING_TIMEDELTA;
         vec4s defaultClearColor = DEFAULT_CLEARCOLOR;
         game->clearColor = defaultClearColor;
-
-        game->ui = smalloc(sizeof(*game->ui));
-        ui_init(game->ui, width, height);
 }
 
 struct scene *game_createScene(struct game *const game) {
@@ -238,12 +257,26 @@ struct scene *game_createScene(struct game *const game) {
         return scene;
 }
 
+struct ui *game_createUi(struct game *const game) {
+        struct ui *ui = growingArray_append(&game->uis);
+        ui->idx = game->uis.length - 1;
+        return ui;
+}
+
 struct scene *game_getCurrentScene(struct game *game) {
         return growingArray_get(&game->scenes, game->currentScene);
 }
 
+struct ui *game_getCurrentUi(struct game *game) {
+        return growingArray_get(&game->uis, game->currentUi);
+}
+
 void game_setCurrentScene(struct game *const game, const size_t idx) {
         game->currentScene = idx;
+}
+
+void game_setCurrentUi(struct game *const game, const size_t idx) {
+        game->currentUi = idx;
 }
 
 void game_updateWindowTitle(struct game *game, const char *title) {
@@ -275,6 +308,8 @@ void game_run(struct game *game) {
                 // Update game state
                 doUpdateScene(game->currentScene, &game->scenes,
                               game->timeDelta);
+                doUpdateUi(game->currentUi, &game->uis,
+                           game->timeDelta);
                 eventFire_update(game->timeDelta);
                 
 #ifndef NDEBUG
@@ -288,6 +323,7 @@ void game_run(struct game *game) {
 
                 // Draw stuff
                 doDrawScene(game->currentScene, &game->scenes);
+                doDrawUi(game->currentUi, &game->uis);
                 eventFire_draw();
                 
 #ifndef NDEBUG
@@ -331,12 +367,15 @@ void game_free(struct game *const game) {
                 scene_free(scene);
         growingArray_foreach_END;
         growingArray_destroy(&game->scenes);
+        
+        growingArray_foreach_START(&game->uis, struct ui *, ui)
+                ui_free(ui);
+        growingArray_foreach_END;
+        growingArray_destroy(&game->uis);
 
         ui_shutdown();
         physicalWorld_shutdown();
         componentCollection_shutdown();
         eventBroker_shutdown();
-        ui_free(game->ui);
-        free(game->ui);
         glfwTerminate();
 }
