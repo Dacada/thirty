@@ -49,10 +49,6 @@ void *componentCollection_create(struct game *game,
         case COMPONENT_ANIMATIONCOLLECTION:
                 size = sizeof(struct animationCollection);
                 break;
-                
-        case COMPONENT_PHYSICALENTITY:
-                size = sizeof(struct physicalEntity);
-                break;
         
         case COMPONENT_TOTAL:
         default:
@@ -153,10 +149,6 @@ void *componentCollection_get(
                 idx = collection->animationCollection;
                 break;
                 
-        case COMPONENT_PHYSICALENTITY:
-                idx = collection->physicalEntity;
-                break;
-                
         case COMPONENT_TOTAL:
         default:
                 return NULL;
@@ -204,10 +196,6 @@ void componentCollection_set(struct componentCollection *const collection,
                 collection->animationCollection = idx+1;
                 break;
                 
-        case COMPONENT_PHYSICALENTITY:
-                collection->physicalEntity = idx+1;
-                break;
-                
         case COMPONENT_TOTAL:
         default:
                 assert_fail();
@@ -245,9 +233,6 @@ bool componentCollection_hasComponent(
                 
         case COMPONENT_ANIMATIONCOLLECTION:
                 return collection->animationCollection != 0;
-                
-        case COMPONENT_PHYSICALENTITY:
-                return collection->physicalEntity != 0;
                 
         case COMPONENT_TOTAL:
         default:
@@ -301,10 +286,6 @@ static bool freeComponent(void *compPtr, size_t size, void *args) {
                 
         case COMPONENT_ANIMATIONCOLLECTION:
                 animationCollection_free((struct animationCollection*)comp);
-                break;
-                
-        case COMPONENT_PHYSICALENTITY:
-                physicalEntity_free((struct physicalEntity*)comp);
                 break;
                 
         case COMPONENT_TOTAL:

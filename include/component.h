@@ -31,8 +31,6 @@ enum componentType {
         COMPONENT_LIGHT_POINT,
 
         COMPONENT_ANIMATIONCOLLECTION,
-
-        COMPONENT_PHYSICALENTITY,
         
         COMPONENT_TOTAL
 };

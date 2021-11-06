@@ -6,7 +6,6 @@
 #include <geometry.h>
 #include <light.h>
 #include <material.h>
-#include <physicalEntity.h>
 #include <transform.h>
 
 /*

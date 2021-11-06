@@ -196,7 +196,6 @@ void game_init(struct game *const game,
                const size_t initialUiCapacity) {
         eventBroker_startup();
         componentCollection_startup();
-        physicalWorld_startup();
         ui_startup();
 
         glfwInit();
@@ -374,7 +373,6 @@ void game_free(struct game *const game) {
         growingArray_destroy(&game->uis);
 
         ui_shutdown();
-        physicalWorld_shutdown();
         componentCollection_shutdown();
         eventBroker_shutdown();
         glfwTerminate();
