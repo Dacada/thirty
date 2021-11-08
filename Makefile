@@ -28,9 +28,9 @@ OBJECTS_RELEASE := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%_rel.o,$(SOURCES))
 OBJECTS_DEVELOP := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%_dev.o,$(SOURCES))
 
 # Add object files for the generated glad files
-OBJECTS_DEBUG += $(OBJ_DIR)/glad_dbg.o
-OBJECTS_RELEASE += $(OBJ_DIR)/glad_rel.o
-OBJECTS_DEVELOP += $(OBJ_DIR)/glad_dev.o
+OBJECTS_DEBUG += $(OBJ_DIR)/glad_dbg.o $(OBJ_DIR)/stb_image_dbg.o
+OBJECTS_RELEASE += $(OBJ_DIR)/glad_rel.o $(OBJ_DIR)/stb_image_rel.o
+OBJECTS_DEVELOP += $(OBJ_DIR)/glad_dev.o $(OBJ_DIR)/stb_image_dev.o
 
 DEPENDS_DEBUG := $(OBJECTS_DEBUG:.o=.d)
 DEPENDS_RELEASE := $(OBJECTS_RELEASE:.o=.d)
@@ -88,14 +88,16 @@ clearfonts:
 	-rm -f $(FONTS_PNG)
 	-rm -rf $(ASSETS_DIR)/fonts
 clean: clearfonts
-	-rm -f $(BIN_DIR)/* $(OBJ_DIR)/*.o
+	-rm -f $(OBJ_DIR)/*.o
+	-rm -rf $(BIN_DIR)
 veryclean: clean
-	-rm -f $(OBJ_DIR)/*
+	-rm -rf $(OBJ_DIR)
 	-rm -f TAGS
 purify: clearfonts veryclean
 	-rm -f $(SRC_DIR)/glad_dbg.c $(SRC_DIR)/glad_rel.c
 	-rm -f $(INCLUDE_DIR)/glad/glad_dbg.h $(INCLUDE_DIR)/glad/glad_rel.h
 	-rm -rf $(INCLUDE_DIR)/KHR/
+	-rm -f $(INCLUDE_DIR)/stb_image.h
 	-rm -f sysh_TAGS
 impolute: purify
 	-rm -rf venv
@@ -170,23 +172,29 @@ $(OBJ_DIR)/stb_image_%.o: CFLAGS += -Wno-cast-qual
 $(OBJ_DIR)/stb_image_%.o: CFLAGS += -Wno-sign-conversion
 $(OBJ_DIR)/stb_image_%.o: CFLAGS += -Wno-conversion
 $(OBJ_DIR)/stb_image_%.o: CFLAGS += -Wno-switch-default
+$(OBJ_DIR)/stb_image_%.o: CFLAGS += -Wno-missing-prototypes
 
 # Specific dependencies for glad generated files
 $(OBJ_DIR)/glad_rel.o: $(SRC_DIR)/glad_rel.c
 $(OBJ_DIR)/glad_dbg.o: $(SRC_DIR)/glad_dbg.c
 $(OBJ_DIR)/glad_dev.o: $(SRC_DIR)/glad_dbg.c
+	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 # Can't avoid recipie repetition in pattern rules, see
 # https://stackoverflow.com/questions/11441084/makefile-with-multiples-rules-sharing-same-recipe#comment38627982_11441134
-$(OBJ_DIR)/%_dbg.o: $(SRC_DIR)/%.c
+$(OBJ_DIR)/%_dbg.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h
+	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
-$(OBJ_DIR)/%_rel.o: $(SRC_DIR)/%.c
+$(OBJ_DIR)/%_rel.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h
+	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
-$(OBJ_DIR)/%_dev.o: $(SRC_DIR)/%.c
+$(OBJ_DIR)/%_dev.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h
+	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h
+	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 
