@@ -1,6 +1,6 @@
 #define _DEFAULT_SOURCE
 
-#include <util.h>
+#include <thirty/util.h>
 #include <cglm/cglm.h>
 #include <unistd.h> //TODO: Only for linux
 #include <stddef.h>

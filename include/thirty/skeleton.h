@@ -1,9 +1,9 @@
 #ifndef SKELETON_H
 #define SKELETON_H
 
-#include <shader.h>
-#include <keyframe.h>
-#include <bone.h>
+#include <thirty/shader.h>
+#include <thirty/keyframe.h>
+#include <thirty/bone.h>
 #include <cglm/struct.h>
 
 /*

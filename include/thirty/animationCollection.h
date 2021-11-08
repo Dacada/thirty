@@ -1,9 +1,9 @@
 #ifndef ANIMATION_COLLECTION_H
 #define ANIMATION_COLLECTION_H
 
-#include <component.h>
-#include <shader.h>
-#include <animation.h>
+#include <thirty/component.h>
+#include <thirty/shader.h>
+#include <thirty/animation.h>
 
 /*
  * A collection of animations. This component handles playing, stopping,

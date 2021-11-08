@@ -1,9 +1,9 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
-#include <componentCollection.h>
-#include <eventBroker.h>
-#include <dsutils.h>
+#include <thirty/componentCollection.h>
+#include <thirty/eventBroker.h>
+#include <thirty/dsutils.h>
 
 #define OBJECT_TREE_MAXIMUM_DEPTH 256
 

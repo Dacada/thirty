@@ -1,7 +1,7 @@
 #ifndef INPUT_HELPERS_H
 #define INPUT_HELPERS_H
 
-#include <scene.h>
+#include <thirty/scene.h>
 #include <cglm/struct.h>
 
 /*

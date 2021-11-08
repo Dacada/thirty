@@ -1,5 +1,5 @@
-#include <keyframe.h>
-#include <util.h>
+#include <thirty/keyframe.h>
+#include <thirty/util.h>
 
 void keyframe_initFromFile(struct keyframe *const keyframe, FILE *const f,
                            const size_t nbones) {

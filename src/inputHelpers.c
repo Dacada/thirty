@@ -1,5 +1,5 @@
-#include <inputHelpers.h>
-#include <util.h>
+#include <thirty/inputHelpers.h>
+#include <thirty/util.h>
 
 void fpsCameraController_init(struct fpsCameraController *const ctrl,
                               struct scene *const scene,

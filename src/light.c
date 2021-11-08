@@ -1,5 +1,5 @@
-#include <light.h>
-#include <util.h>
+#include <thirty/light.h>
+#include <thirty/util.h>
 
 #define BUFFER_SIZE 256
 

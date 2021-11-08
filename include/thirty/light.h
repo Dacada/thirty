@@ -1,8 +1,8 @@
 #ifndef LIGHT_H
 #define LIGHT_H
 
-#include <shader.h>
-#include <component.h>
+#include <thirty/shader.h>
+#include <thirty/component.h>
 
 #define NUM_LIGHTS 20
 

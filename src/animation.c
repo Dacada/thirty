@@ -1,5 +1,5 @@
-#include <animation.h>
-#include <util.h>
+#include <thirty/animation.h>
+#include <thirty/util.h>
 
 void animation_initFromFile(struct animation *const anim,
                             FILE *const f, const size_t nbones) {

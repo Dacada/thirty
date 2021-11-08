@@ -1,7 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include <component.h>
+#include <thirty/component.h>
 #include <cglm/struct.h>
 
 /*

@@ -1,5 +1,5 @@
-#include <transform.h>
-#include <util.h>
+#include <thirty/transform.h>
+#include <thirty/util.h>
 
 void transform_init(struct transform *trans, mat4s model) {
         assert(trans->base.type == COMPONENT_TRANSFORM);

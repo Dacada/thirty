@@ -1,5 +1,5 @@
-#include <ui.h>
-#include <util.h>
+#include <thirty/ui.h>
+#include <thirty/util.h>
 
 #define UIQUAD_TEXTURE_SLOT GL_TEXTURE0
 

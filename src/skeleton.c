@@ -1,5 +1,5 @@
-#include <skeleton.h>
-#include <util.h>
+#include <thirty/skeleton.h>
+#include <thirty/util.h>
 
 #define BUFFSIZE 256
 

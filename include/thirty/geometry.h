@@ -1,8 +1,8 @@
 #ifndef GEOMETRY_H
 #define GEOMETRY_H
 
-#include <component.h>
-#include <vertex.h>
+#include <thirty/component.h>
+#include <thirty/vertex.h>
 #include <glad/glad.h>
 
 /*

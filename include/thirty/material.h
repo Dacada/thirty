@@ -1,9 +1,9 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
-#include <shader.h>
-#include <component.h>
-#include <texture.h>
+#include <thirty/shader.h>
+#include <thirty/component.h>
+#include <thirty/texture.h>
 
 /*
  * Represents a material. There are two kinds of materials. Uber and

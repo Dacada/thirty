@@ -1,12 +1,12 @@
 #ifndef COMPONENT_COLLECTION_H
 #define COMPONENT_COLLECTION_H
 
-#include <animationCollection.h>
-#include <camera.h>
-#include <geometry.h>
-#include <light.h>
-#include <material.h>
-#include <transform.h>
+#include <thirty/animationCollection.h>
+#include <thirty/camera.h>
+#include <thirty/geometry.h>
+#include <thirty/light.h>
+#include <thirty/material.h>
+#include <thirty/transform.h>
 
 /*
  * A collection of components assigned to an object. Each component exists

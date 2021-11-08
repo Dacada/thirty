@@ -1,7 +1,7 @@
 #ifndef SCENE_H
 #define SCENE_H
 
-#include <object.h>
+#include <thirty/object.h>
 
 /*
  * A scene contains a collection of objects (all children of 'root'). The scene

@@ -1,5 +1,5 @@
-#include <camera.h>
-#include <util.h>
+#include <thirty/camera.h>
+#include <thirty/util.h>
 
 void camera_init(struct camera *const cam, const char *const name,
                  const float aspect, const float near, const float far,

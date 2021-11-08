@@ -1,10 +1,10 @@
 #ifndef UI_H
 #define UI_H
 
-#include <dsutils.h>
-#include <geometry.h>
-#include <font.h>
-#include <shader.h>
+#include <thirty/dsutils.h>
+#include <thirty/geometry.h>
+#include <thirty/font.h>
+#include <thirty/shader.h>
 
 struct ui {
         size_t idx;

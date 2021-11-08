@@ -1,5 +1,5 @@
-#include <font.h>
-#include <util.h>
+#include <thirty/font.h>
+#include <thirty/util.h>
 
 #define UIFONT_TEXTURE_SLOT GL_TEXTURE1
 

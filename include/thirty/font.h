@@ -1,7 +1,7 @@
 #ifndef FONT_H
 #define FONT_H
 
-#include <texture.h>
+#include <thirty/texture.h>
 
 #define NCHARS_IN_FONT 256
 

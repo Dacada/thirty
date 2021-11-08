@@ -1,5 +1,5 @@
-#include <shader.h>
-#include <util.h>
+#include <thirty/shader.h>
+#include <thirty/util.h>
 
 static const int ambientTextureSampler = 0;
 static const int emissiveTextureSampler = 1;

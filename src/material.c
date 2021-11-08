@@ -1,5 +1,5 @@
-#include <material.h>
-#include <util.h>
+#include <thirty/material.h>
+#include <thirty/util.h>
 
 #define getTextureInfo(cnst, material, tex, textureType)                \
         do {                                                            \

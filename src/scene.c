@@ -1,5 +1,5 @@
-#include <scene.h>
-#include <util.h>
+#include <thirty/scene.h>
+#include <thirty/util.h>
 
 #define BOGLE_MAGIC_SIZE 5
 #define OBJECT_TREE_NUMBER_BASE 10

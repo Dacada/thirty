@@ -1,7 +1,6 @@
-#include <inputHelpers.h>
-#include <game.h>
-#include <font.h>
-#include <util.h>
+#include <thirty/inputHelpers.h>
+#include <thirty/game.h>
+#include <thirty/util.h>
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600

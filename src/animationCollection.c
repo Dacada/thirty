@@ -1,5 +1,5 @@
-#include <animationCollection.h>
-#include <util.h>
+#include <thirty/animationCollection.h>
+#include <thirty/util.h>
 
 size_t animationCollection_initFromFile(struct animationCollection *const col,
                                         FILE *const f,

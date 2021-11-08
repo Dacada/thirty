@@ -1,5 +1,5 @@
-#include <componentCollection.h>
-#include <util.h>
+#include <thirty/componentCollection.h>
+#include <thirty/util.h>
 
 #define COMPONENTS_MIN_SIZE sizeof(struct component)
 #define COMPONENTS_INITIAL_CAPACITY (4*COMPONENTS_MIN_SIZE)

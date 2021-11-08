@@ -1,7 +1,7 @@
 #define _GNU_SOURCE  // qsort_r
 
-#include <dsutils.h>
-#include <util.h>
+#include <thirty/dsutils.h>
+#include <thirty/util.h>
 
 void growingArray_init(struct growingArray *const ga,
                        const size_t itemSize, const size_t initialCapacity) {

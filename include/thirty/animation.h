@@ -1,7 +1,7 @@
 #ifndef ANIMATION_H
 #define ANIMATION_H
 
-#include <skeleton.h>
+#include <thirty/skeleton.h>
 
 /*
  * Represents a single animation. These are contaned and managed by an

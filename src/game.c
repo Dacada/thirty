@@ -1,5 +1,5 @@
-#include <game.h>
-#include <util.h>
+#include <thirty/game.h>
+#include <thirty/util.h>
 
 #define FUNCTION_SIZE 256
 #define DEFAULT_CLEARCOLOR {.x=0.2F, .y=0.3F, .z=0.3F, .w=1.0F}

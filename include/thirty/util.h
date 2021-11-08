@@ -1,7 +1,7 @@
 #ifndef CUTIL_UTIL_H
 #define CUTIL_UTIL_H
 
-#include <dsutils.h>
+#include <thirty/dsutils.h>
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdbool.h>

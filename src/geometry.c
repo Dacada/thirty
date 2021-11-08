@@ -1,5 +1,5 @@
-#include <geometry.h>
-#include <util.h>
+#include <thirty/geometry.h>
+#include <thirty/util.h>
 
 #define VERTEX_ATTRIB 0
 #define TEXCOORD_ATTRIB 1

@@ -1,5 +1,5 @@
-#include <texture.h>
-#include <util.h>
+#include <thirty/texture.h>
+#include <thirty/util.h>
 
 struct loadedTextureInfo {
         char *name;

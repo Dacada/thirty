@@ -1,8 +1,8 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include <scene.h>
-#include <ui.h>
+#include <thirty/scene.h>
+#include <thirty/ui.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 

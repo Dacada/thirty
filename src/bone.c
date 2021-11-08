@@ -1,5 +1,5 @@
-#include <bone.h>
-#include <util.h>
+#include <thirty/bone.h>
+#include <thirty/util.h>
 
 void bone_initFromFile(struct bone *const bone, FILE *const f) {
         sfread(bone->positionRelative.raw, sizeof(float), 3, f);

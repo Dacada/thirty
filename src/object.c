@@ -1,5 +1,5 @@
-#include <object.h>
-#include <util.h>
+#include <thirty/object.h>
+#include <thirty/util.h>
 
 void object_initEmpty(struct object *const object, struct game *const game,
                       const size_t scene, const char *const name) {

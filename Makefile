@@ -17,9 +17,9 @@ TIDY_SOURCES := $(filter-out $(SRC_DIR)/stb_image.c $(SRC_DIR)/main.c,$(SOURCES)
 TIDY_SOURCES := $(patsubst $(SRC_DIR)/%,%,$(TIDY_SOURCES))
 
 # Header files to analyze for tidying up (only file names)
-TIDY_INCLUDES := $(wildcard $(INCLUDE_DIR)/*.h)
+TIDY_INCLUDES := $(wildcard $(INCLUDE_DIR)/thirty/*.h)
 TIDY_INCLUDES := $(filter-out $(INCLUDE_DIR)/stb_image.h,$(TIDY_INCLUDES))
-TIDY_INCLUDES := $(patsubst $(INCLUDE_DIR)/%,%,$(TIDY_INCLUDES))
+TIDY_INCLUDES := $(patsubst $(INCLUDE_DIR)/thirty/%,%,$(TIDY_INCLUDES))
 
 TIDY_CHECKS := "-checks=-*,bugprone-*,linuxkernel-*,misc-*,modernize-*,performance-*,portability-*,readability-*"
 
@@ -142,7 +142,7 @@ tidy_include: $(INCLUDE_DIR)/.clang_complete
 	cd $(INCLUDE_DIR) && clang-tidy $(TIDY_INCLUDES) $(TIDY_CHECKS) -- $$(<.clang_complete)
 
 line-count:
-	wc -l $(addprefix $(SRC_DIR)/,$(TIDY_SOURCES)) $(addprefix $(INCLUDE_DIR)/,$(TIDY_INCLUDES)) BOGLE/exporter_BOGLE.py BitmapFontGenerator/BitmapFontGenerator.py
+	wc -l $(addprefix $(SRC_DIR)/,$(TIDY_SOURCES)) $(addprefix $(INCLUDE_DIR)/thirty/,$(TIDY_INCLUDES)) BOGLE/exporter_BOGLE.py BitmapFontGenerator/BitmapFontGenerator.py
 
 sysh_TAGS:
 	$(FIND_SYSHEADERS_CMD) | etags -o $@ -
