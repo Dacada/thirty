@@ -13,7 +13,7 @@ SOURCES := $(filter-out $(SRC_DIR)/glad_rel.c,$(SOURCES))
 SOURCES := $(filter-out $(SRC_DIR)/glad_dbg.c,$(SOURCES))
 
 # Sources to analyze for tidying up (only file names)
-TIDY_SOURCES := $(filter-out $(SRC_DIR)/stb_image.c $(SRC_DIR)/main.c,$(SOURCES))
+TIDY_SOURCES := $(filter-out $(SRC_DIR)/stb_image.c,$(SOURCES))
 TIDY_SOURCES := $(patsubst $(SRC_DIR)/%,%,$(TIDY_SOURCES))
 
 # Header files to analyze for tidying up (only file names)
@@ -36,29 +36,21 @@ DEPENDS_DEBUG := $(OBJECTS_DEBUG:.o=.d)
 DEPENDS_RELEASE := $(OBJECTS_RELEASE:.o=.d)
 DEPENDS_DEVELOP := $(OBJECTS_DEVELOP:.o=.d)
 
-TARGETS := $(BIN_DIR)/main_dbg $(BIN_DIR)/main_rel $(BIN_DIR)/main_dev
-
-FONTS_FTD := $(ASSETS_DIR)/fonts/Cabin-Regular_36_latin-1.ftd
-FONTS_FTD += $(ASSETS_DIR)/fonts/CutiveMono-Regular_24_latin-1.ftd
-FONTS_PNG := $(patsubst $(ASSETS_DIR)/fonts/%.ftd,$(ASSETS_DIR)/textures/%.png,$(FONTS_FTD))
+TARGETS := $(BIN_DIR)/thirty_dbg.a $(BIN_DIR)/thirty_rel.a $(BIN_DIR)/thirty_dev.a
 
 
 CC := gcc
 
 # Common flags
 CFLAGS := -DASSETSPATH=\"$(realpath $(ASSETS_DIR))\" -I$(realpath $(INCLUDE_DIR)) `pkg-config --cflags glfw3` `pkg-config --cflags cglm` -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wmissing-prototypes -Wwrite-strings -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wimplicit-fallthrough -Wstringop-overflow=4 -std=c11
-LDFLAGS := `pkg-config --libs glfw3` `pkg-config --libs cglm` -lm -ldl -std=c11
 
 # Flags for generating glad files (also common)
 GLAD_FLAGS := --profile=core --api=gl=3.3 --spec=gl --extensions= --out-path=$$tmpdir
 
 
 CFLAGS_DEBUG := -MMD -Og -g
-LDFLAGS_DEBUG := $(CFLAGS_DEBUG)
 CFLAGS_RELEASE := -MMD -DNDEBUG -flto -O2 -g
-LDFLAGS_RELEASE := $(CFLAGS_RELEASE)
-LDFLAGS_DEVELOP := -fsanitize=address -fsanitize=undefined -Og
-CFLAGS_DEVELOP := -MMD $(LDFLAGS_DEVELOP) -Werror
+CFLAGS_DEVELOP := -MMD -Werror
 
 GLAD_FLAGS_DEBUG := --generator=c-debug
 GLAD_FLAGS_RELEASE := --generator=c
@@ -78,22 +70,19 @@ define FIND_SYSHEADERS_CMD
 )
 endef
 
-.PHONY: dbg dev rel clearfonts clean veryclean purify impolute etags glad_rel glad_dbg fonts valgrind static-analysis tidy_src tidy_include line-count
+.PHONY: dbg dev rel clean veryclean purify impolute etags glad_rel glad_dbg static-analysis tidy_src tidy_include line-count
 
-rel: fonts glad_rel $(BIN_DIR)/main
-dev: fonts glad_dbg etags $(BIN_DIR)/main_dev
-dbg: fonts glad_dbg $(BIN_DIR)/main_dbg
+rel: glad_rel $(BIN_DIR)/thirty.a
+dev: glad_dbg etags $(BIN_DIR)/thirty_dev.a
+dbg: glad_dbg $(BIN_DIR)/thirty_dbg.a
 
-clearfonts:
-	-rm -f $(FONTS_PNG)
-	-rm -rf $(ASSETS_DIR)/fonts
-clean: clearfonts
+clean:
 	-rm -f $(OBJ_DIR)/*.o
 	-rm -rf $(BIN_DIR)
 veryclean: clean
 	-rm -rf $(OBJ_DIR)
 	-rm -f TAGS
-purify: clearfonts veryclean
+purify: veryclean
 	-rm -f $(SRC_DIR)/glad_dbg.c $(SRC_DIR)/glad_rel.c
 	-rm -f $(INCLUDE_DIR)/glad/glad_dbg.h $(INCLUDE_DIR)/glad/glad_rel.h
 	-rm -rf $(INCLUDE_DIR)/KHR/
@@ -101,7 +90,6 @@ purify: clearfonts veryclean
 	-rm -f sysh_TAGS
 impolute: purify
 	-rm -rf venv
-	-rm -rf BitmapFontGenerator/venv
 
 glad_rel: $(INCLUDE_DIR)/KHR/khrplatform.h $(INCLUDE_DIR)/glad/glad_rel.h $(SRC_DIR)/glad_rel.c
 
@@ -110,16 +98,6 @@ glad_dbg: $(INCLUDE_DIR)/glad/glad_dbg.h $(SRC_DIR)/glad_dbg.c
 etags: sysh_TAGS
 	-rm -f TAGS
 	$(FIND_HEADERS_CMD) | etags --include=$< -
-
-fonts: $(FONTS_FTD) $(FONTS_PNG)
-
-valgrind: $(BIN_DIR)/main_dbg
-	valgrind --leak-check=full           			\
-                 --show-leak-kinds=definite,indirect,possible	\
-	         --track-origins=yes         			\
-	         --verbose                   			\
-	         --log-file=valgrind-out.txt 			\
-	         $(BIN_DIR)/main_dbg
 
 static-analysis: clean
 	scan-build -disable-checker cplusplus.InnerPointer \
@@ -144,19 +122,14 @@ tidy_include: $(INCLUDE_DIR)/.clang_complete
 	cd $(INCLUDE_DIR) && clang-tidy $(TIDY_INCLUDES) $(TIDY_CHECKS) -- $$(<.clang_complete)
 
 line-count:
-	wc -l $(addprefix $(SRC_DIR)/,$(TIDY_SOURCES)) $(addprefix $(INCLUDE_DIR)/thirty/,$(TIDY_INCLUDES)) BOGLE/exporter_BOGLE.py BitmapFontGenerator/BitmapFontGenerator.py
+	wc -l $(addprefix $(SRC_DIR)/,$(TIDY_SOURCES)) $(addprefix $(INCLUDE_DIR)/thirty/,$(TIDY_INCLUDES))
 
 sysh_TAGS:
 	$(FIND_SYSHEADERS_CMD) | etags -o $@ -
 
-
-$(BIN_DIR)/main_dbg: LDFLAGS += $(LDFLAGS_DEBUG)
-$(BIN_DIR)/main_rel: LDFLAGS += $(LDFLAGS_RELEASE)
-$(BIN_DIR)/main_dev: LDFLAGS += $(LDFLAGS_DEVELOP)
-
-$(BIN_DIR)/main_dbg: $(OBJECTS_DEBUG)
-$(BIN_DIR)/main_rel: $(OBJECTS_RELEASE)
-$(BIN_DIR)/main_dev: $(OBJECTS_DEVELOP)
+$(BIN_DIR)/thirty_dbg.a: $(OBJECTS_DEBUG)
+$(BIN_DIR)/thirty_rel.a: $(OBJECTS_RELEASE)
+$(BIN_DIR)/thirty_dev.a: $(OBJECTS_DEVELOP)
 
 $(OBJ_DIR)/%_dbg.o: CFLAGS += $(CFLAGS_DEBUG)
 $(OBJ_DIR)/%_rel.o: CFLAGS += $(CFLAGS_RELEASE)
@@ -200,9 +173,9 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h
 
 $(TARGETS):
 	mkdir -p $(BIN_DIR)
-	$(CC) $(LDFLAGS) $^ -o $@
+	$(AR) -rv $@ $^
 
-$(BIN_DIR)/main: $(BIN_DIR)/main_rel
+$(BIN_DIR)/thirty.a: $(BIN_DIR)/thirty_rel.a
 	cp $< $@
 
 
@@ -239,28 +212,6 @@ $(INCLUDE_DIR)/stb_image.h:
 
 $(SRC_DIR)/.clang_complete $(INCLUDE_DIR)/.clang_complete: Makefile
 	echo $(CFLAGS) | tr " " "\n" > $@
-
-
-$(ASSETS_DIR)/fonts/Cabin-Regular.ttf:
-	mkdir -p $(ASSETS_DIR)/fonts
-	wget -q -O $@ "https://raw.githubusercontent.com/impallari/Cabin/master/fonts/TTF/Cabin-Bold.ttf"
-$(ASSETS_DIR)/fonts/CutiveMono-Regular.ttf:
-	mkdir -p $(ASSETS_DIR)/fonts
-	wget -q -O $@ "https://raw.githubusercontent.com/vernnobile/CutiveFont/master/CutiveMono/GWF-1.001/CutiveMono-Regular.ttf"
-
-$(ASSETS_DIR)/textures/Cabin-Regular_36_latin-1.png $(ASSETS_DIR)/fonts/Cabin-Regular_36_latin-1.ftd &: $(ASSETS_DIR)/fonts/Cabin-Regular.ttf BitmapFontGenerator/venv
-	set -e; \
-	source BitmapFontGenerator/venv/bin/activate; \
-	python BitmapFontGenerator/BitmapFontGenerator.py --basedir $(ASSETS_DIR) --height 36 --encoding latin-1 $<
-$(ASSETS_DIR)/textures/CutiveMono-Regular_24_latin-1.png $(ASSETS_DIR)/fonts/CutiveMono-Regular_24_latin-1.ftd &: $(ASSETS_DIR)/fonts/CutiveMono-Regular.ttf BitmapFontGenerator/venv
-	set -e; \
-	source BitmapFontGenerator/venv/bin/activate; \
-	python BitmapFontGenerator/BitmapFontGenerator.py --basedir $(ASSETS_DIR) --height 24 --encoding latin-1 $<
-
-BitmapFontGenerator/venv: BitmapFontGenerator/requirements.txt
-	virtualenv BitmapFontGenerator/venv
-	source BitmapFontGenerator/venv/bin/activate; \
-	pip install -r BitmapFontGenerator/requirements.txt
 
 
 -include $(DEPENDS_DEBUG)

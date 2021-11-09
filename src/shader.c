@@ -141,8 +141,8 @@ static unsigned int shader_new(const size_t nvertfiles,
                                const char *const fragfiles[nfragfiles]) {
         static const char *const vert_ext = ".vert";
         static const char *const frag_ext = ".frag";
-        static const size_t vert_ext_len = strlen(vert_ext);
-        static const size_t frag_ext_len = strlen(frag_ext);
+        static const size_t vert_ext_len = 5; //strlen(vert_ext);
+        static const size_t frag_ext_len = 5; //strlen(frag_ext);
 
         char *const path = smallocarray(PATH_MAX, sizeof(char));
         const unsigned int vert = compile_shader(
