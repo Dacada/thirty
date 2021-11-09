@@ -288,3 +288,20 @@ char *strfile(FILE *const f) {
         str[len] = '\0';
         return str;
 }
+
+void set_cwd(const char *const dir) {
+        char buff[PATH_MAX];
+        ssize_t ret = readlink("/proc/self/exe", buff, PATH_MAX);
+        if (ret < 0) {
+                perror("readlink");
+                die("could not determine executable path from proc filesystem");
+        }
+        if (ret >= PATH_MAX) {
+                die("executable path too long");
+        }
+        buff[ret] = '\0';
+
+        char *absdir = pathjoin_dyn(2, buff, dir);
+        chdir(absdir);
+        free(absdir);
+}

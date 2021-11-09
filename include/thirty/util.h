@@ -188,4 +188,12 @@ char *strfile(FILE *f)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
+/*
+ * Set the current working directory as dir, starting from whatever directory
+ * the executable resides at.
+ */
+void set_cwd(const char *dir)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull));
+
 #endif /* CUTIL_UTIL_H */

@@ -12,7 +12,7 @@ void font_init(struct font *const font, const char *const name,
         font->encoding = sstrdup(encoding);
 
         char path[PATH_MAX];
-        pathjoin(PATH_MAX, path, 3, ASSETSPATH, "fonts", ftdNameWithExt);
+        pathjoin(PATH_MAX, path, 2, "fonts", ftdNameWithExt);
         path[strlen(path)-1] = '\0';
         FILE *f = sfopen(path, "r");
         sfread(&font->linespacing, sizeof(font->linespacing), 1, f);

@@ -10,8 +10,7 @@ __attribute__((access (read_only, 3)))
 __attribute__((nonnull))
 static void buildpathObj(const size_t destsize, char *const dest,
                          const char *const file) {
-        const size_t len = pathjoin(destsize, dest, 3, ASSETSPATH,
-                                     "scenes", file);
+        const size_t len = pathjoin(destsize, dest, 2, "scenes", file);
         if (len + 3 - 1 >= destsize) {
                 die("Path to scene file too long.\n");
         }

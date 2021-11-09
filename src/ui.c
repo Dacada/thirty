@@ -39,10 +39,7 @@ void ui_startup(void) {
         struct growingArray fontsSeen;
         growingArray_init(&fontsSeen, sizeof(struct font), 1);
         
-        char fontspath[PATH_MAX];
-        pathjoin(PATH_MAX, fontspath, 2, ASSETSPATH, "fonts");
-        
-        DIR *dir = sopendir(fontspath);
+        DIR *dir = sopendir("fonts");
         struct dirent *ent;
         while ((ent = sreaddir(dir)) != NULL) {
                 const char *const name = ent->d_name;

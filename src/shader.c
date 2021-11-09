@@ -47,8 +47,7 @@ __attribute__((nonnull))
 static void buildpath(const size_t destsize, char *const dest,
                       const char *const file, const size_t extsize,
                       const char *const extension) {
-        const size_t len = pathjoin(destsize, dest, 3, ASSETSPATH,
-                                     "shaders", file);
+        const size_t len = pathjoin(destsize, dest, 2, "shaders", file);
         if (len + extsize - 1 >= destsize) {
                 die("Path to shader file too long.\n");
         }

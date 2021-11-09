@@ -145,7 +145,7 @@ __attribute__((access (read_only, 1)))
 __attribute__((access (read_only, 2)))
 __attribute__((nonnull))
 static char *buildpathTex(const char *const file, const char *const ext) {
-        char *path = pathjoin_dyn(3, ASSETSPATH, "textures", file);
+        char *path = pathjoin_dyn(2, "textures", file);
         size_t pathlen = strlen(path);
         size_t extlen = strlen(ext);
         

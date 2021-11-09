@@ -194,6 +194,8 @@ void game_init(struct game *const game,
                const int width, const int height,
                const size_t initalSceneCapacity,
                const size_t initialUiCapacity) {
+        set_cwd("../assets");
+        
         eventBroker_startup();
         componentCollection_startup();
         ui_startup();

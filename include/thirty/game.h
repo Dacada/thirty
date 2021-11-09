@@ -26,8 +26,8 @@ struct game {
 
 /*
  * Initialize the game. On top of initializing the game structure, this also
- * initializes the event broker system and the component collection system. As
- * well as the window and GL context.
+ * sets the working directory, initializes the event broker system and the
+ * component collection system. As well as the window and GL context.
  */
 void game_init(struct game *game, int width, int height,
                size_t initalSceneCapacity,
