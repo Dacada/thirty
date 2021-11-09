@@ -4,7 +4,6 @@ SRC_DIR := src
 BIN_DIR := bin
 OBJ_DIR := obj
 INCLUDE_DIR := include
-ASSETS_DIR := assets
 
 SOURCES := $(wildcard $(SRC_DIR)/*.c)
 
@@ -42,7 +41,7 @@ TARGETS := $(BIN_DIR)/thirty_dbg.a $(BIN_DIR)/thirty_rel.a $(BIN_DIR)/thirty_dev
 CC := gcc
 
 # Common flags
-CFLAGS := -DASSETSPATH=\"$(realpath $(ASSETS_DIR))\" -I$(realpath $(INCLUDE_DIR)) `pkg-config --cflags glfw3` `pkg-config --cflags cglm` -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wmissing-prototypes -Wwrite-strings -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wimplicit-fallthrough -Wstringop-overflow=4 -std=c11
+CFLAGS := -I$(realpath $(INCLUDE_DIR)) `pkg-config --cflags glfw3` `pkg-config --cflags cglm` -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wcast-align -Wmissing-prototypes -Wwrite-strings -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wimplicit-fallthrough -Wstringop-overflow=4 -std=c11
 
 # Flags for generating glad files (also common)
 GLAD_FLAGS := --profile=core --api=gl=3.3 --spec=gl --extensions= --out-path=$$tmpdir
