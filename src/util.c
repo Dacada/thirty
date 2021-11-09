@@ -301,6 +301,9 @@ void set_cwd(const char *const dir) {
         }
         buff[ret] = '\0';
 
+        // cut off program name
+        *strrchr(buff, '/') = '\0';
+
         char *absdir = pathjoin_dyn(2, buff, dir);
         chdir(absdir);
         free(absdir);
