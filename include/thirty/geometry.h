@@ -41,6 +41,14 @@ void geometry_initCube(struct geometry *geo, const char *name)
         __attribute__((nonnull));
 
 /*
+ * Initializes a geometry to be a 1x1x1 cube with faces facing inwards.
+ */
+void geometry_initSkyboxCube(struct geometry *geo, const char *name)
+        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_only, 2)))
+        __attribute__((nonnull));
+
+/*
  * Initializes a geometry to be a radius 1 icosphere with as many subdivisions
  * as given.
  */

@@ -92,7 +92,7 @@ void scene_init(struct scene *const scene, struct game *const game,
                           initalObjectCapacity);
 
         scene->globalAmbientLight = globalAmbientLight;
-}
+} 
 
 void scene_initFromFile(struct scene *const scene,
                         struct game *const game,
@@ -255,7 +255,7 @@ size_t scene_setSkybox(struct scene *const scene,
         
         struct geometry *geo = componentCollection_create(
                 scene->game, COMPONENT_GEOMETRY);
-        geometry_initCube(geo, basename);
+        geometry_initSkyboxCube(geo, basename);
         object_setComponent(skybox, &geo->base);
 
         struct material_skybox *mat = componentCollection_create(
