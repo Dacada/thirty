@@ -10,10 +10,10 @@ void fpsCameraController_init(struct fpsCameraController *const ctrl,
         ctrl->scene = scene;
 }
 
-void fpsCameraController_move(const struct fpsCameraController *const ctrl,
-                              const vec2s direction, const float timeDelta,
-                              struct object *const camera_obj) {
-        struct camera_fps *camera = object_getComponent(camera_obj, COMPONENT_CAMERA);
+vec3s fpsCameraController_move(const struct fpsCameraController *const ctrl,
+                               const vec2s direction, const float timeDelta,
+                               const struct object *const camera_obj) {
+        const struct camera_fps *camera = object_getComponent(camera_obj, COMPONENT_CAMERA);
         const float move = ctrl->move_sensitivity * timeDelta;
 
         static const vec3s worldUp = {.x=0, .y=1, .z=0};
@@ -36,19 +36,19 @@ void fpsCameraController_move(const struct fpsCameraController *const ctrl,
         forward = glms_vec3_normalize(forward);
         right = glms_vec3_normalize(right);
 
-        camera->position = glms_vec3_muladds(
-                forward, direction.y * move, camera->position);
-        camera->position = glms_vec3_muladds(
-                right, direction.x * move, camera->position);
+        vec3s position = camera->position;
+        position = glms_vec3_muladds(forward, direction.y * move, position);
+        position = glms_vec3_muladds(right, direction.x * move, position);
+        return position;
 }
 
-void fpsCameraController_look(const struct fpsCameraController *const ctrl,
-                              const vec2s direction, const float timeDelta,
-                              struct object *const camera_obj) {
-        struct camera_fps *camera = object_getComponent(camera_obj, COMPONENT_CAMERA);
+vec2s fpsCameraController_look(const struct fpsCameraController *const ctrl,
+                               const vec2s direction, const float timeDelta,
+                               const struct object *const camera_obj) {
+        struct camera_fps *cameracomp = object_getComponent(camera_obj, COMPONENT_CAMERA);
         const float look = ctrl->look_sensitivity * timeDelta;
-        camera->yaw += direction.x * look;
-        camera->pitch += direction.y * look;
-        camera->pitch = glm_clamp(camera->pitch,
-                                  -GLM_PI_2f, GLM_PI_2f);
+        vec2s yaw_pitch = { .x=cameracomp->yaw, .y=cameracomp->pitch };
+        yaw_pitch = glms_vec2_muladds(direction, look, yaw_pitch);
+        glm_clamp(yaw_pitch.y, -GLM_PI_2f, GLM_PI_2f);
+        return yaw_pitch;
 }

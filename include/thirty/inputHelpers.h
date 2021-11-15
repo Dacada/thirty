@@ -22,8 +22,7 @@ struct fpsCameraController {
 /*
  * Initialize the FPS Camera Controller with the given parameters. Move and
  * look are the corresponding sensitivities, which might need to be
- * calibrated. The camera object should be an object with a camera component
- * (must be FPS camera component).
+ * calibrated.
  */
 void fpsCameraController_init(struct fpsCameraController *const ctrl,
                               struct scene *const scene,
@@ -34,24 +33,26 @@ void fpsCameraController_init(struct fpsCameraController *const ctrl,
 
 /*
  * Move the camera in the given 2D direction, taking into account the
- * timeDelta.
+ * timeDelta. The camera object is not modified. Returns the camera's new
+ * position vector.
  */
-void fpsCameraController_move(const struct fpsCameraController *ctrl,
-                              vec2s direction, float timeDelta,
-                              struct object *const camera_obj)
+vec3s fpsCameraController_move(const struct fpsCameraController *ctrl,
+                               vec2s direction, float timeDelta,
+                               const struct object *const camera_obj)
         __attribute__((access (read_only, 1)))
-        __attribute__((access (read_write, 4)))
+        __attribute__((access (read_only, 4)))
         __attribute__((nonnull));
 
 /*
  * Pivot the camera in the given 2D direction, taking into account the
- * timeDelta.
+ * timeDelta. The camera object is not modified. Returns the camera's new yaw
+ * and pitch as a 2D vector (yaw, pitch).
  */
-void fpsCameraController_look(const struct fpsCameraController *ctrl,
+vec2s fpsCameraController_look(const struct fpsCameraController *ctrl,
                               vec2s direction, float timeDelta,
-                              struct object *const camera_obj)
+                              const struct object *const camera_obj)
         __attribute__((access (read_only, 1)))
-        __attribute__((access (read_write, 4)))
+        __attribute__((access (read_only, 4)))
         __attribute__((nonnull));
 
 #endif /* INPUT_HELPERS */
