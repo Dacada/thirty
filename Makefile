@@ -47,9 +47,9 @@ CFLAGS := -I$(realpath $(INCLUDE_DIR)) `pkg-config --cflags glfw3` `pkg-config -
 GLAD_FLAGS := --profile=core --api=gl=3.3 --spec=gl --extensions= --out-path=$$tmpdir
 
 
-CFLAGS_DEBUG := -MMD -Og -g
+CFLAGS_DEBUG := -MMD -Og -g -fno-omit-frame-pointer
 CFLAGS_RELEASE := -MMD -DNDEBUG -flto -O2 -g
-CFLAGS_DEVELOP := -MMD -Werror
+CFLAGS_DEVELOP := -MMD -Werror -fno-omit-frame-pointer
 
 GLAD_FLAGS_DEBUG := --generator=c-debug
 GLAD_FLAGS_RELEASE := --generator=c
