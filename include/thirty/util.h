@@ -13,6 +13,14 @@
 #include <string.h>
 #include <ctype.h>
 
+#ifndef MAX
+#define MAX(a,b) ((a)>(b)?(a):(b))
+#endif
+
+#ifndef ABS
+#define ABS(x) ((x)<0?-(x):(x))
+#endif
+
 // This is usually the actual number, just in case it's not in
 // limits.h
 #ifndef PATH_MAX
