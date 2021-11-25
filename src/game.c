@@ -40,8 +40,8 @@ static void eventFire_keyboardEvent(GLFWwindow *const w, const int key,
         eventBroker_fire(EVENT_BROKER_KEYBOARD_EVENT, &args);
 }
 
-static void eventFire_keyboardInput(void) {
-        eventBroker_fire(EVENT_BROKER_KEYBOARD_INPUT, NULL);
+static void eventFire_keyboardPoll(void) {
+        eventBroker_fire(EVENT_BROKER_KEYBOARD_POLL, NULL);
 }
 
 static void eventFire_mousePosition(GLFWwindow *const w,
@@ -62,6 +62,21 @@ static void eventFire_mouseScroll(GLFWwindow *const w,
                 .amount = yoff,
         };
         eventBroker_fire(EVENT_BROKER_MOUSE_SCROLL, &args);
+}
+
+static void eventFire_mouseButton(GLFWwindow *const w,
+                                  const int button, const int action, const int mods) {
+        (void)w;
+        struct eventBrokerMouseButton args = {
+                .button = button,
+                .action = action,
+                .modifiers = mods,
+        };
+        eventBroker_fire(EVENT_BROKER_MOUSE_BUTTON, &args);
+}
+
+static void eventFire_mousePoll(void) {
+        eventBroker_fire(EVENT_BROKER_MOUSE_POLL, NULL);
 }
 
 static void eventFire_update(const float timeDelta) {
@@ -229,6 +244,7 @@ void game_init(struct game *const game,
         glfwSetKeyCallback(game->window, eventFire_keyboardEvent);
         glfwSetCursorPosCallback(game->window, eventFire_mousePosition);
         glfwSetScrollCallback(game->window, eventFire_mouseScroll);
+        glfwSetMouseButtonCallback(game->window, eventFire_mouseButton);
 
         eventBroker_register(onFramebufferSizeChanged,
                              EVENT_BROKER_PRIORITY_HIGH,
@@ -296,8 +312,22 @@ float game_timeDelta(const struct game *game) {
         return game->timeDelta;
 }
 
+vec2s game_getWindowDimensions(const struct game *game) {
+        int width, height;
+        glfwGetWindowSize(game->window, &width, &height);
+        return (vec2s){.x=(float)width, .y=(float)height};
+}
+
 bool game_keyPressed(const struct game *game, int key) {
         return glfwGetKey(game->window, key) == GLFW_PRESS;
+}
+
+bool game_mouseButtonPressed(const struct game *game, int button) {
+        return glfwGetMouseButton(game->window, button) == GLFW_PRESS;
+}
+
+void game_setCursorPosition(const struct game *game, vec2s position) {
+        glfwSetCursorPos(game->window, position.x, position.y);
 }
 
 void game_run(struct game *game) {
@@ -339,7 +369,8 @@ void game_run(struct game *game) {
 
                 // Process inputs
                 glfwPollEvents();
-                eventFire_keyboardInput();
+                eventFire_keyboardPoll();
+                eventFire_mousePoll();
                 
                 eventBroker_runAsyncEvents();
                 

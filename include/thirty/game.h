@@ -104,9 +104,30 @@ float game_timeDelta(const struct game *game)
         __attribute__((nonnull));
 
 /*
+ * Get the current dimensions of the game window.
+ */
+vec2s game_getWindowDimensions(const struct game *game)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull));
+
+/*
  * Return whether the given GLFW key is pressed.
  */
 bool game_keyPressed(const struct game *game, int key)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Return whether the given GLFW mouse button is pressed.
+ */
+bool game_mouseButtonPressed(const struct game *game, int button)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Set cursor position
+ */
+void game_setCursorPosition(const struct game *game, vec2s position)
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 

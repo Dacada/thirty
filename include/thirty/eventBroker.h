@@ -55,13 +55,20 @@ enum eventBrokerEvent {
 
         // Poll keyboard key status. Useful for keys that are pressed for
         // several frames: "Use W to walk forward"
-        EVENT_BROKER_KEYBOARD_INPUT,
+        EVENT_BROKER_KEYBOARD_POLL,
 
         // Mouse position has changed
         EVENT_BROKER_MOUSE_POSITION,
 
         // Mouse has scrolled
         EVENT_BROKER_MOUSE_SCROLL,
+
+        // Mouse button has been pressed or released
+        EVENT_BROKER_MOUSE_BUTTON,
+
+        // Poll mouse button status. Useful for keys that are pressed for
+        // several frames: "Use M1+M2 to walk forward"
+        EVENT_BROKER_MOUSE_POLL,
 
         // Not an event, just find out how many events there are.
         EVENT_BROKER_EVENTS_TOTAL
@@ -108,6 +115,12 @@ struct eventBrokerMousePosition {
 
 struct eventBrokerMouseScroll {
         const double amount;
+};
+
+struct eventBrokerMouseButton {
+        const int button;
+        const int action;
+        const int modifiers;
 };
 
 /*
