@@ -9,6 +9,7 @@ static size_t nfonts;
 struct uiQuad {
         mat4s model;
         struct texture texture;
+        bool visible;
 };
 
 struct uiText {
@@ -33,6 +34,22 @@ static void recalculateOrthoMatrix(struct ui *const ui) {
         ui->ortho = glms_ortho(0.0F, (float)ui->width,
                                (float)ui->height, 0.0F,
                                -1.0F, 1.0F);
+}
+
+static mat4s calculateModel(float tlx, float tly, float brx, float bry, float z) {
+        mat4s model = GLMS_MAT4_IDENTITY;
+
+        vec3s scale;
+        scale.x = (brx - tlx)/2;
+        scale.y = (bry - tly)/2;
+        scale.z = 1.0F;
+        model = glms_scale(model, scale);
+        
+        model.col[3].x = tlx + brx/2;
+        model.col[3].y = tly + bry/2;
+        model.col[3].z = z;
+
+        return model;
 }
 
 void ui_startup(void) {
@@ -107,28 +124,32 @@ void ui_resize(struct ui *const ui, const int width, const int height) {
         recalculateOrthoMatrix(ui);
 }
 
-void ui_addQuad(struct ui *const ui,
-                const int tlx, const int tly,
-                const int brx, const int bry,
-                const float z,
-                const char *const texture) {
+size_t ui_addQuad(struct ui *const ui,
+                  const float tlx, const float tly,
+                  const float brx, const float bry,
+                  const float z,
+                  const char *const texture) {
         struct uiQuad *quad = growingArray_append(&ui->quads);
+        quad->visible = true;
         
-        quad->model = GLMS_MAT4_IDENTITY;
-
-        vec3s scale;
-        scale.x = (float)(brx - tlx)/2;
-        scale.y = (float)(bry - tly)/2;
-        scale.z = 1.0F;
-        quad->model = glms_scale(quad->model, scale);
-        
-        quad->model.col[3].x = (float)tlx + (float)brx/2;
-        quad->model.col[3].y = (float)tly + (float)bry/2;
-        quad->model.col[3].z = z;
+        quad->model = calculateModel(tlx, tly, brx, bry, z);
         
         texture_init(&quad->texture, texture,
                      UIQUAD_TEXTURE_SLOT, GL_TEXTURE_2D);
         texture_load(&quad->texture);
+
+        return ui->quads.length - 1;
+}
+
+void ui_setQuadPosition(struct ui *ui, size_t idx,
+                        float tlx, float tly, float brx, float bry, float z) {
+        struct uiQuad *quad = growingArray_get(&ui->quads, idx);
+        quad->model = calculateModel(tlx, tly, brx, bry, z);
+}
+
+void ui_setQuadVisibility(struct ui *ui, size_t idx, bool visibility) {
+        struct uiQuad *quad = growingArray_get(&ui->quads, idx);
+        quad->visible = visibility;
 }
 
 void ui_addText(struct ui *const ui,
@@ -212,10 +233,12 @@ void ui_draw(const struct ui *ui) {
         shader_setVec2(SHADER_UI, "uvMul", (vec2s){.x=1, .y=1});
         shader_setVec2(SHADER_UI, "uvAdd", (vec2s){.x=0, .y=0});
         growingArray_foreach_START(&ui->quads, struct uiQuad*, quad)
-                mat4s modelOrtho = glms_mat4_mul(ui->ortho, quad->model);
-                shader_setMat4(SHADER_UI, "modelOrtho", modelOrtho);
-                texture_bind(&quad->texture);
-                geometry_draw(&ui->quadGeo);
+                if (quad->visible) {
+                        mat4s modelOrtho = glms_mat4_mul(ui->ortho, quad->model);
+                        shader_setMat4(SHADER_UI, "modelOrtho", modelOrtho);
+                        texture_bind(&quad->texture);
+                        geometry_draw(&ui->quadGeo);
+                }
         growingArray_foreach_END;
 
         shader_setBool(SHADER_UI, "hasColor", true);
