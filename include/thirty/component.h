@@ -16,8 +16,6 @@ enum componentType {
         COMPONENT_TRANSFORM,
         
         COMPONENT_CAMERA,
-        COMPONENT_CAMERA_BASIC = COMPONENT_CAMERA,
-        COMPONENT_CAMERA_FPS,
         
         COMPONENT_GEOMETRY,
         

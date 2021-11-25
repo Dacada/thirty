@@ -116,8 +116,7 @@ void light_updateShader(const struct light *light,
                         break;
 
                 case COMPONENT_TRANSFORM:
-                case COMPONENT_CAMERA_BASIC:
-                case COMPONENT_CAMERA_FPS:
+                case COMPONENT_CAMERA:
                 case COMPONENT_GEOMETRY:
                 case COMPONENT_MATERIAL_UBER:
                 case COMPONENT_MATERIAL_SKYBOX:

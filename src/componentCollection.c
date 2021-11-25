@@ -20,12 +20,8 @@ void *componentCollection_create(struct game *game,
                 size = sizeof(struct transform);
                 break;
                 
-        case COMPONENT_CAMERA_BASIC:
-                size = sizeof(struct camera_basic);
-                break;
-                
-        case COMPONENT_CAMERA_FPS:
-                size = sizeof(struct camera_fps);
+        case COMPONENT_CAMERA:
+                size = sizeof(struct camera);
                 break;
                 
         case COMPONENT_GEOMETRY:
@@ -126,7 +122,6 @@ void *componentCollection_get(
                 break;
                 
         case COMPONENT_CAMERA:
-        case COMPONENT_CAMERA_FPS:
                 idx = collection->camera;
                 break;
                 
@@ -173,7 +168,6 @@ void componentCollection_set(struct componentCollection *const collection,
                 break;
                 
         case COMPONENT_CAMERA:
-        case COMPONENT_CAMERA_FPS:
                 collection->camera = idx+1;
                 break;
                 
@@ -216,7 +210,6 @@ bool componentCollection_hasComponent(
                 return collection->transform != 0;
                 
         case COMPONENT_CAMERA:
-        case COMPONENT_CAMERA_FPS:
                 return collection->camera != 0;
                 
         case COMPONENT_GEOMETRY:
@@ -265,7 +258,6 @@ static bool freeComponent(void *compPtr, size_t size, void *args) {
                 break;
                 
         case COMPONENT_CAMERA:
-        case COMPONENT_CAMERA_FPS:
                 camera_free((struct camera*)comp);
                 break;
                 

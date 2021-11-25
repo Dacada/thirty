@@ -17,16 +17,6 @@ struct camera {
         float fov;
 };
 
-struct camera_basic {
-        struct camera base;
-};
-
-struct camera_fps {
-        struct camera base;
-        float pitch, yaw;
-        vec3s position;
-};
-
 /*
  * Initialize a camera with given parameters.
  */
@@ -66,7 +56,6 @@ void camera_free(struct camera *cam)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
-#define CAMERA_MAXIMUM_SIZE max(sizeof(struct camera_basic),\
-                                sizeof(struct camera_fps))
+#define CAMERA_MAXIMUM_SIZE sizeof(struct camera)
 
 #endif /* CAMERA_H */

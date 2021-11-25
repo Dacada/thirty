@@ -165,7 +165,7 @@ class BOGLECamera(BOGLEBaseObject):
 
     def convert(self, object, scene):
         super().convert(object)
-        self.type = 1
+        self.type = 0
 
         camera = object.data
 
