@@ -32,10 +32,19 @@ void ui_resize(struct ui *ui, int width, int height)
         __attribute__((access (write_only, 1)))
         __attribute__((nonnull));
 
-void ui_addQuad(struct ui *ui, int tlx, int tly, int brx, int bry, float z,
-                const char *texture)
+size_t ui_addQuad(struct ui *ui, float tlx, float tly, float brx, float bry, float z,
+                  const char *texture)
         __attribute__((access (read_write, 1)))
         __attribute__((access (read_only, 7)))
+        __attribute__((nonnull));
+
+void ui_setQuadPosition(struct ui *ui, size_t idx,
+                        float tlx, float tly, float brx, float bry, float z)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+void ui_setQuadVisibility(struct ui *ui, size_t idx, bool visibility)
+        __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 void ui_addText(struct ui *ui, int posx, int posy, float z,
