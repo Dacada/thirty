@@ -1236,7 +1236,7 @@ void geometry_initPlane(struct geometry *geo, const char *name) {
         };
         
         static const unsigned indices[] = {
-                2, 1, 0,     1, 2, 3
+                0, 1, 2,     3, 2, 1
         };
         
         static const size_t nvertices = sizeof(vertices)/sizeof(*vertices);
