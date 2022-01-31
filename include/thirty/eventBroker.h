@@ -20,11 +20,12 @@ typedef void(*eventBrokerCallback)(void*, void*);
 
 /*
  * Event callbacks must be registered with a priority. High priority means they
- * will run synchronously the moment the event fires. For now that's the only
- * supported option.
+ * will run synchronously the moment the event fires. Low priority means they
+ * will run from the main thread at the end of the current frame.
  */
 enum eventBrokerPriority {
         EVENT_BROKER_PRIORITY_HIGH,
+        EVENT_BROKER_PRIORITY_LOW,
 };
 
 /*
@@ -69,6 +70,18 @@ enum eventBrokerEvent {
         // Poll mouse button status. Useful for keys that are pressed for
         // several frames: "Use M1+M2 to walk forward"
         EVENT_BROKER_MOUSE_POLL,
+
+        // An amount of TCP data is ready to be received from the network
+        EVENT_BROKER_TCP_RECV,
+        
+        // A UDP datagram is ready to be received from the network
+        EVENT_BROKER_UDP_RECV,
+        
+        // It is possible to send TCP data through the network
+        EVENT_BROKER_TCP_SEND,
+        
+        // It is possible tp send a UDP datagram through the network
+        EVENT_BROKER_UDP_SEND,
 
         // Not an event, just find out how many events there are.
         EVENT_BROKER_EVENTS_TOTAL
@@ -123,6 +136,26 @@ struct eventBrokerMouseButton {
         const int modifiers;
 };
 
+// Use game_keyPressed to check buttons
+struct eventBrokerMousePoll {
+};
+
+struct eventBrokerTCPRecv {
+        int socket;
+};
+
+struct eventBrokerUDPRecv {
+        int socket;
+};
+
+struct eventBrokerTCPSend {
+        int socket;
+};
+
+struct eventBrokerUDPSend {
+        int socket;
+};
+
 /*
  * Start up the message broker system.
  */
@@ -147,8 +180,7 @@ void eventBroker_register(eventBrokerCallback cb,
 void eventBroker_fire(enum eventBrokerEvent event, void *args);
 
 /*
- * Run all medium priority events, called at the end of a frame. Does nothing
- * now.
+ * Run all low priority events, called at the end of a frame.
  */
 void eventBroker_runAsyncEvents(void);
 
