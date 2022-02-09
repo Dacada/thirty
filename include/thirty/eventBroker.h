@@ -72,15 +72,23 @@ enum eventBrokerEvent {
         EVENT_BROKER_MOUSE_POLL,
 
         // An amount of TCP data is ready to be received from the network
+        // (should always be high priority, the event will keep triggering
+        // until the socket is read)
         EVENT_BROKER_TCP_RECV,
         
-        // A UDP datagram is ready to be received from the network
+        // A UDP datagram is ready to be received from the network (should
+        // always be high priority, the event will keep triggering until the
+        // socket is read)
         EVENT_BROKER_UDP_RECV,
         
-        // It is possible to send TCP data through the network
+        // It is possible to send TCP data through the network (should always
+        // be high priority, the event will keep triggering until the socket is
+        // written to)
         EVENT_BROKER_TCP_SEND,
         
-        // It is possible tp send a UDP datagram through the network
+        // It is possible tp send a UDP datagram through the network (should
+        // always be high priority, the event will keep triggering until the
+        // socket is written to)
         EVENT_BROKER_UDP_SEND,
 
         // Not an event, just find out how many events there are.

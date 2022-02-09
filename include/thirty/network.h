@@ -7,7 +7,6 @@
  */
 
 #include <thirty/dsutils.h>
-#include <pthread.h>
 #include <poll.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -34,8 +33,6 @@ struct network {
         bool use_udp_socket;
         int tcp_socket;
         int udp_socket;
-        bool tcpTriggerWrite;
-        bool udpTriggerWrite;
         struct pollfd fds[2];
         struct growingArray errors;
 };
@@ -85,8 +82,8 @@ void network_setTriggerOnWriteableTCP(struct network *network, bool value);
 void network_setTriggerOnWriteableUDP(struct network *network, bool value);
 
 /*
- * Write the latest error to occurr onto a buffer pointed to by msg with length
- * len. If no error occurred, write "no error".
+ * Write errors occurred onto a buffer pointed to by msg with length len. If no
+ * error occurred, write "no error".
  */
 void network_retrieveError(struct network *network, char *msg, size_t len);
 

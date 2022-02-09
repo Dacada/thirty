@@ -87,8 +87,24 @@ void network_init(struct network *network, bool tcpTriggerOnWriteable, bool udpT
         growingArray_init(&network->errors, sizeof(struct network_error), 4);
         network->use_tcp_socket = use_tcp;
         network->use_udp_socket = use_udp;
-        network->tcpTriggerWrite = tcpTriggerOnWriteable;
-        network->udpTriggerWrite = udpTriggerOnWriteable;
+        
+        unsigned i=0;
+        if (network->use_tcp_socket) {
+                network->fds[i].fd = network->tcp_socket;
+                network->fds[i].events = POLLIN;
+                if (tcpTriggerOnWriteable) {
+                        network->fds[i].events |= POLLOUT;
+                }
+                i++;
+        }
+        if (network->use_udp_socket) {
+                network->fds[i].fd = network->udp_socket;
+                network->fds[i].events = POLLIN;
+                if (udpTriggerOnWriteable) {
+                        network->fds[i].events |= POLLOUT;
+                }
+                i++;
+        }
 }
 
 bool network_connect(struct network *network, const char *host, unsigned port) {
@@ -125,24 +141,6 @@ bool network_connect(struct network *network, const char *host, unsigned port) {
 }
 
 bool network_run(struct network *network) {
-        unsigned i=0;
-        if (network->use_tcp_socket) {
-                network->fds[i].fd = network->tcp_socket;
-                network->fds[i].events = POLLIN;
-                if (network->tcpTriggerWrite) {
-                        network->fds[i].events |= POLLOUT;
-                }
-                i++;
-        }
-        if (network->use_udp_socket) {
-                network->fds[i].fd = network->udp_socket;
-                network->fds[i].events = POLLIN;
-                if (network->udpTriggerWrite) {
-                        network->fds[i].events |= POLLOUT;
-                }
-                i++;
-        }
-
         sigset_t prev;
         if (!disable_all_signals(&prev)) {
                 add_syscall_error(network, "pthread_sigmask");
@@ -151,15 +149,8 @@ bool network_run(struct network *network) {
 
         bool ret;
         for (;;) {
-                struct pollfd fds[2];
-                for (unsigned j=0; j<i; j++) {
-                        fds[j] = network->fds[j];
-                }
-                for (unsigned j=0; j<i; j++) {
-                        fds[j].events = network->fds[j].events;
-                }
-                
-                int res = ppoll(fds, i, NULL, &prev);
+                int nfds = network->tcp_socket + network->udp_socket;
+                int res = ppoll(network->fds, (unsigned)nfds, NULL, &prev);
                 if (res == -1) {
                         if (errno == EINTR) {
                                 ret = true;
@@ -174,13 +165,12 @@ bool network_run(struct network *network) {
                 }
 
                 bool must_exit = false;
-                for (unsigned j=0; j<i && res>0; j++) {
+                for (int j=0; j<nfds; j++) {
                         short revents = network->fds[j].revents;
                         int socket = network->fds[j].fd;
                         bool udp = socket == network->udp_socket;
                         
                         if (revents != 0) {
-                                res--;
                                 if (revents & POLLNVAL) {
                                         add_local_error(network, "invalid socket file descriptor");
                                         must_exit = true;
@@ -211,7 +201,6 @@ bool network_run(struct network *network) {
 }
 void network_setTriggerOnWriteableTCP(struct network *network, bool value) {
         if (network->use_tcp_socket) {
-                network->tcpTriggerWrite = value;
                 if (value) {
                         network->fds[0].events |= POLLOUT;
                 } else {
@@ -222,8 +211,6 @@ void network_setTriggerOnWriteableTCP(struct network *network, bool value) {
 }
 void network_setTriggerOnWriteableUDP(struct network *network, bool value) {
         if (network->use_udp_socket) {
-                network->udpTriggerWrite = value;
-                
                 int i = 0;
                 if (network->use_tcp_socket) {
                         i = 1;
