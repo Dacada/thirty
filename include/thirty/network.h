@@ -23,7 +23,7 @@ struct network_error {
         } type;
         const char *str;
         int code;
-} errors;
+};
 
 /*
  * Data structure defining networking and keeping track of the current status.

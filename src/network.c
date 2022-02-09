@@ -25,10 +25,11 @@ static inline bool disable_all_signals(sigset_t *prev) {
 }
 
 static inline void add_syscall_error(struct network *network, const char *name) {
+        int code = errno;
         struct network_error *err = growingArray_append(&network->errors);
         err->type = NETWORK_ERROR_SYSCALL;
         err->str = name;
-        err->code = errno;
+        err->code = code;
 }
 
 static inline void add_getaddr_error(struct network *network, int code) {
@@ -65,12 +66,14 @@ static int get_connected_socket(struct network *network, const char *host, const
                         continue;
                 }
                 if (connect(fd, node->ai_addr, node->ai_addrlen) == -1) {
-                        add_syscall_error(network, "connect");
-                        if (close(fd) == -1) {
-                                add_syscall_error(network, "close");
+                        if (errno != EINPROGRESS && errno != EINTR) {
+                                add_syscall_error(network, "connect");
+                                if (close(fd) == -1) {
+                                        add_syscall_error(network, "close");
+                                }
+                                fd = -1;
+                                continue;
                         }
-                        fd = -1;
-                        continue;
                 }
                 break;
         }
@@ -149,8 +152,8 @@ bool network_run(struct network *network) {
 
         bool ret;
         for (;;) {
-                int nfds = network->tcp_socket + network->udp_socket;
-                int res = ppoll(network->fds, (unsigned)nfds, NULL, &prev);
+                unsigned nfds = network->use_tcp_socket + network->use_udp_socket;
+                int res = ppoll(network->fds, nfds, NULL, &prev);
                 if (res == -1) {
                         if (errno == EINTR) {
                                 ret = true;
@@ -165,7 +168,7 @@ bool network_run(struct network *network) {
                 }
 
                 bool must_exit = false;
-                for (int j=0; j<nfds; j++) {
+                for (unsigned j=0; j<nfds; j++) {
                         short revents = network->fds[j].revents;
                         int socket = network->fds[j].fd;
                         bool udp = socket == network->udp_socket;
@@ -225,50 +228,37 @@ void network_setTriggerOnWriteableUDP(struct network *network, bool value) {
 }
 
 void network_retrieveError(struct network *network, char *msg, size_t len) {
-        static const char *unk_err = "unknown error";
-        static const char *no_err = "no error";
-
-        memcpy(msg, no_err, strlen(no_err));
-        
         growingArray_foreach_START(&network->errors, struct network_error*, err) {
-                char buff[1024];
-                const char *str;
-                
+                char line[512];
+
+                const char *name;
+                const char *text;
+                char tmpbuff[256];
                 switch (err->type) {
                 case NETWORK_ERROR_SYSCALL:
-                        str = buff;
-                        strerror_r(err->code, buff, 1024);
+                        name = err->str;
+                        text = strerror_r(err->code, tmpbuff, 256);
                         break;
                 case NETWORK_ERROR_GETADDRINFO:
-                        str = gai_strerror(err->code);
+                        name = "getaddrinfo";
+                        text = gai_strerror(err->code);
                         break;
                 case NETWORK_ERROR_LOCAL:
-                        str = err->str;
+                        name = "thirty";
+                        text = err->str;
                         break;
                 default:
-                        str = unk_err;
+                        continue;
                 }
 
-                size_t str_len = strlen(str);
-                if (str_len >= len) {
-                        memcpy(msg, str, len-2);
-                        msg[len-2] = '\n';
-                        msg[len-1] = '\0';
-                        return;
+                snprintf(line, 512, "%s: %s\n", name, text);
+                strncat(msg, line, len);
+
+                size_t linelen = strlen(line);
+                if (linelen >= len) {
+                        break;
                 } else {
-                        memcpy(msg, str, str_len);
-                        len -= str_len;
-                        msg += str_len;
-                        if (len >= 1) {
-                                *msg = '\n';
-                                if (len < 2) {
-                                        *msg = '\0';
-                                        return;
-                                } else {
-                                        msg++;
-                                        *msg = '\0';
-                                }
-                        }
+                        len -= linelen;
                 }
         } growingArray_foreach_END;
 }
