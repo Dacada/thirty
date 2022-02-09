@@ -53,6 +53,34 @@ void transform_translateZ(struct transform *trans, float delta)
         __attribute__((nonnull));
 
 /*
+ * Set translation of model matrix to given vector.
+ */
+void transform_set(struct transform *trans, vec3s value)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Set X component of translation of model matrix to given value.
+ */
+void transform_setX(struct transform *trans, float value)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Set Y component of translation of model matrix to given value.
+ */
+void transform_setY(struct transform *trans, float value)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Set Z component of translation of model matrix to given value.
+ */
+void transform_setZ(struct transform *trans, float value)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
  * Rotate object model matrix by given angle and axis.
  */
 void transform_rotate(struct transform *trans, float angle, vec3s axis)
