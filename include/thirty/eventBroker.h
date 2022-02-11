@@ -1,6 +1,8 @@
 #ifndef EVENT_BROKER_H
 #define EVENT_BROKER_H
 
+#include <stddef.h>
+
 /*
  * A system to handle firing of events and callbacks in response. It acts
  * globally, it's not an "object". Anything can use it to register a callback
@@ -165,9 +167,12 @@ struct eventBrokerUDPSend {
 };
 
 /*
- * Start up the message broker system.
+ * Start up the message broker system. The parameter specifies how many custom
+ * events to reserve space for. If custom events are used, this value should be
+ * greater than 0. Cutom events can then use the event parameter of other
+ * function with values above and including EVENT_BROKER_EVENTS_TOTAL.
  */
-void eventBroker_startup(void);
+void eventBroker_startup(size_t customEvents);
 
 /*
  * Register a callback to run when an event is fired with the given
