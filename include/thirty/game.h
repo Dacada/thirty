@@ -3,6 +3,7 @@
 
 #include <thirty/scene.h>
 #include <thirty/ui.h>
+#include <enet/enet.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -16,6 +17,9 @@ struct game {
         GLFWwindow *window;
         float timeDelta;
         vec4s clearColor;
+
+        ENetHost *client;
+        ENetPeer *server;
         
         size_t currentScene;
         struct growingArray scenes;
@@ -26,10 +30,11 @@ struct game {
 
 /*
  * Initialize the game. On top of initializing the game structure, this also
- * sets the working directory, initializes the event broker system and the
- * component collection system. As well as the window and GL context.
+ * sets the working directory, initializes the event broker system, the
+ * component collection system, networking, the window and the GL context.
  */
 void game_init(struct game *game, int width, int height,
+               size_t customEvents,
                size_t initalSceneCapacity,
                size_t initalUiCapacity)
         __attribute__((access (write_only, 1)))
@@ -37,6 +42,27 @@ void game_init(struct game *game, int width, int height,
 
 // TODO
 void game_initFromFile(struct game *game, const char *filename);
+
+/*
+ * Sets up the client part of an ENet connection and connects to the
+ * server. Specify how many channels the connection shall use, the expected
+ * incoming and outgoing bandwidth (or 0 for either to assume any amount), the
+ * server address (which will be resolved), the server port (which will be
+ * converted to an adequate format) and initial data to send to the server.
+ */
+void game_connect(struct game *game, size_t channels, unsigned bandwidth_in,
+                  unsigned bandwidth_out, const char *address, unsigned short port,
+                  unsigned initial_data)
+        __attribute__((access (read_write, 1)))
+        __attribute__((access (read_only, 6)))
+        __attribute__((nonnull (1)));
+
+/*
+ * Notifies server cleanly of a disconnection.
+ */
+void game_disconnect(struct game *game, unsigned final_data)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
 
 /*
  * Return a pointer to a newly allocated scene. It's completely uninitialized

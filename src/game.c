@@ -135,11 +135,12 @@ static void doDrawUi(const size_t uiIdx,
 #ifndef NDEBUG
 #define FRAMES_TIME_INFO 60
 
-static void updateTimingInformation(double deltaTime, double updateTime,
-                                    double drawTime, double buffSwapTime,
+static void updateTimingInformation(double deltaTime, double networkingTime,
+                                    double updateTime, double drawTime, double buffSwapTime,
                                     double otherEventsTime) {
         
         static double deltaTimes[FRAMES_TIME_INFO];
+        static double networkingTimes[FRAMES_TIME_INFO];
         static double updateTimes[FRAMES_TIME_INFO];
         static double drawTimes[FRAMES_TIME_INFO];
         static double buffSwapTimes[FRAMES_TIME_INFO];
@@ -147,6 +148,7 @@ static void updateTimingInformation(double deltaTime, double updateTime,
         static unsigned current = 0;
 
         deltaTimes[current] = deltaTime;
+        networkingTimes[current] = networkingTime;
         updateTimes[current] = updateTime;
         drawTimes[current] = drawTime - updateTime;
         buffSwapTimes[current] = buffSwapTime - drawTime;
@@ -157,6 +159,7 @@ static void updateTimingInformation(double deltaTime, double updateTime,
                 current = 0;
                 
                 double avgDeltaTimes = 0;
+                double avgNetworkingTimes = 0;
                 double avgUpdateTimes = 0;
                 double avgDrawTimes = 0;
                 double avgBuffSwapTimes = 0;
@@ -164,6 +167,7 @@ static void updateTimingInformation(double deltaTime, double updateTime,
 
                 for (unsigned i=0; i<FRAMES_TIME_INFO; i++) {
                         avgDeltaTimes += deltaTimes[i];
+                        avgNetworkingTimes += networkingTimes[i];
                         avgUpdateTimes += updateTimes[i];
                         avgDrawTimes += drawTimes[i];
                         avgBuffSwapTimes += buffSwapTimes[i];
@@ -171,11 +175,14 @@ static void updateTimingInformation(double deltaTime, double updateTime,
                 }
 
                 avgDeltaTimes /= FRAMES_TIME_INFO;
+                avgNetworkingTimes /= FRAMES_TIME_INFO;
                 avgUpdateTimes /= FRAMES_TIME_INFO;
                 avgDrawTimes /= FRAMES_TIME_INFO;
                 avgBuffSwapTimes /= FRAMES_TIME_INFO;
                 avgOtherEventsTimes /= FRAMES_TIME_INFO;
 
+                double percNetworkingTime =
+                        avgNetworkingTimes / avgDeltaTimes * 100.0;
                 double percUpdateTime =
                         avgUpdateTimes / avgDeltaTimes * 100.0;
                 double percDrawTime =
@@ -192,6 +199,8 @@ static void updateTimingInformation(double deltaTime, double updateTime,
                         FRAMES_TIME_INFO);
                 fprintf(stderr, "\tTotal frame time:  %f (%f FPS)\n",
                         avgDeltaTimes, fps);
+                fprintf(stderr, "\tNetworking time:   %f (%f%%)\n",
+                        avgNetworkingTimes, percNetworkingTime);
                 fprintf(stderr, "\tUpdate time:       %f (%f%%)\n",
                         avgUpdateTimes, percUpdateTime);
                 fprintf(stderr, "\tDraw time:         %f (%f%%)\n",
@@ -207,11 +216,16 @@ static void updateTimingInformation(double deltaTime, double updateTime,
 
 void game_init(struct game *const game,
                const int width, const int height,
+               const size_t customEvents,
                const size_t initalSceneCapacity,
                const size_t initialUiCapacity) {
         set_cwd("../assets");
+
+        if (enet_initialize() != 0) {
+                die("Failed to initialize ENet.");
+        }
         
-        eventBroker_startup();
+        eventBroker_startup(customEvents);
         componentCollection_startup();
         ui_startup();
 
@@ -266,6 +280,30 @@ void game_init(struct game *const game,
         game->timeDelta = STARTING_TIMEDELTA;
         vec4s defaultClearColor = DEFAULT_CLEARCOLOR;
         game->clearColor = defaultClearColor;
+        game->client = NULL;
+}
+
+void game_connect(struct game *const game, const size_t channels,
+                  const unsigned bandwidth_in, const unsigned bandwidth_out,
+                  const char *const address, const unsigned short port,
+                  const unsigned initial_data) {
+        game->client = enet_host_create(NULL, 1, channels, bandwidth_in, bandwidth_out);
+        if (game->client == NULL) {
+                die("could not create host");
+        }
+        
+        ENetAddress addr;
+        enet_address_set_host(&addr, address);
+        addr.port = htons(port);
+        
+        game->server = enet_host_connect(game->client, &addr, channels, initial_data);
+        if (game->server == NULL) {
+                die("could not create server connection");
+        }
+}
+
+void game_disconnect(struct game *const game, unsigned data) {
+        enet_peer_disconnect(game->server, data);
 }
 
 struct scene *game_createScene(struct game *const game) {
@@ -336,6 +374,35 @@ void game_run(struct game *game) {
                 game->timeDelta = (const float)glfwGetTime();
                 glfwSetTime(0);
 
+                // Process networking events
+                static ENetEvent event;
+                if (game->client != NULL) {
+                        if (enet_host_service(game->client, &event, 0)) {
+                                enum eventBrokerEvent e;
+                                switch (event.type) {
+                                case ENET_EVENT_TYPE_CONNECT:
+                                        e = EVENT_BROKER_NETWORK_CONNECTED;
+                                        break;
+                                case ENET_EVENT_TYPE_RECEIVE:
+                                        e = EVENT_BROKER_NETWORK_RECV;
+                                        break;
+                                case ENET_EVENT_TYPE_DISCONNECT:
+                                        e = EVENT_BROKER_NETWORK_DISCONNECTED;
+                                        break;
+                                case ENET_EVENT_TYPE_NONE:
+                                default:
+                                        e = EVENT_BROKER_EVENTS_TOTAL;
+                                        break;
+                                }
+                                if (e != EVENT_BROKER_EVENTS_TOTAL) {
+                                        eventBroker_fire(e, &event);
+                                }
+                        }
+                }
+#ifndef NDEBUG
+                double networkingTime = glfwGetTime();
+#endif
+
                 // Update game state
                 doUpdateScene(game->currentScene, &game->scenes,
                               game->timeDelta);
@@ -371,7 +438,8 @@ void game_run(struct game *game) {
                 glfwPollEvents();
                 eventFire_keyboardPoll();
                 eventFire_mousePoll();
-                
+
+                // Process low priority events
                 eventBroker_runAsyncEvents();
                 
 #ifndef NDEBUG
@@ -381,7 +449,7 @@ void game_run(struct game *game) {
                 
 #ifndef NDEBUG
                 updateTimingInformation(
-                        (double)game->timeDelta, updateTime, drawTime,
+                        (double)game->timeDelta, networkingTime, updateTime, drawTime,
                         buffSwapTime, otherEventsTime);
 #endif
         }
@@ -395,6 +463,24 @@ void game_shouldStop(struct game *game) {
 }
 
 void game_free(struct game *const game) {
+        if (game->client != NULL) {
+                ENetEvent event;
+                bool disconnected = false;
+                while (enet_host_service(game->client, &event, 1000) > 0) {
+                        if (event.type == ENET_EVENT_TYPE_RECEIVE) {
+                                enet_packet_destroy(event.packet);
+                                break;
+                        } else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
+                                disconnected = true;
+                                break;
+                        }
+                }
+                if (!disconnected) {
+                        enet_peer_reset(game->server);
+                }
+                enet_host_destroy(game->client);
+        }
+        
         growingArray_foreach_START(&game->scenes, struct scene *, scene)
                 scene_free(scene);
         growingArray_foreach_END;
@@ -408,5 +494,6 @@ void game_free(struct game *const game) {
         ui_shutdown();
         componentCollection_shutdown();
         eventBroker_shutdown();
+        enet_deinitialize();
         glfwTerminate();
 }

@@ -2,6 +2,7 @@
 #define EVENT_BROKER_H
 
 #include <stddef.h>
+#include <enet/enet.h>
 
 /*
  * A system to handle firing of events and callbacks in response. It acts
@@ -73,25 +74,14 @@ enum eventBrokerEvent {
         // several frames: "Use M1+M2 to walk forward"
         EVENT_BROKER_MOUSE_POLL,
 
-        // An amount of TCP data is ready to be received from the network
-        // (should always be high priority, the event will keep triggering
-        // until the socket is read)
-        EVENT_BROKER_TCP_RECV,
-        
-        // A UDP datagram is ready to be received from the network (should
-        // always be high priority, the event will keep triggering until the
-        // socket is read)
-        EVENT_BROKER_UDP_RECV,
-        
-        // It is possible to send TCP data through the network (should always
-        // be high priority, the event will keep triggering until the socket is
-        // written to)
-        EVENT_BROKER_TCP_SEND,
-        
-        // It is possible tp send a UDP datagram through the network (should
-        // always be high priority, the event will keep triggering until the
-        // socket is written to)
-        EVENT_BROKER_UDP_SEND,
+        // Networking: Connection to server succeeded.
+        EVENT_BROKER_NETWORK_CONNECTED,
+
+        // Networking: Received a packet from server
+        EVENT_BROKER_NETWORK_RECV,
+
+        // Networking: Disconnected from server
+        EVENT_BROKER_NETWORK_DISCONNECTED,
 
         // Not an event, just find out how many events there are.
         EVENT_BROKER_EVENTS_TOTAL
@@ -150,20 +140,16 @@ struct eventBrokerMouseButton {
 struct eventBrokerMousePoll {
 };
 
-struct eventBrokerTCPRecv {
-        int socket;
+struct eventBrokerNetworkConnected {
+        ENetEvent event;
 };
 
-struct eventBrokerUDPRecv {
-        int socket;
+struct eventBrokerNetworkRecv {
+        ENetEvent event;
 };
 
-struct eventBrokerTCPSend {
-        int socket;
-};
-
-struct eventBrokerUDPSend {
-        int socket;
+struct eventBrokerNetworkDisconnected {
+        ENetEvent event;
 };
 
 /*
