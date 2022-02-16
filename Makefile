@@ -69,11 +69,11 @@ define FIND_SYSHEADERS_CMD
 )
 endef
 
-.PHONY: dbg dev rel clean veryclean purify impolute etags glad_rel glad_dbg enet static-analysis tidy_src tidy_include line-count
+.PHONY: dbg dev rel clean veryclean purify impolute etags glad_rel glad_dbg static-analysis tidy_src tidy_include line-count
 
-rel: enet glad_rel $(BIN_DIR)/thirty.a
-dev: enet glad_dbg etags $(BIN_DIR)/thirty_dev.a
-dbg: enet glad_dbg $(BIN_DIR)/thirty_dbg.a
+rel: glad_rel $(BIN_DIR)/thirty.a
+dev: glad_dbg etags $(BIN_DIR)/thirty_dev.a
+dbg: glad_dbg $(BIN_DIR)/thirty_dbg.a
 
 clean:
 	-rm -f $(OBJ_DIR)/*.o
@@ -93,8 +93,6 @@ impolute: purify
 glad_rel: $(INCLUDE_DIR)/KHR/khrplatform.h $(INCLUDE_DIR)/glad/glad_rel.h $(SRC_DIR)/glad_rel.c
 
 glad_dbg: $(INCLUDE_DIR)/glad/glad_dbg.h $(SRC_DIR)/glad_dbg.c
-
-enet: $(INCLUDE_DIR)/enet/enet.h
 
 etags: sysh_TAGS
 	-rm -f TAGS
@@ -200,17 +198,6 @@ $(INCLUDE_DIR)/glad/glad_dbg.h $(SRC_DIR)/glad_dbg.c &: venv
 	glad $(GLAD_FLAGS) $(GLAD_FLAGS_DEBUG); \
 	cp $$tmpdir/include/glad/glad.h $(INCLUDE_DIR)/glad/glad_dbg.h; \
 	sed -e '1i#ifndef __clang_analyzer__' -e '$$a#endif' $$tmpdir/src/glad.c > $(SRC_DIR)/glad_dbg.c; \
-	rm -r $$tmpdir
-
-$(INCLUDE_DIR)/enet/enet.h:
-	mkdir -p $(INCLUDE_DIR)/enet
-	set -e; \
-	tmpdir=`mktemp -d`; \
-	wget -q -O $$tmpdir/files.tar.gz "http://enet.bespin.org/download/enet-1.3.17.tar.gz"; \
-	pushd $$tmpdir; \
-	tar -xzf files.tar.gz; \
-	popd; \
-	cp -r $$tmpdir/enet-*/include/enet/*.h $(dir $@); \
 	rm -r $$tmpdir
 
 venv: requirements.txt

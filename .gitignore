@@ -15,7 +15,6 @@ include/glad/glad_rel.h
 src/glad_dbg.c
 src/glad_rel.c
 include/stb_image.h
-include/enet
 
 # Python virtualenv (we do include the requirements.txt file
 venv
