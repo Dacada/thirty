@@ -130,13 +130,6 @@ float game_timeDelta(const struct game *game)
         __attribute__((nonnull));
 
 /*
- * Get the current dimensions of the game window.
- */
-vec2s game_getWindowDimensions(const struct game *game)
-        __attribute__((access (read_only, 1)))
-        __attribute__((nonnull));
-
-/*
  * Return whether the given GLFW key is pressed.
  */
 bool game_keyPressed(const struct game *game, int key)

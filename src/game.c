@@ -350,12 +350,6 @@ float game_timeDelta(const struct game *game) {
         return game->timeDelta;
 }
 
-vec2s game_getWindowDimensions(const struct game *game) {
-        int width, height;
-        glfwGetWindowSize(game->window, &width, &height);
-        return (vec2s){.x=(float)width, .y=(float)height};
-}
-
 bool game_keyPressed(const struct game *game, int key) {
         return glfwGetKey(game->window, key) == GLFW_PRESS;
 }
