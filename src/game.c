@@ -294,7 +294,7 @@ void game_connect(struct game *const game, const size_t channels,
         
         ENetAddress addr;
         enet_address_set_host(&addr, address);
-        addr.port = htons(port);
+        addr.port = port;
         
         game->server = enet_host_connect(game->client, &addr, channels, initial_data);
         if (game->server == NULL) {
@@ -371,7 +371,7 @@ void game_run(struct game *game) {
                 // Process networking events
                 static ENetEvent event;
                 if (game->client != NULL) {
-                        if (enet_host_service(game->client, &event, 0)) {
+                        while (enet_host_service(game->client, &event, 0) > 0) {
                                 enum eventBrokerEvent e;
                                 switch (event.type) {
                                 case ENET_EVENT_TYPE_CONNECT:
