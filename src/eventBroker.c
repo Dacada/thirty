@@ -5,6 +5,7 @@
 #define PENDING_EVENTS_INITIAL_CAPACITY 64
 
 static struct growingArray *events;
+static size_t num_events;
 static struct growingArray pendingEvents;
 
 struct eventCell {
@@ -20,9 +21,10 @@ struct postponedEventCell {
 };
 
 void eventBroker_startup(size_t customEvents) {
-        events = malloc(sizeof(*events)*(EVENT_BROKER_EVENTS_TOTAL+customEvents));
+        num_events = EVENT_BROKER_EVENTS_TOTAL+customEvents;
+        events = malloc(sizeof(*events)*num_events);
         
-        for (size_t i=0; i<EVENT_BROKER_EVENTS_TOTAL; i++) {
+        for (size_t i=0; i<num_events; i++) {
                 growingArray_init(&events[i], sizeof(struct eventCell),
                                   EVENTS_INITIAL_CAPACITY);
         }
@@ -61,7 +63,7 @@ void eventBroker_runAsyncEvents(void) {
 }
 
 void eventBroker_shutdown(void) {
-        for (size_t i=0; i<EVENT_BROKER_EVENTS_TOTAL; i++) {
+        for (size_t i=0; i<num_events; i++) {
                 growingArray_destroy(&events[i]);
         }
         growingArray_destroy(&pendingEvents);
