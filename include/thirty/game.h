@@ -54,7 +54,7 @@ void game_connect(struct game *game, size_t channels, unsigned bandwidth_in,
                   unsigned bandwidth_out, const char *address, unsigned short port,
                   unsigned initial_data)
         __attribute__((access (read_write, 1)))
-        __attribute__((access (read_only, 6)))
+        __attribute__((access (read_only, 5)))
         __attribute__((nonnull (1)));
 
 /*
