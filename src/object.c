@@ -65,6 +65,23 @@ void object_addChild(struct object *parent, struct object *child) {
         child->parent = parent->idx;
 }
 
+void object_removeChild(struct object *parent, struct object *child) {
+        child->parent = 0;
+
+        size_t n = 0;
+        bool found = false;
+        growingArray_foreach_START(&parent->children, size_t *, child_idx_ptr) {
+                if (*child_idx_ptr == child->idx) {
+                        n = growingArray_foreach_idx;
+                        found = true;
+                        break;
+                }
+        } growingArray_foreach_END;
+        assert(found);
+        
+        growingArray_remove(&parent->children, n);
+}
+
 void object_setComponent(struct object *object, struct component *comp) {
         componentCollection_set(&object->components, object->idx,
                                 comp->type, comp->idx);

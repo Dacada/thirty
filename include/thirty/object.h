@@ -70,6 +70,15 @@ void object_addChild(struct object *parent, struct object *child)
         __attribute__((nonnull));
 
 /*
+ * Unset parent-child relationship between two objects. The child MUST be the
+ * parent's child. The child's parent is set to 0.
+ */
+void object_removeChild(struct object *parent, struct object *child)
+        __attribute__((access (read_write, 1)))
+        __attribute__((access (read_write, 2)))
+        __attribute__((nonnull));
+
+/*
  * Assign a component to the object's component collection.
  */
 void object_setComponent(struct object *object, struct component *comp)
