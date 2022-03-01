@@ -133,7 +133,7 @@ static void doDrawUi(const size_t uiIdx,
 }
 
 #ifndef NDEBUG
-#define FRAMES_TIME_INFO 60
+#define FRAMES_TIME_INFO 300
 
 static void updateTimingInformation(double deltaTime, double networkingTime,
                                     double updateTime, double drawTime, double buffSwapTime,
@@ -463,7 +463,6 @@ void game_free(struct game *const game) {
                 while (enet_host_service(game->client, &event, 1000) > 0) {
                         if (event.type == ENET_EVENT_TYPE_RECEIVE) {
                                 enet_packet_destroy(event.packet);
-                                break;
                         } else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
                                 disconnected = true;
                                 break;
