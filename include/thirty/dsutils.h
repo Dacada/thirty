@@ -17,13 +17,20 @@ typedef bool (*foreach_sized_cb)(void *, size_t, void *);
 typedef int (*cmp_cb)(const void *, const void *, void *);
 
 
+struct gaDeletedNodes {
+        struct gaDeletedNodes *next;
+        void *ptr;
+};
+
 /*
- * A generic growing array. Can add and remove elements from the end.
+ * A generic growing array. Can add and remove elements.
  */
 struct growingArray {
         size_t capacity;
         size_t length;
         size_t itemSize;
+        struct gaDeletedNodes *deletedNodes;
+        size_t fragLength;
         void *data;
 };
 
@@ -47,7 +54,17 @@ void *growingArray_append(struct growingArray *ga)
         __attribute__((returns_nonnull));
 
 /*
- * Return the address of the nth element in the array.
+ * Remove an element from the array. This does not alter the position of other
+ * elements. The removed element's position will be reused in future calls to
+ * append.
+ */
+void growingArray_remove(struct growingArray *ga, size_t n)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Return the address of the nth element in the array. Passing in an n >=
+ * length or of a removed element is undefined behavior.
  */
 void *growingArray_get(const struct growingArray *ga, size_t n)
         __attribute__((access (read_only, 1)))
@@ -55,21 +72,12 @@ void *growingArray_get(const struct growingArray *ga, size_t n)
         __attribute__((returns_nonnull));
 
 /*
- * Deallocate all the memory from the growing array that isn't being used so
- * that capacity == size.
- */
-void growingArray_pack(struct growingArray *ga)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-
-/*
  * Run the given function for each element in the growing array. The function
  * will be called with the element for each element in the array. The args
  * parameter is also passed to the function. If the function returns false, the
  * iteration stops.
  *
- * Should not add or remove elements from the array during the iteration, but
- * looking at elements is allowed by passing in the array with args.
+ * Should not add or remove elements from the array during the iteration.
  */
 void growingArray_foreach(const struct growingArray *ga,
                           foreach_cb fun, void *args)
@@ -77,17 +85,21 @@ void growingArray_foreach(const struct growingArray *ga,
         __attribute__((nonnull (1)));
 
 /*
- * Iterate growing array, but implemented as a macro instead of a
- * function. It's more convinient but it has some limitations, like that it
- * can't be nested.
+ * Iterate growing array, but implemented as a macro instead of a function. It
+ * is more convinient but it has some limitations, it can not be nested.
  */
 #define growingArray_foreach_START(ga, type, name)                      \
+        {                                                               \
+        struct gaDeletedNodes *dn = (ga)->deletedNodes;                 \
         for (unsigned growingArray_foreach_idx=0;                       \
              growingArray_foreach_idx<(ga)->length;                     \
              growingArray_foreach_idx++) {                              \
-        type name = growingArray_get(ga, growingArray_foreach_idx);
-#define growingArray_foreach_END                \
+        type name = growingArray_get(ga, growingArray_foreach_idx);     \
+        if (dn != NULL && dn->ptr == name) {                            \
+             dn = dn->next;                                             \
+             continue;                                                  \
         }
+#define growingArray_foreach_END }}
 
 /*
  * Sort in place the contents of the growing array. The cmp function acts
@@ -95,7 +107,8 @@ void growingArray_foreach(const struct growingArray *ga,
  * and a third pointer to "args"; return an integer. Negative if the first
  * element is smaller, positive if the second is smaller and zero if they're
  * equal. The "args" argument is the third argument to this function, which can
- * be used to avoid having to use global variables and such.
+ * be used to avoid having to use global variables and such. Sorting the array
+ * will have the effect of defragmenting it if elements have been removed.
  */
 void growingArray_sort(struct growingArray *ga, cmp_cb cmp, void *args)
         __attribute__((access (read_write, 1)))
@@ -106,7 +119,8 @@ void growingArray_sort(struct growingArray *ga, cmp_cb cmp, void *args)
  * Search array for an element that compares equal to the given key. This is
  * the same cmp as growingArray_sort. The key will be the first parameter in
  * each call to this function and the second will be a pointer to an element of
- * the array.
+ * the array. Can only be called on non fragmented arrays (where no elements
+ * have been deleted or where sort has been called).
  */
 void *growingArray_bsearch(struct growingArray *ga, const void *key,
                            cmp_cb cmp, void *args)

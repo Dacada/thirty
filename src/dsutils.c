@@ -8,43 +8,110 @@ void growingArray_init(struct growingArray *const ga,
         ga->capacity = initialCapacity;
         ga->length = 0;
         ga->itemSize = itemSize;
+        ga->deletedNodes = NULL;
         ga->data = smallocarray(initialCapacity, itemSize);
+        ga->fragLength = 0;
 }
 
 #define growingArrayAddress(ga, n)              \
         (void *const)((char *const)(ga)->data + ((n) * (ga)->itemSize))
 
 void *growingArray_append(struct growingArray *const ga) {
-        while (ga->length >= ga->capacity) {
-                ga->capacity *= 2;
-                ga->data = sreallocarray(ga->data, ga->capacity, ga->itemSize);
+        void *ptr;
+        if (ga->deletedNodes != NULL) {
+                ptr = ga->deletedNodes->ptr;
+                struct gaDeletedNodes *tmp = ga->deletedNodes;
+                ga->deletedNodes = ga->deletedNodes->next;
+                free(tmp);
+        } else {
+                while (ga->fragLength >= ga->capacity) {
+                        ga->capacity *= 2;
+                        ga->data = sreallocarray(ga->data, ga->capacity, ga->itemSize);
+                }
+                ptr = growingArrayAddress(ga, ga->length);
+                ga->fragLength++;
         }
-        void *const ptr = growingArrayAddress(ga, ga->length);
         ga->length++;
         return ptr;
 }
 
-void *growingArray_get(const struct growingArray *const ga, const size_t n) {
-        assert(n < ga->length);
-        return growingArrayAddress(ga, n);
+void growingArray_remove(struct growingArray *ga, size_t n) {
+        if (n == ga->fragLength - 1) {
+                ga->length--;
+                ga->fragLength--;
+                return;
+        }
+        assert(n < ga->fragLength);
+
+        struct gaDeletedNodes *dn = ga->deletedNodes;
+        if (dn != NULL) {
+                while (dn->next != NULL) {
+                        dn = dn->next;
+                }
+                dn->next = smalloc(sizeof(*dn));
+                dn = dn->next;
+        } else {
+                dn = smalloc(sizeof(*dn));
+                ga->deletedNodes = dn;
+        }
+
+        dn->next = NULL;
+        dn->ptr = growingArrayAddress(ga, n);
+        ga->length--;
 }
 
-void growingArray_pack(struct growingArray *const ga) {
-        ga->data = sreallocarray(ga->data, ga->length, ga->itemSize);
+void *growingArray_get(const struct growingArray *const ga, const size_t n) {
+        assert(n < ga->fragLength);
+        return growingArrayAddress(ga, n);
 }
 
 void growingArray_foreach(const struct growingArray *const ga,
                           const foreach_cb fun, void *const args) {
-        for (size_t i=0; i<ga->length; i++) {
-                if (!fun(growingArray_get(ga, i), args)) {
+        struct gaDeletedNodes *dn = ga->deletedNodes;
+        for (size_t i=0; i<ga->fragLength; i++) {
+                void *ptr = growingArrayAddress(ga, i);
+                if (dn != NULL && dn->ptr == ptr) {
+                        dn = dn->next;
+                        continue;
+                }
+                if (!fun(ptr, args)) {
                         break;
                 }
         }
 }
 
+static void freeDeletedNodes(struct growingArray *const ga) {
+        for (struct gaDeletedNodes *n = ga->deletedNodes; n != NULL; n = n->next) {
+                free(n);
+        }
+}
+
+struct sort_cmp_ignore_del_args {
+        const cmp_cb cmp;
+        void *args;
+        struct gaDeletedNodes *dn;
+};
+static int sort_cmp_ignore_del(const void *a, const void *b, void *vargs) {
+        struct sort_cmp_ignore_del_args *args = vargs;
+
+        for (struct gaDeletedNodes *n = args->dn; n != NULL; n = n->next) {
+                if (a == n->ptr || b == n->ptr) {
+                        return 1;
+                }
+        }
+
+        return args->cmp(a, b, args->args);
+}
 void growingArray_sort(struct growingArray *const ga,
                        const cmp_cb cmp, void *const args) {
-        qsort_r(ga->data, ga->length, ga->itemSize, cmp, args);
+        struct sort_cmp_ignore_del_args new_args = {
+                .cmp = cmp,
+                .args = args,
+                .dn = ga->deletedNodes,
+        };
+        
+        qsort_r(ga->data, ga->fragLength, ga->itemSize, sort_cmp_ignore_del, &new_args);
+        freeDeletedNodes(ga);
 }
 
 static void *bsearch_r(const void *key, void *base,
@@ -71,7 +138,8 @@ static void *bsearch_r(const void *key, void *base,
 }
 
 void *growingArray_bsearch(struct growingArray *ga, const void *key, cmp_cb cmp, void *args) {
-        return bsearch_r(key, ga->data, ga->length, ga->itemSize, cmp, args);
+        assert(ga->deletedNodes == NULL);
+        return bsearch_r(key, ga->data, ga->fragLength, ga->itemSize, cmp, args);
 }
 
 struct contain_args {
@@ -102,6 +170,8 @@ bool growingArray_contains(const struct growingArray *const ga,
 
 void growingArray_clear(struct growingArray *const ga) {
         ga->length = 0;
+        ga->fragLength = 0;
+        freeDeletedNodes(ga);
 }
 
 void growingArray_destroy(struct growingArray *const ga) {
@@ -110,6 +180,8 @@ void growingArray_destroy(struct growingArray *const ga) {
         ga->length = 0;
         ga->itemSize = 0;
         ga->data = NULL;
+        ga->fragLength = 0;
+        freeDeletedNodes(ga);
 }
 
 
