@@ -46,6 +46,19 @@ struct object *scene_createObject(struct scene *scene, const char *name,
         __attribute__((returns_nonnull));
 
 /*
+ * Remove an object from the scene. The memory used from the object may be
+ * freed later on or reused for other objects, but it should be considered
+ * inaccessible immediately after a call to this function. A call to this
+ * function does not invalidate pointers to any other objects. The object's
+ * parent will take as children the object's children, if any. This function
+ * may not be called on the root object. This MUST be called with an object
+ * belonging to the given scene.
+ */
+void scene_removeObject(struct scene *scene, struct object *object)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
  * Get an object's absolute transform by going up the scene tree until root. If
  * at any point an object doesn't have a transform component, returns the
  * identity matrix. Otherwise returnsthe result of multiplying the transforms

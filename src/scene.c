@@ -198,6 +198,19 @@ struct object *scene_createObject(struct scene *scene,
         return child;
 }
 
+void scene_removeObject(struct scene *const scene,
+                        struct object *const object) {
+        assert(object->idx > 0);
+        assert(object->scene == scene->idx);
+        struct object *const parent = scene_getObjectFromIdx(scene, object->parent);
+        object_removeChild(parent, object);
+        growingArray_foreach_START(&object->children, struct object *, child) {
+                object_addChild(parent, child);
+        } growingArray_foreach_END;
+        object_free(object);
+        growingArray_remove(&scene->objects, object->idx);
+}
+
 mat4s scene_getObjectAbsoluteTransform(struct scene *scene,
                                        const struct object *object) {
         struct transform *trans = object_getComponent(object, COMPONENT_TRANSFORM);
