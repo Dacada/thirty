@@ -46,25 +46,16 @@ void transform_set(struct transform *trans, vec3s value) {
         trans->model.col[3].z = value.z;
 }
 
-/*
- * Set X component of translation of model matrix to given value.
- */
 void transform_setX(struct transform *trans, float value) {
         assert(trans->base.type == COMPONENT_TRANSFORM);
         trans->model.col[3].x = value;
 }
 
-/*
- * Set Y component of translation of model matrix to given value.
- */
 void transform_setY(struct transform *trans, float value) {
         assert(trans->base.type == COMPONENT_TRANSFORM);
         trans->model.col[3].y = value;
 }
 
-/*
- * Set Z component of translation of model matrix to given value.
- */
 void transform_setZ(struct transform *trans, float value) {
         assert(trans->base.type == COMPONENT_TRANSFORM);
         trans->model.col[3].z = value;
