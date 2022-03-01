@@ -21,7 +21,6 @@ struct componentCollection {
         size_t material;
         size_t light;
         size_t animationCollection;
-        size_t physicalEntity;
 };
 
 /*

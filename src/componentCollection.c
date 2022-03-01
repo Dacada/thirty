@@ -108,7 +108,6 @@ void componentCollection_init(struct componentCollection *const collection) {
         collection->material = 0;
         collection->light = 0;
         collection->animationCollection = 0;
-        collection->physicalEntity = 0;
 }
 
 void *componentCollection_get(
