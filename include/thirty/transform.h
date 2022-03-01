@@ -25,6 +25,11 @@ void transform_initFromFile(struct transform *trans, FILE *f,
         __attribute__((nonnull));
 
 /*
+ * Set transform to identity matrix.
+ */
+void transform_reset(struct transform *trans);
+
+/*
  * Translate object model matrix by given vector.
  */
 void transform_translate(struct transform *trans, vec3s delta)

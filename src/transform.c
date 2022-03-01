@@ -15,6 +15,10 @@ void transform_initFromFile(struct transform *trans, FILE *f,
         transform_init(trans, model);
 }
 
+void transform_reset(struct transform *trans) {
+        trans->model = GLMS_MAT4_IDENTITY;
+}
+
 void transform_translate(struct transform *const trans, const vec3s delta) {
         assert(trans->base.type == COMPONENT_TRANSFORM);
         trans->model = glms_translate(trans->model, delta);
