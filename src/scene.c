@@ -207,8 +207,9 @@ void scene_removeObject(struct scene *const scene,
         growingArray_foreach_START(&object->children, struct object *, child) {
                 object_addChild(parent, child);
         } growingArray_foreach_END;
+
         object_free(object);
-        growingArray_remove(&scene->objects, object->idx);
+        growingArray_remove(&scene->objects, object->idx-1);
 }
 
 mat4s scene_getObjectAbsoluteTransform(struct scene *scene,
