@@ -6,15 +6,12 @@
 #define STARTING_TIMEDELTA (1.0F/60.0F)
 
 static void onFramebufferSizeChanged(void *registerArgs, void *fireArgs) {
-        struct game *game = registerArgs;
+        (void)registerArgs;
         struct eventBrokerWindowResized *args = fireArgs;
         const int width = args->width;
         const int height = args->height;
         
         glViewport(0, 0, width, height);
-
-        struct ui *ui = game_getCurrentUi(game);
-        ui_resize(ui, width, height);
 }
 
 static void eventFire_windowResized(GLFWwindow *const w,
@@ -100,29 +97,10 @@ static void doUpdateScene(const size_t sceneIdx,
         scene_update(scene, timeDelta);
 }
 
-static void doUpdateUi(const size_t uiIdx,
-                       struct growingArray *uis, const float timeDelta) {
-        struct ui *ui = growingArray_get(uis, uiIdx);
-        ui_update(ui, timeDelta);
-}
-
 static void doDrawScene(const size_t sceneIdx,
                         struct growingArray *scenes) {
         struct scene *scene = growingArray_get(scenes, sceneIdx);
         scene_draw(scene);
-
-#ifndef NDEBUG
-        const GLenum error = glGetError();
-        if (error != GL_NO_ERROR) {
-                fprintf(stderr, "OpenGL Error: %u", error);
-        }
-#endif
-}
-
-static void doDrawUi(const size_t uiIdx,
-                     struct growingArray *uis) {
-        struct ui *ui = growingArray_get(uis, uiIdx);
-        ui_draw(ui);
 
 #ifndef NDEBUG
         const GLenum error = glGetError();
@@ -214,11 +192,23 @@ static void updateTimingInformation(double deltaTime, double networkingTime,
 
 #endif
 
+static void error_callback(int err, const char *const msg) {
+        fprintf(stderr, "GLFW error %d: %s\n", err, msg);
+}
+
+static void setupGLContext(void) {
+        glEnable(GL_DEPTH_TEST);
+#ifdef NDEBUG
+        glEnable(GL_CULL_FACE);
+#else
+        glDisable(GL_CULL_FACE);
+#endif
+}
+
 void game_init(struct game *const game,
                const int width, const int height,
                const size_t customEvents,
-               const size_t initalSceneCapacity,
-               const size_t initialUiCapacity) {
+               const size_t initalSceneCapacity) {
         set_cwd("../assets");
 
         if (enet_initialize() != 0) {
@@ -227,9 +217,12 @@ void game_init(struct game *const game,
         
         eventBroker_startup(customEvents);
         componentCollection_startup();
-        ui_startup();
 
-        glfwInit();
+        glfwSetErrorCallback(error_callback);
+        if (!glfwInit()) {
+                glfwTerminate();
+                die("Failed to initialize GLFW.\n");
+        }
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -262,20 +255,13 @@ void game_init(struct game *const game,
 
         eventBroker_register(onFramebufferSizeChanged,
                              EVENT_BROKER_PRIORITY_HIGH,
-                             EVENT_BROKER_WINDOW_RESIZED, game);
+                             EVENT_BROKER_WINDOW_RESIZED, NULL);
         
-        glEnable(GL_DEPTH_TEST);
-#ifdef NDEBUG
-        glEnable(GL_CULL_FACE);
-#else
-        glDisable(GL_CULL_FACE);
-#endif
+        setupGLContext();
         glfwSetInputMode(game->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
         growingArray_init(&game->scenes,
                           sizeof(struct scene), initalSceneCapacity);
-        growingArray_init(&game->uis,
-                          sizeof(struct ui), initialUiCapacity);
 
         game->timeDelta = STARTING_TIMEDELTA;
         vec4s defaultClearColor = DEFAULT_CLEARCOLOR;
@@ -312,26 +298,12 @@ struct scene *game_createScene(struct game *const game) {
         return scene;
 }
 
-struct ui *game_createUi(struct game *const game) {
-        struct ui *ui = growingArray_append(&game->uis);
-        ui->idx = game->uis.length - 1;
-        return ui;
-}
-
 struct scene *game_getCurrentScene(struct game *game) {
         return growingArray_get(&game->scenes, game->currentScene);
 }
 
-struct ui *game_getCurrentUi(struct game *game) {
-        return growingArray_get(&game->uis, game->currentUi);
-}
-
 void game_setCurrentScene(struct game *const game, const size_t idx) {
         game->currentScene = idx;
-}
-
-void game_setCurrentUi(struct game *const game, const size_t idx) {
-        game->currentUi = idx;
 }
 
 void game_updateWindowTitle(struct game *game, const char *title) {
@@ -400,8 +372,6 @@ void game_run(struct game *game) {
                 // Update game state
                 doUpdateScene(game->currentScene, &game->scenes,
                               game->timeDelta);
-                doUpdateUi(game->currentUi, &game->uis,
-                           game->timeDelta);
                 eventFire_update(game->timeDelta);
                 
 #ifndef NDEBUG
@@ -415,7 +385,6 @@ void game_run(struct game *game) {
 
                 // Draw stuff
                 doDrawScene(game->currentScene, &game->scenes);
-                doDrawUi(game->currentUi, &game->uis);
                 eventFire_draw();
                 
 #ifndef NDEBUG
@@ -479,12 +448,6 @@ void game_free(struct game *const game) {
         growingArray_foreach_END;
         growingArray_destroy(&game->scenes);
         
-        growingArray_foreach_START(&game->uis, struct ui *, ui)
-                ui_free(ui);
-        growingArray_foreach_END;
-        growingArray_destroy(&game->uis);
-
-        ui_shutdown();
         componentCollection_shutdown();
         eventBroker_shutdown();
         enet_deinitialize();

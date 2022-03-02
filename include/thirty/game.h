@@ -1,8 +1,8 @@
 #ifndef GAME_H
 #define GAME_H
 
+
 #include <thirty/scene.h>
-#include <thirty/ui.h>
 #include <enet/enet.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -23,9 +23,6 @@ struct game {
         
         size_t currentScene;
         struct growingArray scenes;
-
-        size_t currentUi;
-        struct growingArray uis;
 };
 
 /*
@@ -35,8 +32,7 @@ struct game {
  */
 void game_init(struct game *game, int width, int height,
                size_t customEvents,
-               size_t initalSceneCapacity,
-               size_t initalUiCapacity)
+               size_t initalSceneCapacity)
         __attribute__((access (write_only, 1)))
         __attribute__((nonnull));
 
@@ -74,36 +70,17 @@ struct scene *game_createScene(struct game *game)
         __attribute__((returns_nonnull));
 
 /*
- * Return a pointer to a newly allocated ui. It's completely uninitialized
- * except for the idx member.
+ * Return a pointer to the current scene that is being updated and drawn.
  */
-struct ui *game_createUi(struct game *game)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull))
-        __attribute__((returns_nonnull));
-
 struct scene *game_getCurrentScene(struct game *game)
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
-
-struct ui *game_getCurrentUi(struct game *game)
-        __attribute__((access (read_only, 1)))
-        __attribute__((nonnull));
-        
 
 /*
  * Set the game's current scene that will be updated and drawn. Other scenes
  * will be ignored.
  */
 void game_setCurrentScene(struct game *game, size_t idx)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-
-/*
- * Set the game's current UI that will be updated and drawn. Other UIs will be
- * ignored.
- */
-void game_setCurrentUi(struct game *const game, const size_t idx)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
