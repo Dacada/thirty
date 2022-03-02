@@ -47,6 +47,9 @@ enum eventBrokerEvent {
         // Update step (should always use high priority events)
         EVENT_BROKER_UPDATE,
 
+        // Run nuklear UI here
+        EVENT_BROKER_UPDATE_UI,
+
         // Only fires once just before the system shuts down
         EVENT_BROKER_TEAR_DOWN,
 
@@ -103,6 +106,10 @@ struct eventBrokerDraw {
 
 struct eventBrokerUpdate {
         const float timeDelta;
+};
+
+struct eventBrokerUpdateUI {
+        struct nk_context *ctx;
 };
 
 struct eventBrokerTearDown {

@@ -112,6 +112,13 @@ static void eventFire_update(const float timeDelta) {
         eventBroker_fire(EVENT_BROKER_UPDATE, &args);
 }
 
+static void eventFire_updateUI(struct nk_context *const ctx) {
+        struct eventBrokerUpdateUI args = {
+                .ctx = ctx,
+        };
+        eventBroker_fire(EVENT_BROKER_UPDATE_UI, &args);
+}
+
 static void eventFire_draw(void) {
         eventBroker_fire(EVENT_BROKER_DRAW, NULL);
 }
@@ -378,6 +385,7 @@ void game_run(struct game *game) {
         while (!glfwWindowShouldClose(game->window)) {
                 // Update deltatime
                 game->timeDelta = (const float)glfwGetTime();
+                game->uiData.ctx->delta_time_seconds = game->timeDelta;
                 glfwSetTime(0);
 
                 // Process networking events
@@ -409,43 +417,17 @@ void game_run(struct game *game) {
                 double networkingTime = glfwGetTime();
 #endif
 
+                // Process inputs
+                glfwPollEvents();
+                eventFire_keyboardPoll();
+                eventFire_mousePoll();
+                nk_glfw3_new_frame(&game->uiData.glfw);
+
                 // Update game state
                 doUpdateScene(game->currentScene, &game->scenes,
                               game->timeDelta);
+                eventFire_updateUI(game->uiData.ctx);
                 eventFire_update(game->timeDelta);
-
-                // TEST UI
-                struct nk_colorf bg;
-                bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
-                if (nk_begin(game->uiData.ctx, "asdf title!", nk_rect(50,50,230,250), NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE)) {
-                        enum {EASY,HARD};
-                        static int op = EASY;
-                        static int property = 20;
-                        nk_layout_row_static(game->uiData.ctx, 30, 80, 1);
-                        if (nk_button_label(game->uiData.ctx, "asdf button!")) {
-                                fprintf(stderr, "button pressed!!\n");
-                        }
-                        nk_layout_row_dynamic(game->uiData.ctx, 30, 2);
-                        if (nk_option_label(game->uiData.ctx, "easy", op == EASY)) op = EASY;
-                        if (nk_option_label(game->uiData.ctx, "hard", op == HARD)) op = HARD;
-                        nk_layout_row_dynamic(game->uiData.ctx, 25, 1);
-                        nk_property_int(game->uiData.ctx, "Compression:", 0, &property, 100, 10, 1);
-                        nk_layout_row_dynamic(game->uiData.ctx, 20, 1);
-                        nk_label(game->uiData.ctx, "!b!a!ckground:", NK_TEXT_LEFT);
-                        nk_layout_row_dynamic(game->uiData.ctx, 25, 1);
-                        if (nk_combo_begin_color(game->uiData.ctx, nk_rgb_cf(bg), nk_vec2(nk_widget_width(game->uiData.ctx),400))) {
-                                nk_layout_row_dynamic(game->uiData.ctx, 120, 1);
-                                bg = nk_color_picker(game->uiData.ctx, bg, NK_RGBA);
-                                nk_layout_row_dynamic(game->uiData.ctx, 25, 1);
-                                bg.r = nk_propertyf(game->uiData.ctx, "#R:", 0, bg.r, 1.0f, 0.01f,0.005f);
-                                bg.g = nk_propertyf(game->uiData.ctx, "#G:", 0, bg.g, 1.0f, 0.01f,0.005f);
-                                bg.b = nk_propertyf(game->uiData.ctx, "#B:", 0, bg.b, 1.0f, 0.01f,0.005f);
-                                bg.a = nk_propertyf(game->uiData.ctx, "#A:", 0, bg.a, 1.0f, 0.01f,0.005f);
-                                nk_combo_end(game->uiData.ctx);
-                        }
-                }
-                nk_end(game->uiData.ctx);
-                // END TEST UI
                 
 #ifndef NDEBUG
                 double updateTime = glfwGetTime();
@@ -471,12 +453,6 @@ void game_run(struct game *game) {
 #ifndef NDEBUG
                 double buffSwapTime = glfwGetTime();
 #endif
-
-                // Process inputs
-                glfwPollEvents();
-                eventFire_keyboardPoll();
-                eventFire_mousePoll();
-                nk_glfw3_new_frame(&game->uiData.glfw);
 
                 // Process low priority events
                 eventBroker_runAsyncEvents();
