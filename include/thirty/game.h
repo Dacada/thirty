@@ -1,11 +1,13 @@
 #ifndef GAME_H
 #define GAME_H
 
-
 #include <thirty/scene.h>
 #include <enet/enet.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+#include <nuklear/defs.h>
+#include <nuklear/glfw.h>
 
 /*
  * Implementation of an overarching "game" structure that keeps global data
@@ -20,6 +22,11 @@ struct game {
 
         ENetHost *client;
         ENetPeer *server;
+
+        struct uiData {
+                struct nk_glfw glfw;
+                struct nk_context *ctx;
+        } uiData;
         
         size_t currentScene;
         struct growingArray scenes;

@@ -85,7 +85,7 @@ purify: veryclean
 	-rm -f $(SRC_DIR)/glad_dbg.c $(SRC_DIR)/glad_rel.c
 	-rm -f $(INCLUDE_DIR)/glad/glad_dbg.h $(INCLUDE_DIR)/glad/glad_rel.h
 	-rm -rf $(INCLUDE_DIR)/KHR/
-	-rm -f $(INCLUDE_DIR)/stb_image.h
+	-rm -f $(INCLUDE_DIR)/stb_image.h $(INCLUDE_DIR)/nuklear/glfw.h $(INCLUDE_DIR)/nuklear/nuklear.h
 	-rm -f sysh_TAGS
 impolute: purify
 	-rm -rf venv
@@ -155,17 +155,17 @@ $(OBJ_DIR)/glad_dev.o: $(SRC_DIR)/glad_dbg.c
 
 # Can't avoid recipie repetition in pattern rules, see
 # https://stackoverflow.com/questions/11441084/makefile-with-multiples-rules-sharing-same-recipe#comment38627982_11441134
-$(OBJ_DIR)/%_dbg.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h
+$(OBJ_DIR)/%_dbg.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h $(INCLUDE_DIR)/nuklear/nuklear.h $(INCLUDE_DIR)/nuklear/glfw.h
 	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
-$(OBJ_DIR)/%_rel.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h
+$(OBJ_DIR)/%_rel.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h $(INCLUDE_DIR)/nuklear/nuklear.h $(INCLUDE_DIR)/nuklear/glfw.h
 	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
-$(OBJ_DIR)/%_dev.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h
+$(OBJ_DIR)/%_dev.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h $(INCLUDE_DIR)/nuklear/nuklear.h $(INCLUDE_DIR)/nuklear/glfw.h
 	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h $(INCLUDE_DIR)/nuklear/nuklear.h $(INCLUDE_DIR)/nuklear/glfw.h
 	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
@@ -208,6 +208,11 @@ venv: requirements.txt
 $(INCLUDE_DIR)/stb_image.h:
 	wget -q -O $@ "https://raw.githubusercontent.com/nothings/stb/master/stb_image.h"
 
+$(INCLUDE_DIR)/nuklear/nuklear.h:
+	wget -q -O $@ "https://raw.githubusercontent.com/Immediate-Mode-UI/Nuklear/master/nuklear.h"
+
+$(INCLUDE_DIR)/nuklear/glfw.h:
+	wget -q -O $@ "https://raw.githubusercontent.com/Immediate-Mode-UI/Nuklear/master/demo/glfw_opengl3/nuklear_glfw_gl3.h"
 
 $(SRC_DIR)/.clang_complete $(INCLUDE_DIR)/.clang_complete: Makefile
 	echo $(CFLAGS) | tr " " "\n" > $@

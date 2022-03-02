@@ -1,6 +1,24 @@
 #include <thirty/game.h>
 #include <thirty/util.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wswitch-enum"
+#pragma GCC diagnostic ignored "-Wswitch-default"
+#pragma GCC diagnostic ignored "-Wcast-qual"
+
+#define NK_IMPLEMENTATION
+#define NK_GLFW_GL3_IMPLEMENTATION
+#include <nuklear/defs.h>
+#include <nuklear/glfw.h>
+
+#define UI_MAX_VERTEX_BUFFER 512 * 1024
+#define UI_MAX_ELEMENT_BUFFER 128 * 1024
+
+#pragma GCC diagnostic pop
+
 #define FUNCTION_SIZE 256
 #define DEFAULT_CLEARCOLOR {.x=0.2F, .y=0.3F, .z=0.3F, .w=1.0F}
 #define STARTING_TIMEDELTA (1.0F/60.0F)
@@ -37,6 +55,15 @@ static void eventFire_keyboardEvent(GLFWwindow *const w, const int key,
         eventBroker_fire(EVENT_BROKER_KEYBOARD_EVENT, &args);
 }
 
+static void eventFire_keyboardChar(GLFWwindow *const w, const unsigned int codepoint) {
+        (void)w;
+        struct eventBrokerKeyboardChar args = {
+                .codepoint = codepoint,
+        };
+        nk_glfw3_char_callback(w, codepoint);
+        eventBroker_fire(EVENT_BROKER_KEYBOARD_CHAR, &args);
+}
+
 static void eventFire_keyboardPoll(void) {
         eventBroker_fire(EVENT_BROKER_KEYBOARD_POLL, NULL);
 }
@@ -58,6 +85,7 @@ static void eventFire_mouseScroll(GLFWwindow *const w,
         struct eventBrokerMouseScroll args = {
                 .amount = yoff,
         };
+        nk_gflw3_scroll_callback(w, xoff, yoff);
         eventBroker_fire(EVENT_BROKER_MOUSE_SCROLL, &args);
 }
 
@@ -69,6 +97,7 @@ static void eventFire_mouseButton(GLFWwindow *const w,
                 .action = action,
                 .modifiers = mods,
         };
+        nk_glfw3_mouse_button_callback(w, button, action, mods);
         eventBroker_fire(EVENT_BROKER_MOUSE_BUTTON, &args);
 }
 
@@ -203,6 +232,7 @@ static void setupGLContext(void) {
 #else
         glDisable(GL_CULL_FACE);
 #endif
+        glEnable(GL_DEPTH_TEST);
 }
 
 void game_init(struct game *const game,
@@ -249,6 +279,7 @@ void game_init(struct game *const game,
         glViewport(0, 0, width, height);
         glfwSetFramebufferSizeCallback(game->window, eventFire_windowResized);
         glfwSetKeyCallback(game->window, eventFire_keyboardEvent);
+        glfwSetCharCallback(game->window, eventFire_keyboardChar);
         glfwSetCursorPosCallback(game->window, eventFire_mousePosition);
         glfwSetScrollCallback(game->window, eventFire_mouseScroll);
         glfwSetMouseButtonCallback(game->window, eventFire_mouseButton);
@@ -258,6 +289,7 @@ void game_init(struct game *const game,
                              EVENT_BROKER_WINDOW_RESIZED, NULL);
         
         setupGLContext();
+        
         glfwSetInputMode(game->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
         growingArray_init(&game->scenes,
@@ -267,6 +299,14 @@ void game_init(struct game *const game,
         vec4s defaultClearColor = DEFAULT_CLEARCOLOR;
         game->clearColor = defaultClearColor;
         game->client = NULL;
+
+        game->uiData.ctx = nk_glfw3_init(&game->uiData.glfw, game->window, NK_GLFW3_DEFAULT);
+        {
+                struct nk_font_atlas *atlas;
+                nk_glfw3_font_stash_begin(&game->uiData.glfw, &atlas);
+                nk_glfw3_font_stash_end(&game->uiData.glfw);
+                nk_style_load_all_cursors(game->uiData.ctx, atlas->cursors);
+        }
 }
 
 void game_connect(struct game *const game, const size_t channels,
@@ -373,6 +413,39 @@ void game_run(struct game *game) {
                 doUpdateScene(game->currentScene, &game->scenes,
                               game->timeDelta);
                 eventFire_update(game->timeDelta);
+
+                // TEST UI
+                struct nk_colorf bg;
+                bg.r = 0.10f, bg.g = 0.18f, bg.b = 0.24f, bg.a = 1.0f;
+                if (nk_begin(game->uiData.ctx, "asdf title!", nk_rect(50,50,230,250), NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE)) {
+                        enum {EASY,HARD};
+                        static int op = EASY;
+                        static int property = 20;
+                        nk_layout_row_static(game->uiData.ctx, 30, 80, 1);
+                        if (nk_button_label(game->uiData.ctx, "asdf button!")) {
+                                fprintf(stderr, "button pressed!!\n");
+                        }
+                        nk_layout_row_dynamic(game->uiData.ctx, 30, 2);
+                        if (nk_option_label(game->uiData.ctx, "easy", op == EASY)) op = EASY;
+                        if (nk_option_label(game->uiData.ctx, "hard", op == HARD)) op = HARD;
+                        nk_layout_row_dynamic(game->uiData.ctx, 25, 1);
+                        nk_property_int(game->uiData.ctx, "Compression:", 0, &property, 100, 10, 1);
+                        nk_layout_row_dynamic(game->uiData.ctx, 20, 1);
+                        nk_label(game->uiData.ctx, "!b!a!ckground:", NK_TEXT_LEFT);
+                        nk_layout_row_dynamic(game->uiData.ctx, 25, 1);
+                        if (nk_combo_begin_color(game->uiData.ctx, nk_rgb_cf(bg), nk_vec2(nk_widget_width(game->uiData.ctx),400))) {
+                                nk_layout_row_dynamic(game->uiData.ctx, 120, 1);
+                                bg = nk_color_picker(game->uiData.ctx, bg, NK_RGBA);
+                                nk_layout_row_dynamic(game->uiData.ctx, 25, 1);
+                                bg.r = nk_propertyf(game->uiData.ctx, "#R:", 0, bg.r, 1.0f, 0.01f,0.005f);
+                                bg.g = nk_propertyf(game->uiData.ctx, "#G:", 0, bg.g, 1.0f, 0.01f,0.005f);
+                                bg.b = nk_propertyf(game->uiData.ctx, "#B:", 0, bg.b, 1.0f, 0.01f,0.005f);
+                                bg.a = nk_propertyf(game->uiData.ctx, "#A:", 0, bg.a, 1.0f, 0.01f,0.005f);
+                                nk_combo_end(game->uiData.ctx);
+                        }
+                }
+                nk_end(game->uiData.ctx);
+                // END TEST UI
                 
 #ifndef NDEBUG
                 double updateTime = glfwGetTime();
@@ -384,8 +457,10 @@ void game_run(struct game *game) {
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 // Draw stuff
+                setupGLContext();
                 doDrawScene(game->currentScene, &game->scenes);
                 eventFire_draw();
+                nk_glfw3_render(&game->uiData.glfw, NK_ANTI_ALIASING_ON, UI_MAX_VERTEX_BUFFER, UI_MAX_ELEMENT_BUFFER);
                 
 #ifndef NDEBUG
                 double drawTime = glfwGetTime();
@@ -401,6 +476,7 @@ void game_run(struct game *game) {
                 glfwPollEvents();
                 eventFire_keyboardPoll();
                 eventFire_mousePoll();
+                nk_glfw3_new_frame(&game->uiData.glfw);
 
                 // Process low priority events
                 eventBroker_runAsyncEvents();
@@ -451,5 +527,6 @@ void game_free(struct game *const game) {
         componentCollection_shutdown();
         eventBroker_shutdown();
         enet_deinitialize();
+        nk_glfw3_shutdown(&game->uiData.glfw);
         glfwTerminate();
 }

@@ -61,6 +61,10 @@ enum eventBrokerEvent {
         // several frames: "Use W to walk forward"
         EVENT_BROKER_KEYBOARD_POLL,
 
+        // A keyboard character has been pressed, this is intended for text
+        // input.
+        EVENT_BROKER_KEYBOARD_CHAR,
+
         // Mouse position has changed
         EVENT_BROKER_MOUSE_POSITION,
 
@@ -119,6 +123,10 @@ struct eventBrokerKeyboardEvent {
 
 // Use game_keyPressed to check keys
 struct eventBrokerKeyboardInput {
+};
+
+struct eventBrokerKeyboardChar {
+        const unsigned int codepoint;
 };
 
 struct eventBrokerMousePosition {
