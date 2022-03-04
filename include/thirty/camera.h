@@ -5,8 +5,7 @@
 #include <cglm/struct.h>
 
 /*
- * This component has a generic prespective camera and an FPS camera which has
- * added functionality to allow more consistent movement.
+ * This component has a generic prespective camera.
  */
 
 struct camera {
