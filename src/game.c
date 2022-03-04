@@ -306,6 +306,7 @@ void game_init(struct game *const game,
         vec4s defaultClearColor = DEFAULT_CLEARCOLOR;
         game->clearColor = defaultClearColor;
         game->client = NULL;
+        game->server = NULL;
 
         game->uiData.ctx = nk_glfw3_init(&game->uiData.glfw, game->window, NK_GLFW3_DEFAULT);
         {
@@ -336,7 +337,9 @@ void game_connect(struct game *const game, const size_t channels,
 }
 
 void game_disconnect(struct game *const game, unsigned data) {
-        enet_peer_disconnect(game->server, data);
+        if (game->server != NULL) {
+                enet_peer_disconnect(game->server, data);
+        }
 }
 
 struct scene *game_createScene(struct game *const game) {
