@@ -483,7 +483,7 @@ static int cmpobj(const void *const item1,
 
 void scene_update(struct scene *const scene, const float timeDelta) {
         struct stack stack;
-        stack_init(&stack, scene->objects.length, sizeof(size_t));
+        stack_init(&stack, scene->objects.length+1, sizeof(size_t));
         size_t *ptr = stack_push(&stack);
         *ptr = 0;
 
