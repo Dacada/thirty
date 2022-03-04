@@ -118,6 +118,8 @@ struct eventBrokerUpdate {
 
 struct eventBrokerUpdateUI {
         struct nk_context *ctx;
+        const int winWidth;
+        const int winHeight;
 };
 
 struct eventBrokerTearDown {

@@ -112,9 +112,14 @@ static void eventFire_update(const float timeDelta) {
         eventBroker_fire(EVENT_BROKER_UPDATE, &args);
 }
 
-static void eventFire_updateUI(struct nk_context *const ctx) {
+static void eventFire_updateUI(const struct game *const game, struct nk_context *const ctx) {
+        int height, width;
+        glfwGetWindowSize(game->window, &width, &height);
+        
         struct eventBrokerUpdateUI args = {
                 .ctx = ctx,
+                .winHeight = height,
+                .winWidth = width,
         };
         eventBroker_fire(EVENT_BROKER_UPDATE_UI, &args);
 }
@@ -446,7 +451,7 @@ void game_run(struct game *game) {
                 // Update game state
                 doUpdateScene(game->currentScene, &game->scenes,
                               game->timeDelta);
-                eventFire_updateUI(game->uiData.ctx);
+                eventFire_updateUI(game, game->uiData.ctx);
                 eventFire_update(game->timeDelta);
                 
 #ifndef NDEBUG
