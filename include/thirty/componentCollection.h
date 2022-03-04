@@ -61,6 +61,12 @@ void componentCollection_init(struct componentCollection *collection)
         __attribute__((nonnull));
 
 /*
+ * Function used when reading a scene from a file, return the current offset:
+ * the number of components that exist in total.
+ */
+size_t componentCollection_currentOffset(void);
+
+/*
  * Get the component of a given type for this collection. Or NULL if this
  * collection doesn't have a component in the slot for that type.
  */

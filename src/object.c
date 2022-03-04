@@ -18,7 +18,7 @@ void object_initEmpty(struct object *const object, struct game *const game,
 
 static inline void assign_idx(struct object *const object,
                               const enum componentType component,
-                              const unsigned offset,
+                              const size_t offset,
                               FILE *const f) {
         uint32_t idx;
         sfread(&idx, sizeof(idx), 1, f);
@@ -30,7 +30,7 @@ static inline void assign_idx(struct object *const object,
 
 void object_initFromFile(struct object *const object,
                          struct game *const game,
-                         const size_t scene, 
+                         const size_t scene, const size_t idxOffset,
                          const unsigned ncams, const unsigned ngeos,
                          const unsigned nmats, const unsigned nlights,
                          const unsigned nanims,
@@ -39,7 +39,7 @@ void object_initFromFile(struct object *const object,
         object_initEmpty(object, game, scene, name);
         free(name);
 
-        unsigned offset = 0;
+        size_t offset = idxOffset;
         assign_idx(object, COMPONENT_CAMERA, offset, f);
         offset += ncams;
         assign_idx(object, COMPONENT_GEOMETRY, offset, f);

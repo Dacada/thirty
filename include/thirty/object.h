@@ -52,13 +52,13 @@ void object_initEmpty(struct object *object, struct game *game, size_t scene,
  * and it will read all of the header and the data.
  */
 void object_initFromFile(struct object *object, struct game *game,
-                         size_t scene,
+                         size_t scene, size_t idxOffset,
                          unsigned ncams, unsigned ngeos,
                          unsigned nmats, unsigned nlights,
                          unsigned nanims, FILE *f)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
-        __attribute__((access (read_write, 9)))
+        __attribute__((access (read_write, 10)))
         __attribute__((nonnull));
 
 /*

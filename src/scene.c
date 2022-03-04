@@ -20,16 +20,16 @@ static void buildpathObj(const size_t destsize, char *const dest,
 
 __attribute__((access (write_only, 1, 2)))
 __attribute__((access (read_only, 3)))
-__attribute__((access (read_write, 10)))
+__attribute__((access (read_write, 11)))
 __attribute__((nonnull))
 static void parse_objects(struct growingArray *objects, unsigned nobjs,
-                          struct game *game, size_t scene,
+                          struct game *game, size_t scene, size_t idxOffset,
                           unsigned ncams, unsigned ngeos, unsigned nmats,
                           unsigned nlights, unsigned nanims, FILE *const f) {
         for (unsigned i=0; i<nobjs; i++) {
                 struct object *obj = growingArray_append(objects);
                 obj->idx = objects->length;  // idx 0 is root
-                object_initFromFile(obj, game, scene,
+                object_initFromFile(obj, game, scene, idxOffset,
                                     ncams, ngeos, nmats, nlights, nanims, f);
         }
 }
@@ -97,6 +97,7 @@ void scene_init(struct scene *const scene, struct game *const game,
 void scene_initFromFile(struct scene *const scene,
                         struct game *const game,
                         FILE *const f) {
+        size_t idxOffset = componentCollection_currentOffset();
         scene->game = game;
 
         /*
@@ -171,7 +172,7 @@ void scene_initFromFile(struct scene *const scene,
 
         object_initEmpty(&scene->root, game, scene->idx, "root");
         scene->root.idx = 0;
-        parse_objects(&scene->objects, header.nobjs, game, scene->idx,
+        parse_objects(&scene->objects, header.nobjs, game, scene->idx, idxOffset,
                       header.ncams, header.ngeos, header.nmats,
                       header.nlights, header.nanims, f);
         parse_object_tree(scene, f);

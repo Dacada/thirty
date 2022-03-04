@@ -110,6 +110,10 @@ void componentCollection_init(struct componentCollection *const collection) {
         collection->animationCollection = 0;
 }
 
+size_t componentCollection_currentOffset(void) {
+        return components.offsets.length;
+}
+
 void *componentCollection_get(
         const struct componentCollection *const collection,
         const enum componentType type){
