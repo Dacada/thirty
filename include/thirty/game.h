@@ -29,6 +29,7 @@ struct game {
         } uiData;
         
         size_t currentScene;
+        size_t mainMenuScene;
         struct growingArray scenes;
 };
 
@@ -79,7 +80,14 @@ struct scene *game_createScene(struct game *game)
 /*
  * Return a pointer to the current scene that is being updated and drawn.
  */
-struct scene *game_getCurrentScene(struct game *game)
+struct scene *game_getCurrentScene(const struct game *game)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Return a pointer to the scene corresponding to the given idx.
+ */
+struct scene *game_getSceneFromIdx(const struct game *game, size_t idx)
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 
@@ -89,6 +97,21 @@ struct scene *game_getCurrentScene(struct game *game)
  */
 void game_setCurrentScene(struct game *game, size_t idx)
         __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Set game's "main menu" scene.
+ */
+void game_setMainMenuScene(struct game *game, size_t idx)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Whether the current scene is the one that was set as main menu by a previous
+ * call to game_setMainmenuScene.
+ */
+bool game_inMainMenu(const struct game *game)
+        __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 
 /*

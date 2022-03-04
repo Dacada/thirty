@@ -345,12 +345,29 @@ struct scene *game_createScene(struct game *const game) {
         return scene;
 }
 
-struct scene *game_getCurrentScene(struct game *game) {
-        return growingArray_get(&game->scenes, game->currentScene);
+struct scene *game_getCurrentScene(const struct game *game) {
+        return game_getSceneFromIdx(game, game->currentScene);
+}
+
+struct scene *game_getSceneFromIdx(const struct game *game, size_t idx) {
+        return growingArray_get(&game->scenes, idx);
 }
 
 void game_setCurrentScene(struct game *const game, const size_t idx) {
+        struct eventBrokerSceneChanged args = {
+                .prevSceneIdx = game->currentScene,
+        };
+        
         game->currentScene = idx;
+        eventBroker_fire(EVENT_BROKER_SCENE_CHANGED, &args);
+}
+
+void game_setMainMenuScene(struct game *game, size_t idx) {
+        game->mainMenuScene = idx;
+}
+
+bool game_inMainMenu(const struct game *game) {
+        return game->currentScene == game->mainMenuScene;
 }
 
 void game_updateWindowTitle(struct game *game, const char *title) {

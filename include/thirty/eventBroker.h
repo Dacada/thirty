@@ -40,6 +40,9 @@ enum eventBrokerPriority {
 enum eventBrokerEvent {
         // Only fires once before the main game loop starts
         EVENT_BROKER_SETUP,
+
+        // Fires whenever the current scene changes
+        EVENT_BROKER_SCENE_CHANGED,
         
         // Draw step
         EVENT_BROKER_DRAW,
@@ -101,6 +104,11 @@ enum eventBrokerEvent {
 
 struct eventBrokerSetup {
 };
+
+struct eventBrokerSceneChanged {
+        const size_t prevSceneIdx;
+};
+
 struct eventBrokerDraw {
 };
 
