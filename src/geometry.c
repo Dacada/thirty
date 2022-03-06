@@ -1246,16 +1246,11 @@ void geometry_initPlane(struct geometry *geo, const char *name) {
                                vertices, nvertices, indices, nindices);
 }
 
-size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
-                             const enum componentType type) {
-        assert(type == COMPONENT_GEOMETRY);
-        
+static void readGeometryFile(struct geometry *const geometry, const char *const name, FILE *const f) {
         struct {
                 uint32_t vertlen;
                 uint32_t indlen;
         } header;
-
-        char *name = strfile(f);
 
         sfread(&header.vertlen, sizeof(header.vertlen), 1, f);
         sfread(&header.indlen, sizeof(header.indlen), 1, f);
@@ -1272,9 +1267,38 @@ size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
                                vertices, header.vertlen,
                                indices, header.indlen);
 
-        free(name);
         free(vertices);
         free(indices);
+}
+
+size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
+                             const enum componentType type) {
+        assert(type == COMPONENT_GEOMETRY);
+
+        char *name = strfile(f);
+        
+        char *filename = strfile(f);
+        char *path = pathjoin_dyn(2, "geometries", filename);
+        size_t pathlen = strlen(path);
+        
+        if (path[pathlen-1] == '/') {
+                pathlen -= 1;
+        }
+
+        path = sreallocarray(path, pathlen + 4 + 1, sizeof(char));
+        strcpy(path+pathlen, ".bgg");
+        if (!accessible(path, true, false, false)) {
+                die("Cannot read geometry file");
+        }
+
+        FILE *ff = fopen(path, "r");
+        readGeometryFile(geometry, name, ff);
+        fclose(ff);
+        
+        free(name);
+        free(filename);
+        free(path);
+        
         return sizeof(struct geometry);
 }
 

@@ -44,9 +44,6 @@ void game_init(struct game *game, int width, int height,
         __attribute__((access (write_only, 1)))
         __attribute__((nonnull));
 
-// TODO
-void game_initFromFile(struct game *game, const char *filename);
-
 /*
  * Sets up the client part of an ENet connection and connects to the
  * server. Specify how many channels the connection shall use, the expected

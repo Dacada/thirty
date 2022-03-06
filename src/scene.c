@@ -99,18 +99,6 @@ void scene_initFromFile(struct scene *const scene,
                         FILE *const f) {
         size_t idxOffset = componentCollection_currentOffset();
         scene->game = game;
-
-        /*
-          TODO: Move this to game_initFromFile, also some part of the
-          header...
-
-          char path[PATH_MAX];
-          buildpathObj(PATH_MAX, path, filename);
-          if (!accessible(path, true, false, false)) {
-                bail("Cannot read scene file.\n");
-          }
-          FILE *const f = sfopen(path, "rb");
-        */
         
         struct {
                 uint8_t magic[BOGLE_MAGIC_SIZE];
@@ -125,8 +113,7 @@ void scene_initFromFile(struct scene *const scene,
 
         sfread(&header.magic, sizeof(uint8_t), BOGLE_MAGIC_SIZE, f);
         if (strncmp((char*)(header.magic), "BOGLE", BOGLE_MAGIC_SIZE) != 0) {
-                // TODO: Move this too
-                //bail("Malformatted game file: %s\n", path);
+                bail("Malformatted scene file\n");
         }
 
         sfread(&header.version, sizeof(header.version), 1, f);
