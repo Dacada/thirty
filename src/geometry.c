@@ -1292,6 +1292,10 @@ size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
         }
 
         FILE *ff = fopen(path, "r");
+        if (ff == NULL) {
+                perror("fopen");
+                bail("Cannot read geometry file.\n");
+        }
         readGeometryFile(geometry, name, ff);
         fclose(ff);
         
