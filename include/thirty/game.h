@@ -27,9 +27,9 @@ struct game {
                 struct nk_glfw glfw;
                 struct nk_context *ctx;
         } uiData;
-        
+
+        bool inScene;
         size_t currentScene;
-        size_t mainMenuScene;
         struct growingArray scenes;
 };
 
@@ -75,7 +75,8 @@ struct scene *game_createScene(struct game *game)
         __attribute__((returns_nonnull));
 
 /*
- * Return a pointer to the current scene that is being updated and drawn.
+ * Return a pointer to the current scene that is being updated and
+ * drawn. Returns NULL if there is no current scene.
  */
 struct scene *game_getCurrentScene(const struct game *game)
         __attribute__((access (read_only, 1)))
@@ -86,29 +87,21 @@ struct scene *game_getCurrentScene(const struct game *game)
  */
 struct scene *game_getSceneFromIdx(const struct game *game, size_t idx)
         __attribute__((access (read_only, 1)))
-        __attribute__((nonnull));
+        __attribute__((nonnull))
+        __attribute__((returns_nonnull));
 
 /*
- * Set the game's current scene that will be updated and drawn. Other scenes
- * will be ignored.
+ * Set the game's current scene that will be updated and drawn.
  */
 void game_setCurrentScene(struct game *game, size_t idx)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 /*
- * Set game's "main menu" scene.
+ * Unsets the game's current scene such that nothing will be updated or drawn.
  */
-void game_setMainMenuScene(struct game *game, size_t idx)
+void game_unsetCurrentScene(struct game *game)
         __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
-
-/*
- * Whether the current scene is the one that was set as main menu by a previous
- * call to game_setMainmenuScene.
- */
-bool game_inMainMenu(const struct game *game)
-        __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 
 /*

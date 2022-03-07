@@ -304,6 +304,8 @@ void game_init(struct game *const game,
         
         glfwSetInputMode(game->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+        game->inScene = false;
+        game->currentScene = 0;
         growingArray_init(&game->scenes,
                           sizeof(struct scene), initalSceneCapacity);
 
@@ -354,7 +356,10 @@ struct scene *game_createScene(struct game *const game) {
 }
 
 struct scene *game_getCurrentScene(const struct game *game) {
-        return game_getSceneFromIdx(game, game->currentScene);
+        if (game->inScene) {
+                return game_getSceneFromIdx(game, game->currentScene);
+        }
+        return NULL;
 }
 
 struct scene *game_getSceneFromIdx(const struct game *game, size_t idx) {
@@ -362,20 +367,31 @@ struct scene *game_getSceneFromIdx(const struct game *game, size_t idx) {
 }
 
 void game_setCurrentScene(struct game *const game, const size_t idx) {
+        if (game->inScene && idx == game->currentScene) {
+                return;
+        }
+        
         struct eventBrokerSceneChanged args = {
                 .prevSceneIdx = game->currentScene,
         };
         
         game->currentScene = idx;
+        game->inScene = true;
+
         eventBroker_fire(EVENT_BROKER_SCENE_CHANGED, &args);
 }
 
-void game_setMainMenuScene(struct game *game, size_t idx) {
-        game->mainMenuScene = idx;
-}
+void game_unsetCurrentScene(struct game *const game) {
+        if (!game->inScene) {
+                return;
+        }
 
-bool game_inMainMenu(const struct game *game) {
-        return game->currentScene == game->mainMenuScene;
+        game->inScene = false;
+
+        struct eventBrokerSceneChanged args = {
+                .prevSceneIdx = game->currentScene,
+        };
+        eventBroker_fire(EVENT_BROKER_SCENE_CHANGED, &args);
 }
 
 void game_updateWindowTitle(struct game *game, const char *title) {
@@ -449,8 +465,10 @@ void game_run(struct game *game) {
                 nk_glfw3_new_frame(&game->uiData.glfw);
 
                 // Update game state
-                doUpdateScene(game->currentScene, &game->scenes,
-                              game->timeDelta);
+                if (game->inScene) {
+                        doUpdateScene(game->currentScene, &game->scenes,
+                                      game->timeDelta);
+                }
                 eventFire_updateUI(game, game->uiData.ctx);
                 eventFire_update(game->timeDelta);
                 
@@ -465,7 +483,9 @@ void game_run(struct game *game) {
 
                 // Draw stuff
                 setupGLContext();
-                doDrawScene(game->currentScene, &game->scenes);
+                if (game->inScene) {
+                        doDrawScene(game->currentScene, &game->scenes);
+                }
                 eventFire_draw();
                 nk_glfw3_render(&game->uiData.glfw, NK_ANTI_ALIASING_ON, UI_MAX_VERTEX_BUFFER, UI_MAX_ELEMENT_BUFFER);
                 
