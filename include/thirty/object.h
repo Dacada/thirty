@@ -27,6 +27,7 @@ struct object {
         struct growingArray children;
 
         struct componentCollection components;
+        struct varSizeGrowingArray *componentsMemory;
         
         eventBrokerCallback onUpdate;
 };
@@ -42,8 +43,11 @@ enum renderStage {
  * no parent or children defined! Use object_addChild for that.
  */
 void object_initEmpty(struct object *object, struct game *game, size_t scene,
-                      const char *name)
+                      const char *name, struct varSizeGrowingArray *components)
         __attribute__((access (write_only, 1)))
+        __attribute__((access (read_write, 2)))
+        __attribute__((access (read_only, 4)))
+        __attribute__((access (read_write, 5)))
         __attribute__((nonnull));
 
 /*
@@ -52,13 +56,15 @@ void object_initEmpty(struct object *object, struct game *game, size_t scene,
  * and it will read all of the header and the data.
  */
 void object_initFromFile(struct object *object, struct game *game,
+                         struct varSizeGrowingArray *components,
                          size_t scene, size_t idxOffset,
                          unsigned ncams, unsigned ngeos,
                          unsigned nmats, unsigned nlights,
                          unsigned nanims, FILE *f)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
-        __attribute__((access (read_write, 10)))
+        __attribute__((access (read_write, 3)))
+        __attribute__((access (read_write, 11)))
         __attribute__((nonnull));
 
 /*

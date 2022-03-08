@@ -2,16 +2,17 @@
 #include <thirty/util.h>
 
 void object_initEmpty(struct object *const object, struct game *const game,
-                      const size_t scene, const char *const name) {
+                      const size_t scene, const char *const name,
+                      struct varSizeGrowingArray *components) {
         object->game = game;
         object->name = sstrdup(name);
         object->scene = scene;
+        object->componentsMemory = components;
         growingArray_init(&object->children, sizeof(size_t), 1);
         componentCollection_init(&object->components);
         object->onUpdate = NULL;
 
-        struct transform *trans = componentCollection_create(
-                game, COMPONENT_TRANSFORM);
+        struct transform *trans = componentCollection_create(components, game, COMPONENT_TRANSFORM);
         object_setComponent(object, &trans->base);
         transform_init(trans, GLMS_MAT4_IDENTITY);
 }
@@ -23,20 +24,20 @@ static inline void assign_idx(struct object *const object,
         uint32_t idx;
         sfread(&idx, sizeof(idx), 1, f);
         if (idx != 0) {
-                componentCollection_set(&object->components, object->idx,
+                componentCollection_set(object->componentsMemory, &object->components, object->idx,
                                         component, offset + idx - 1);
         }
 }
 
 void object_initFromFile(struct object *const object,
-                         struct game *const game,
+                         struct game *const game, struct varSizeGrowingArray *components,
                          const size_t scene, const size_t idxOffset,
                          const unsigned ncams, const unsigned ngeos,
                          const unsigned nmats, const unsigned nlights,
                          const unsigned nanims,
                          FILE *const f) {
         char *name = strfile(f);
-        object_initEmpty(object, game, scene, name);
+        object_initEmpty(object, game, scene, name, components);
         free(name);
 
         size_t offset = idxOffset;
@@ -83,13 +84,12 @@ void object_removeChild(struct object *parent, struct object *child) {
 }
 
 void object_setComponent(struct object *object, struct component *comp) {
-        componentCollection_set(&object->components, object->idx,
-                                comp->type, comp->idx);
+        componentCollection_set(object->componentsMemory, &object->components, object->idx, comp->type, comp->idx);
 }
 
 void *object_getComponent(const struct object *object,
                           enum componentType type) {
-        return componentCollection_get(&object->components, type);
+        return componentCollection_get(object->componentsMemory, &object->components, type);
 }
 
 void object_update(struct object *const object, const float timeDelta) {
@@ -99,7 +99,7 @@ void object_update(struct object *const object, const float timeDelta) {
                 };
                 object->onUpdate(object, &args);
         }
-        componentCollection_update(&object->components, timeDelta);
+        componentCollection_update(object->componentsMemory, &object->components, timeDelta);
 }
 
 bool object_draw(const struct object *const object, mat4s model,
@@ -183,5 +183,4 @@ bool object_draw(const struct object *const object, mat4s model,
 void object_free(struct object *object) {
         free(object->name);
         growingArray_destroy(&object->children);
-        componentCollection_free(&object->components);
 }

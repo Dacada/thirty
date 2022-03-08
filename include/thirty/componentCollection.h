@@ -7,6 +7,7 @@
 #include <thirty/light.h>
 #include <thirty/material.h>
 #include <thirty/transform.h>
+#include <thirty/dsutils.h>
 
 /*
  * A collection of components assigned to an object. Each component exists
@@ -24,16 +25,16 @@ struct componentCollection {
 };
 
 /*
- * Initialize the componentCollection module, allowing the creation and
- * management of object components.
+ * Initialize the componentCollection memory area.
  */
-void componentCollection_startup(void);
+void componentCollection_initCollection(struct varSizeGrowingArray *components);
 
 /*
  * Allocate memory for a component of the given type and return it. Of course,
  * different types will have different sizes.
  */
-void *componentCollection_create(struct game *game, enum componentType type)
+void *componentCollection_create(struct varSizeGrowingArray *components,
+                                 struct game *game, enum componentType type)
         __attribute__((returns_nonnull));
 
 /*
@@ -41,8 +42,8 @@ void *componentCollection_create(struct game *game, enum componentType type)
  * COMPONENT_TOTAL then all types are considered. If the component is not found
  * 0 is returned, otherwise idx+1 so 1 should be substracted from the result.
  */
-size_t componentCollection_idxByName(const char *name,
-                                     enum componentType type)
+size_t componentCollection_idxByName(struct varSizeGrowingArray *components,
+                                     const char *name, enum componentType type)
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 
@@ -51,7 +52,7 @@ size_t componentCollection_idxByName(const char *name,
  * invalidated after calls to componentCollection_create, so it's better to
  * keep the idx around and access the component by idx when needed.
  */
-void *componentCollection_compByIdx(size_t idx);
+void *componentCollection_compByIdx(struct varSizeGrowingArray *components, size_t idx);
 
 /*
  * Initialize a component collection.
@@ -64,13 +65,14 @@ void componentCollection_init(struct componentCollection *collection)
  * Function used when reading a scene from a file, return the current offset:
  * the number of components that exist in total.
  */
-size_t componentCollection_currentOffset(void);
+size_t componentCollection_currentOffset(struct varSizeGrowingArray *components);
 
 /*
  * Get the component of a given type for this collection. Or NULL if this
  * collection doesn't have a component in the slot for that type.
  */
 void *componentCollection_get(
+        struct varSizeGrowingArray *components,
         const struct componentCollection *collection,
         enum componentType type)
         __attribute__((access (read_only, 1)))
@@ -80,10 +82,10 @@ void *componentCollection_get(
  * Set the component for the given type slot to the given idx for the given
  * object.
  */
-void componentCollection_set(struct componentCollection *collection,
-                             size_t object,
-                             enum componentType type,
-                             size_t idx)
+void componentCollection_set(
+        struct varSizeGrowingArray *components,
+        struct componentCollection *collection,
+        size_t object, enum componentType type, size_t idx)
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull));
 
@@ -99,23 +101,17 @@ bool componentCollection_hasComponent(
 /*
  * Update all components in the collection. To be called once per frame.
  */
-void componentCollection_update(struct componentCollection *collection,
-                                float timeDelta)
+void componentCollection_update(
+        struct varSizeGrowingArray *components,
+        struct componentCollection *collection,
+        float timeDelta)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 /*
- * Free any and all resources used by the componentCollection, deinitializing
- * it.
+ * Free up the component collection memory area and all of its components.
  */
-void componentCollection_free(const struct componentCollection *collection)
-        __attribute__((access (read_only, 1)))
-        __attribute__((nonnull));
-
-/*
- * Shut down the component collection system.
- */
-void componentCollection_shutdown(void)
+void componentCollection_freeCollection(struct varSizeGrowingArray *components)
         __attribute__((nonnull));
 
 #endif /* COMPONENT_COLLECTION_H */

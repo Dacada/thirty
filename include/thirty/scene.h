@@ -12,9 +12,13 @@
 struct scene {
         size_t idx;
         struct game *game;
+        
+        vec4s globalAmbientLight;
+        
         struct object root;
         struct growingArray objects;
-        vec4s globalAmbientLight;
+        
+        struct varSizeGrowingArray components;
 
         struct growingArray loadSteps;
         struct growingArray freePtrs;

@@ -258,7 +258,6 @@ void game_init(struct game *const game,
         }
         
         eventBroker_startup(customEvents);
-        componentCollection_startup();
 
         glfwSetErrorCallback(error_callback);
         if (!glfwInit()) {
@@ -584,7 +583,6 @@ void game_free(struct game *const game) {
         growingArray_foreach_END;
         growingArray_destroy(&game->scenes);
         
-        componentCollection_shutdown();
         eventBroker_shutdown();
         enet_deinitialize();
         nk_glfw3_shutdown(&game->uiData.glfw);

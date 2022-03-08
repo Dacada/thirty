@@ -5,17 +5,19 @@
 #define OBJECT_TREE_NUMBER_BASE 10
 
 __attribute__((access (write_only, 1, 2)))
-__attribute__((access (read_only, 3)))
-__attribute__((access (read_write, 11)))
+__attribute__((access (read_write, 3)))
+__attribute__((access (read_only, 4)))
+__attribute__((access (read_write, 12)))
 __attribute__((nonnull))
 static void parse_objects(struct growingArray *objects, unsigned nobjs,
+                          struct varSizeGrowingArray *components,
                           struct game *game, size_t scene, size_t idxOffset,
                           unsigned ncams, unsigned ngeos, unsigned nmats,
                           unsigned nlights, unsigned nanims, FILE *const f) {
         for (unsigned i=0; i<nobjs; i++) {
                 struct object *obj = growingArray_append(objects);
                 obj->idx = objects->length;  // idx 0 is root
-                object_initFromFile(obj, game, scene, idxOffset,
+                object_initFromFile(obj, game, components, scene, idxOffset,
                                     ncams, ngeos, nmats, nlights, nanims, f);
         }
 }
@@ -69,21 +71,27 @@ static void parse_object_tree(struct scene *const scene, FILE *const f) {
 
 static void loadRootObj(struct scene *const scene, void *args) {
         (void)args;
-        object_initEmpty(&scene->root, scene->game, scene->idx, "root");
+        object_initEmpty(&scene->root, scene->game, scene->idx, "root", &scene->components);
         scene->root.idx = 0;
+}
+
+static void createComponentCollection(struct scene *const scene, void *args) {
+        (void)args;
+        componentCollection_initCollection(&scene->components);
 }
 
 static void scene_initBasic(struct scene *const scene, struct game *const game) {
         scene->game = game;
         growingArray_init(&scene->loadSteps, sizeof(struct scene_loadStep), 4);
         growingArray_init(&scene->freePtrs, sizeof(void*), 4);
+        scene_addLoadingStep(scene, createComponentCollection, NULL);
         scene_addLoadingStep(scene, loadRootObj, NULL);
 }
 
 static void loadBogleFile(struct scene *const scene, void *const args) {
         char *const filename = args;
         
-        size_t idxOffset = componentCollection_currentOffset();
+        size_t idxOffset = componentCollection_currentOffset(&scene->components);
 
         FILE *f = sfopen(filename, "r");
         
@@ -127,7 +135,7 @@ static void loadBogleFile(struct scene *const scene, void *const args) {
                         uint8_t type;                                   \
                         sfread(&type, sizeof(type), 1, f);              \
                         struct which *comp =                            \
-                                componentCollection_create(             \
+                                componentCollection_create(&scene->components, \
                                         scene->game, (baseType) + type); \
                         which##_initFromFile(comp, f, (baseType) + type); \
                 }                                                       \
@@ -144,8 +152,8 @@ static void loadBogleFile(struct scene *const scene, void *const args) {
         growingArray_init(&scene->objects,
                           sizeof(struct object), header.nobjs);
 
-        parse_objects(&scene->objects, header.nobjs, scene->game, scene->idx, idxOffset,
-                      header.ncams, header.ngeos, header.nmats,
+        parse_objects(&scene->objects, header.nobjs, &scene->components, scene->game,
+                      scene->idx, idxOffset, header.ncams, header.ngeos, header.nmats,
                       header.nlights, header.nanims, f);
         parse_object_tree(scene, f);
 
@@ -208,6 +216,7 @@ void scene_unload(struct scene *const scene) {
                 object_free(object);
         growingArray_foreach_END;
         growingArray_destroy(&scene->objects);
+        componentCollection_freeCollection(&scene->components);
 }
 
 void scene_addLoadingStep(struct scene *const scene, const scene_loadCallback cb, void *const args) {
@@ -225,7 +234,7 @@ struct object *scene_createObject(struct scene *scene,
                                   const size_t parent_idx) {
         struct object *const child = growingArray_append(&scene->objects);
         size_t child_idx = scene->objects.length;  // idx 0 is root
-        object_initEmpty(child, scene->game, scene->idx, name);
+        object_initEmpty(child, scene->game, scene->idx, name, &scene->components);
         child->idx = child_idx;
         struct object *const parent = scene_getObjectFromIdx(
                 scene, parent_idx);
@@ -303,12 +312,12 @@ size_t scene_setSkybox(struct scene *const scene,
                 scene, basename, 0);
         
         struct geometry *geo = componentCollection_create(
-                scene->game, COMPONENT_GEOMETRY);
+                &scene->components, scene->game, COMPONENT_GEOMETRY);
         geometry_initSkyboxCube(geo, basename);
         object_setComponent(skybox, &geo->base);
 
         struct material_skybox *mat = componentCollection_create(
-                scene->game, COMPONENT_MATERIAL_SKYBOX);
+                &scene->components, scene->game, COMPONENT_MATERIAL_SKYBOX);
         material_skybox_initFromName(mat, basename);
         object_setComponent(skybox, &mat->base.base);
 

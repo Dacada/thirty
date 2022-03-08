@@ -4,15 +4,13 @@
 #define COMPONENTS_MIN_SIZE sizeof(struct component)
 #define COMPONENTS_INITIAL_CAPACITY (4*COMPONENTS_MIN_SIZE)
 
-static struct varSizeGrowingArray components;
-
-void componentCollection_startup(void) {
-        varSizeGrowingArray_init(&components, COMPONENT_STRUCT_ALIGNMENT,
+void componentCollection_initCollection(struct varSizeGrowingArray *components) {
+        varSizeGrowingArray_init(components, COMPONENT_STRUCT_ALIGNMENT,
                                  COMPONENTS_INITIAL_CAPACITY,
                                  COMPONENTS_MIN_SIZE);
 }
 
-void *componentCollection_create(struct game *game,
+void *componentCollection_create(struct varSizeGrowingArray *components, struct game *game,
                                  const enum componentType type) {
         size_t size;
         switch(type) {
@@ -52,10 +50,10 @@ void *componentCollection_create(struct game *game,
                 assert_fail();
         }
 
-        void *ptr = varSizeGrowingArray_append(&components, size);
-        assert(components.offsets.length > 0);
+        void *ptr = varSizeGrowingArray_append(components, size);
+        assert(components->offsets.length > 0);
         ((struct component*)ptr)->type = type;
-        ((struct component*)ptr)->idx = components.offsets.length - 1;
+        ((struct component*)ptr)->idx = components->offsets.length - 1;
         ((struct component*)ptr)->game = game;
         return ptr;
 }
@@ -81,7 +79,8 @@ static bool findComponent(void *const item, const size_t size,
 
         return true;
 }
-size_t componentCollection_idxByName(const char *const name,
+size_t componentCollection_idxByName(struct varSizeGrowingArray *components,
+                                     const char *const name,
                                      const enum componentType type) {
         struct findComponentArgs args = {
                 .name = name,
@@ -89,7 +88,7 @@ size_t componentCollection_idxByName(const char *const name,
                 .idx = 0,
                 .found = false,
         };
-        varSizeGrowingArray_foreach(&components, findComponent, &args);
+        varSizeGrowingArray_foreach(components, findComponent, &args);
 
         if (!args.found) {
                 return 0;
@@ -97,8 +96,9 @@ size_t componentCollection_idxByName(const char *const name,
         return args.idx;
 }
 
-void *componentCollection_compByIdx(const size_t idx) {
-        return varSizeGrowingArray_get(&components, idx, NULL);
+void *componentCollection_compByIdx(struct varSizeGrowingArray *components,
+                                    const size_t idx) {
+        return varSizeGrowingArray_get(components, idx, NULL);
 }
 
 void componentCollection_init(struct componentCollection *const collection) {
@@ -110,11 +110,12 @@ void componentCollection_init(struct componentCollection *const collection) {
         collection->animationCollection = 0;
 }
 
-size_t componentCollection_currentOffset(void) {
-        return components.offsets.length;
+size_t componentCollection_currentOffset(struct varSizeGrowingArray *components) {
+        return components->offsets.length;
 }
 
 void *componentCollection_get(
+        struct varSizeGrowingArray *components,
         const struct componentCollection *const collection,
         const enum componentType type){
 
@@ -158,13 +159,13 @@ void *componentCollection_get(
 
         idx--;
 
-        return varSizeGrowingArray_get(&components, idx, NULL);
+        return varSizeGrowingArray_get(components, idx, NULL);
 }
 
-void componentCollection_set(struct componentCollection *const collection,
-                             const size_t object,
-                             const enum componentType type,
-                             const size_t idx) {
+void componentCollection_set(
+        struct varSizeGrowingArray *components,
+        struct componentCollection *const collection,
+        const size_t object, const enum componentType type, const size_t idx) {
         switch (type) {
         case COMPONENT_TRANSFORM:
                 collection->transform = idx+1;
@@ -199,8 +200,7 @@ void componentCollection_set(struct componentCollection *const collection,
                 break;
         }
 
-        struct component *component = varSizeGrowingArray_get(
-                &components, idx, NULL);
+        struct component *component = varSizeGrowingArray_get(components, idx, NULL);
         component->object = object;
 }
 
@@ -236,18 +236,14 @@ bool componentCollection_hasComponent(
         }
 }
 
-void componentCollection_update(struct componentCollection *const collection,
+void componentCollection_update(struct varSizeGrowingArray *components,
+                                struct componentCollection *const collection,
                                 const float timeDelta) {
-        struct animationCollection *anim = componentCollection_get(
+        struct animationCollection *anim = componentCollection_get(components,
                 collection, COMPONENT_ANIMATIONCOLLECTION);
         if (anim != NULL) {
                 animationCollection_update(anim, timeDelta);
         }
-}
-
-void componentCollection_free(
-        const struct componentCollection *const collection) {
-        (void)collection;
 }
 
 static bool freeComponent(void *compPtr, size_t size, void *args) {
@@ -291,7 +287,7 @@ static bool freeComponent(void *compPtr, size_t size, void *args) {
         return true;
 }
 
-void componentCollection_shutdown(void) {
-        varSizeGrowingArray_foreach(&components, freeComponent, NULL);
-        varSizeGrowingArray_destroy(&components);
+void componentCollection_freeCollection(struct varSizeGrowingArray *components) {
+        varSizeGrowingArray_foreach(components, freeComponent, NULL);
+        varSizeGrowingArray_destroy(components);
 }
