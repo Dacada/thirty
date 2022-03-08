@@ -373,7 +373,16 @@ static void doChangeScene(struct game *const game) {
                 .prevSceneIdx = game->currentScene,
         };
 
+        if (!game->sceneMustChange && !game->sceneMustUnset) {
+                return;
+        }
+
+        if (game->inScene) {
+                scene_unload(game_getCurrentScene(game));
+        }
+        
         if (game->sceneMustChange) {
+                scene_load(game_getSceneFromIdx(game, game->sceneToChangeTo));
                 game->currentScene = game->sceneToChangeTo;
                 game->inScene = true;
         } else if (game->sceneMustUnset) {
@@ -381,6 +390,7 @@ static void doChangeScene(struct game *const game) {
         } else {
                 return;
         }
+        
         game->sceneMustChange = false;
         game->sceneMustUnset = false;
 

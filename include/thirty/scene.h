@@ -15,6 +15,16 @@ struct scene {
         struct object root;
         struct growingArray objects;
         vec4s globalAmbientLight;
+
+        struct growingArray loadSteps;
+        struct growingArray freePtrs;
+};
+
+typedef void(*scene_loadCallback)(struct scene*, void*);
+
+struct scene_loadStep {
+        scene_loadCallback cb;
+        void *args;
 };
 
 /*
@@ -26,12 +36,38 @@ void scene_init(struct scene *scene, struct game *game,
         __attribute__((nonnull));
 
 /*
- * Initialize a scene from a BOGLE file postioned at the right offset.
+ * Initialize a scene from a BOGLE file.
  */
-void scene_initFromFile(struct scene *scene, struct game *game, FILE *f)
+void scene_initFromFile(struct scene *scene, struct game *game, const char *filename)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));
+
+/*
+ * Load a scene. It will load everything defined eithe rin the BOGLE file or
+ * through the scene_addLoadingStep functions.
+ */
+void scene_load(struct scene *scene)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Unload a scene, freeing all resources. The scene is NOT deinitialized and
+ * can be loaded again with a call to scene_load.
+ */
+void scene_unload(struct scene *scene)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Add a function to be called during the scene loading process. These
+ * functions shall be called sequentially in the same order they were added
+ * when scene_load is called. The args pointer must be either NULL or a pointer
+ * that can be passed to free().
+ */
+void scene_addLoadingStep(struct scene *scene, scene_loadCallback cb, void *args)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull (1,2)));
 
 /*
  * Create and return an object for the scene, returning a pointer to it. The
