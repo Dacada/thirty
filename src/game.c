@@ -306,6 +306,8 @@ void game_init(struct game *const game,
 
         game->inScene = false;
         game->currentScene = 0;
+        game->sceneMustChange = false;
+        game->sceneToChangeTo = 0;
         growingArray_init(&game->scenes,
                           sizeof(struct scene), initalSceneCapacity);
 
@@ -366,32 +368,56 @@ struct scene *game_getSceneFromIdx(const struct game *game, size_t idx) {
         return growingArray_get(&game->scenes, idx);
 }
 
-void game_setCurrentScene(struct game *const game, const size_t idx) {
-        if (game->inScene && idx == game->currentScene) {
-                return;
-        }
-        
+static void doChangeScene(struct game *const game) {
         struct eventBrokerSceneChanged args = {
                 .prevSceneIdx = game->currentScene,
         };
-        
-        game->currentScene = idx;
-        game->inScene = true;
+
+        if (game->sceneMustChange) {
+                game->currentScene = game->sceneToChangeTo;
+                game->inScene = true;
+        } else if (game->sceneMustUnset) {
+                game->inScene = false;
+        } else {
+                return;
+        }
+        game->sceneMustChange = false;
+        game->sceneMustUnset = false;
 
         eventBroker_fire(EVENT_BROKER_SCENE_CHANGED, &args);
 }
 
-void game_unsetCurrentScene(struct game *const game) {
-        if (!game->inScene) {
+void game_setCurrentScene(struct game *const game, const size_t idx) {
+        if (game->sceneMustUnset) {
+                // we just called game_unsetCurrentScene, change to setting a scene
+        } else if (game->sceneMustChange && game->sceneToChangeTo != idx) {
+                // we just called this function but to a different scene
+        } else if (game->inScene && game->currentScene != idx) {
+                // normal call and we're not in that scene already
+        } else if (!game->inScene) {
+                // normal call and we're not in any scene
+        } else {
+                // in any other case, do nothing
                 return;
         }
 
-        game->inScene = false;
+        game->sceneMustChange = true;
+        game->sceneMustUnset = false;
+        game->sceneToChangeTo = idx;
+}
 
-        struct eventBrokerSceneChanged args = {
-                .prevSceneIdx = game->currentScene,
-        };
-        eventBroker_fire(EVENT_BROKER_SCENE_CHANGED, &args);
+void game_unsetCurrentScene(struct game *const game) {
+        if (game->sceneMustChange) {
+                // we just called game_setCurrentScene but we're unsetting it instead
+        } else if (game->inScene) {
+                // normal call, we're in a scene right now
+        } else {
+                // in any other case, do nothing
+                return;
+        }
+
+        game->sceneMustChange = false;
+        game->sceneMustUnset = true;
 }
 
 void game_updateWindowTitle(struct game *game, const char *title) {
@@ -424,6 +450,9 @@ void game_setCursorPosition(const struct game *game, vec2s position) {
 
 void game_run(struct game *game) {
         while (!glfwWindowShouldClose(game->window)) {
+                // Start process of changing scene, if necessary
+                doChangeScene(game);
+                
                 // Update deltatime
                 game->timeDelta = (const float)glfwGetTime();
                 game->uiData.ctx->delta_time_seconds = game->timeDelta;

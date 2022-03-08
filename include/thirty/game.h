@@ -31,6 +31,9 @@ struct game {
         bool inScene;
         size_t currentScene;
         struct growingArray scenes;
+        bool sceneMustChange;
+        size_t sceneToChangeTo;
+        bool sceneMustUnset;
 };
 
 /*
@@ -91,14 +94,16 @@ struct scene *game_getSceneFromIdx(const struct game *game, size_t idx)
         __attribute__((returns_nonnull));
 
 /*
- * Set the game's current scene that will be updated and drawn.
+ * Set the game's current scene that will be updated and drawn. The change
+ * takes place just before the next frame starts.
  */
 void game_setCurrentScene(struct game *game, size_t idx)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
 /*
- * Unsets the game's current scene such that nothing will be updated or drawn.
+ * Unsets the game's current scene such that nothing will be updated or
+ * drawn.The change takes place just before the next frame starts.
  */
 void game_unsetCurrentScene(struct game *game)
         __attribute__((access (read_write, 1)))
