@@ -71,7 +71,6 @@ static void parse_object_tree(struct scene *const scene, FILE *const f) {
 
 static bool loadRootObj(struct scene *const scene, void *args) {
         (void)args;
-        fprintf(stderr, "loadRootObj\n");
         object_initEmpty(&scene->root, scene->game, scene->idx, "root", &scene->components);
         scene->root.idx = 0;
         return true;
@@ -79,7 +78,6 @@ static bool loadRootObj(struct scene *const scene, void *args) {
 
 static bool createComponentCollection(struct scene *const scene, void *args) {
         (void)args;
-        fprintf(stderr, "createComponentCollection\n");
         componentCollection_initCollection(&scene->components);
         return true;
 }
@@ -96,7 +94,6 @@ static void scene_initBasic(struct scene *const scene, struct game *const game) 
 
 static bool loadBogleFile(struct scene *const scene, void *const args) {
         char *const filename = args;
-        fprintf(stderr, "loadBogleFile\n");
         
         size_t idxOffset = componentCollection_currentOffset(&scene->components);
 
@@ -182,7 +179,6 @@ struct loadBasicArgs {
 static bool loadBasic(struct scene *const scene, void *vargs) {
         struct loadBasicArgs *args = vargs;
         
-        fprintf(stderr, "loadBasic\n");
         growingArray_init(&scene->objects, sizeof(struct object),
                           args->initialObjectCapacity);
 
