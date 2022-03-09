@@ -63,6 +63,25 @@ void growingArray_remove(struct growingArray *ga, size_t n)
         __attribute__((nonnull));
 
 /*
+ * Remove the last element of a growingArray. This is a simple process that
+ * does not leave "holes" in the data structure. It should not be called if
+ * there are any such holes, for simplicity of implementation and execution.
+ */
+void growingArray_pop(struct growingArray *ga)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
+ * Return a pointer to the last element of a growingArray. Note that this
+ * pointer is invalidated when this element is removed, for instance from a pop
+ * operation. It should not be called if there are any such holes, for
+ * simplicity of implementation and execution.
+ */
+void *growingArray_peek(const struct growingArray *ga)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull));
+
+/*
  * Return the address of the nth element in the array. Passing in an n >=
  * length or of a removed element is undefined behavior.
  */

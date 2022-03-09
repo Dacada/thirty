@@ -37,8 +37,7 @@ void *growingArray_append(struct growingArray *const ga) {
 
 void growingArray_remove(struct growingArray *ga, size_t n) {
         if (n == ga->fragLength - 1) {
-                ga->length--;
-                ga->fragLength--;
+                growingArray_pop(ga);
                 return;
         }
         assert(n < ga->fragLength);
@@ -58,6 +57,19 @@ void growingArray_remove(struct growingArray *ga, size_t n) {
         dn->next = NULL;
         dn->ptr = growingArrayAddress(ga, n);
         ga->length--;
+}
+
+void growingArray_pop(struct growingArray *ga) {
+        // too complicated to deal with this when it will actually never happen
+        assert(ga->deletedNodes == NULL);
+        ga->length--;
+        ga->fragLength--;
+}
+
+void *growingArray_peek(const struct growingArray *ga) {
+        // too complicated to deal with this when it will actually never happen
+        assert(ga->deletedNodes == NULL);
+        return growingArrayAddress(ga, ga->fragLength-1);
 }
 
 void *growingArray_get(const struct growingArray *const ga, const size_t n) {

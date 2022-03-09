@@ -22,9 +22,13 @@ struct scene {
 
         struct growingArray loadSteps;
         struct growingArray freePtrs;
+
+        struct growingArray loadingStack;
+        bool loading;
+        bool loaded;
 };
 
-typedef void(*scene_loadCallback)(struct scene*, void*);
+typedef bool(*scene_loadCallback)(struct scene*, void*);
 
 struct scene_loadStep {
         scene_loadCallback cb;
@@ -48,10 +52,12 @@ void scene_initFromFile(struct scene *scene, struct game *game, const char *file
         __attribute__((nonnull));
 
 /*
- * Load a scene. It will load everything defined eithe rin the BOGLE file or
- * through the scene_addLoadingStep functions.
+ * Take a step in loading a scene. It will load everything defined either in
+ * the BOGLE file or through the scene_addLoadingStep functions. It returns
+ * false if the function needs to be called again later to continue
+ * loading. And true if the loading process finished.
  */
-void scene_load(struct scene *scene)
+bool scene_load(struct scene *scene)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
 
@@ -68,6 +74,14 @@ void scene_unload(struct scene *scene)
  * functions shall be called sequentially in the same order they were added
  * when scene_load is called. The args pointer must be either NULL or a pointer
  * that can be passed to free().
+ *
+ * However, if this function is called while a scene is being loaded, then the
+ * new step will be executed only once immediately after the current one and
+ * the parameter will not be free'd.
+ *
+ * If the callback returns true then the next function will be executed
+ * immediately. If it returns false then it won't be executed until the next
+ * call to scene_load.
  */
 void scene_addLoadingStep(struct scene *scene, scene_loadCallback cb, void *args)
         __attribute__((access (read_only, 1)))

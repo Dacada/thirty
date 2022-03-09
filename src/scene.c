@@ -69,18 +69,24 @@ static void parse_object_tree(struct scene *const scene, FILE *const f) {
         stack_destroy(&stack);
 }
 
-static void loadRootObj(struct scene *const scene, void *args) {
+static bool loadRootObj(struct scene *const scene, void *args) {
         (void)args;
+        fprintf(stderr, "loadRootObj\n");
         object_initEmpty(&scene->root, scene->game, scene->idx, "root", &scene->components);
         scene->root.idx = 0;
+        return true;
 }
 
-static void createComponentCollection(struct scene *const scene, void *args) {
+static bool createComponentCollection(struct scene *const scene, void *args) {
         (void)args;
+        fprintf(stderr, "createComponentCollection\n");
         componentCollection_initCollection(&scene->components);
+        return true;
 }
 
 static void scene_initBasic(struct scene *const scene, struct game *const game) {
+        scene->loading = false;
+        scene->loaded = false;
         scene->game = game;
         growingArray_init(&scene->loadSteps, sizeof(struct scene_loadStep), 4);
         growingArray_init(&scene->freePtrs, sizeof(void*), 4);
@@ -88,8 +94,9 @@ static void scene_initBasic(struct scene *const scene, struct game *const game) 
         scene_addLoadingStep(scene, loadRootObj, NULL);
 }
 
-static void loadBogleFile(struct scene *const scene, void *const args) {
+static bool loadBogleFile(struct scene *const scene, void *const args) {
         char *const filename = args;
+        fprintf(stderr, "loadBogleFile\n");
         
         size_t idxOffset = componentCollection_currentOffset(&scene->components);
 
@@ -164,6 +171,7 @@ static void loadBogleFile(struct scene *const scene, void *const args) {
         }
 
         fclose(f);
+        return true;
 }
 
 struct loadBasicArgs {
@@ -171,13 +179,15 @@ struct loadBasicArgs {
         size_t initialObjectCapacity;
 };
 
-static void loadBasic(struct scene *const scene, void *vargs) {
+static bool loadBasic(struct scene *const scene, void *vargs) {
         struct loadBasicArgs *args = vargs;
         
+        fprintf(stderr, "loadBasic\n");
         growingArray_init(&scene->objects, sizeof(struct object),
                           args->initialObjectCapacity);
 
         scene->globalAmbientLight = args->globalAmbientLight;
+        return true;
 }
 
 void scene_init(struct scene *const scene, struct game *const game,
@@ -199,10 +209,49 @@ void scene_initFromFile(struct scene *const scene,
         scene_addLoadingStep(scene, loadBogleFile, sstrdup(filename));
 }
 
-void scene_load(struct scene *const scene) {
+static void prepareLoadingProcess(struct scene *const scene) {
+        growingArray_init(&scene->loadingStack, sizeof(struct scene_loadStep), scene->loadSteps.length);
+
+        struct scene_loadStep *steps = smallocarray(scene->loadSteps.length, sizeof(struct scene_loadStep));
+        long i=0;
         growingArray_foreach_START(&scene->loadSteps, struct scene_loadStep*, step) {
-                step->cb(scene, step->args);
+                steps[i++] = *step;
         } growingArray_foreach_END;
+        
+        for (long j=i-1; j>=0; j--) {
+                struct scene_loadStep *step = growingArray_append(&scene->loadingStack);
+                *step = steps[j];
+        }
+        free(steps);
+        
+        scene->loading = true;
+        scene->loaded = false;
+}
+
+bool scene_load(struct scene *const scene) {
+        if (scene->loaded) {
+                return true;
+        }
+        if (!scene->loading) {
+                prepareLoadingProcess(scene);
+        }
+
+        while (scene->loadingStack.length > 0) {
+                struct scene_loadStep step = *(struct scene_loadStep*)growingArray_peek(&scene->loadingStack);
+                growingArray_pop(&scene->loadingStack);
+                if (!step.cb(scene, step.args)) {
+                        break;
+                }
+        }
+
+        if (scene->loadingStack.length > 0) {
+                return false;
+        }
+        
+        growingArray_destroy(&scene->loadingStack);
+        scene->loading = false;
+        scene->loaded = true;
+        return true;
 }
 
 static void addMustFreePtr(struct scene *scene, void *ptr) {
@@ -217,13 +266,22 @@ void scene_unload(struct scene *const scene) {
         growingArray_foreach_END;
         growingArray_destroy(&scene->objects);
         componentCollection_freeCollection(&scene->components);
+        scene->loading = false;
+        scene->loaded = false;
 }
 
 void scene_addLoadingStep(struct scene *const scene, const scene_loadCallback cb, void *const args) {
-        struct scene_loadStep *step = growingArray_append(&scene->loadSteps);
+        struct scene_loadStep *step;
+        if (scene->loading) {
+                step = growingArray_append(&scene->loadingStack);
+        } else {
+                step = growingArray_append(&scene->loadSteps);
+        }
+        
         step->cb = cb;
         step->args = args;
-        if (args != NULL) {
+        
+        if (!scene->loading && args != NULL) {
                 addMustFreePtr(scene, args);
         }
 }
