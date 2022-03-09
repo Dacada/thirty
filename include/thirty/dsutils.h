@@ -92,7 +92,7 @@ void growingArray_foreach(const struct growingArray *ga,
         {                                                               \
         struct gaDeletedNodes *dn = (ga)->deletedNodes;                 \
         for (unsigned growingArray_foreach_idx=0;                       \
-             growingArray_foreach_idx<(ga)->length;                     \
+             growingArray_foreach_idx<(ga)->fragLength;                 \
              growingArray_foreach_idx++) {                              \
         type name = growingArray_get(ga, growingArray_foreach_idx);     \
         if (dn != NULL && dn->ptr == name) {                            \
