@@ -397,34 +397,12 @@ static void doChangeScene(struct game *const game) {
 }
 
 void game_setCurrentScene(struct game *const game, const size_t idx) {
-        if (game->sceneMustUnset) {
-                // we just called game_unsetCurrentScene, change to setting a scene
-        } else if (game->sceneMustChange && game->sceneToChangeTo != idx) {
-                // we just called this function but to a different scene
-        } else if (game->inScene && game->currentScene != idx) {
-                // normal call and we're not in that scene already
-        } else if (!game->inScene) {
-                // normal call and we're not in any scene
-        } else {
-                // in any other case, do nothing
-                return;
-        }
-
         game->sceneMustChange = true;
         game->sceneMustUnset = false;
         game->sceneToChangeTo = idx;
 }
 
 void game_unsetCurrentScene(struct game *const game) {
-        if (game->sceneMustChange) {
-                // we just called game_setCurrentScene but we're unsetting it instead
-        } else if (game->inScene) {
-                // normal call, we're in a scene right now
-        } else {
-                // in any other case, do nothing
-                return;
-        }
-
         game->sceneMustChange = false;
         game->sceneMustUnset = true;
 }
