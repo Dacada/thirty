@@ -4,6 +4,8 @@
 #include <thirty/shader.h>
 #include <thirty/component.h>
 #include <thirty/texture.h>
+#include <thirty/asyncLoader.h>
+#include <thirty/dsutils.h>
 
 /*
  * Represents a material. There are two kinds of materials. Uber and
@@ -57,9 +59,12 @@ void material_init(struct material *material, const char *name,
  * the actual used size.
  */
 size_t material_initFromFile(struct material *material, FILE *f,
-                             enum componentType type)
+                             enum componentType type, struct asyncLoader *loader,
+                             struct varSizeGrowingArray *components)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
+        __attribute__((access (read_write, 4)))
+        __attribute__((access (read_write, 5)))
         __attribute__((nonnull));
 
 /*

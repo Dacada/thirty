@@ -229,18 +229,13 @@ void texture_load(struct texture *const tex) {
         
         if (tex->type == GL_TEXTURE_2D) {
                 char *filepath = buildpathTex(tex->name, ".png");
-                loadImageIntoGl(filepath, tex->type, true,
-                                &tex->width, &tex->height);
+                loadImageIntoGl(filepath, tex->type, true, &tex->width, &tex->height);
                 free(filepath);
                 
-                glTexParameteri(tex->type, GL_TEXTURE_WRAP_S,
-                                GL_REPEAT);
-                glTexParameteri(tex->type, GL_TEXTURE_WRAP_T,
-                                GL_REPEAT);
-                glTexParameteri(tex->type, GL_TEXTURE_MIN_FILTER,
-                                GL_LINEAR);
-                glTexParameteri(tex->type, GL_TEXTURE_MAG_FILTER,
-                                GL_LINEAR);
+                glTexParameteri(tex->type, GL_TEXTURE_WRAP_S, GL_REPEAT);
+                glTexParameteri(tex->type, GL_TEXTURE_WRAP_T, GL_REPEAT);
+                glTexParameteri(tex->type, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(tex->type, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glGenerateMipmap(tex->type);
         } else if (tex->type == GL_TEXTURE_CUBE_MAP) {
                 char *filepath;

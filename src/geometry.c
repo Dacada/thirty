@@ -64,6 +64,7 @@ void geometry_initFromArray(struct geometry *const geometry,
         
         glBindVertexArray(0);
         geometry->nindices = (const int)nindices;
+        geometry->loaded = true;
 }
 
 void geometry_initCube(struct geometry *geo, const char *const name) {
@@ -1246,33 +1247,49 @@ void geometry_initPlane(struct geometry *geo, const char *name) {
                                vertices, nvertices, indices, nindices);
 }
 
-static void readGeometryFile(struct geometry *const geometry, const char *const name, FILE *const f) {
+struct readGeometryFileArgs {
+        struct varSizeGrowingArray *components;
+        size_t geometryIdx;
+        char *name;
+};
+
+static void readGeometryFile(void *const data, const size_t len, void *const vargs) {
+        struct readGeometryFileArgs *args = vargs;
+        
         struct {
                 uint32_t vertlen;
                 uint32_t indlen;
         } header;
 
-        sfread(&header.vertlen, sizeof(header.vertlen), 1, f);
-        sfread(&header.indlen, sizeof(header.indlen), 1, f);
+        size_t i=0;
+        asyncLoader_copyBytes(&header.vertlen, data, 1, sizeof(header.vertlen), &i);
+        asyncLoader_copyBytes(&header.indlen, data, 1, sizeof(header.indlen), &i);
         
         struct vertex *const vertices =
                 smallocarray(header.vertlen, sizeof(*vertices));
         unsigned *const indices =
                 smallocarray(header.indlen, sizeof(*indices));
 
-        sfread(vertices, sizeof(*vertices), header.vertlen, f);
-        sfread(indices, sizeof(*indices), header.indlen, f);
-        
-        geometry_initFromArray(geometry, name,
+        asyncLoader_copyBytes(vertices, data, header.vertlen, sizeof(*vertices), &i);
+        asyncLoader_copyBytes(indices, data, header.indlen, sizeof(*indices), &i);
+
+        assert(i == len);
+
+        struct geometry *geometry = varSizeGrowingArray_get(args->components,
+                                                            args->geometryIdx, NULL);
+        geometry_initFromArray(geometry, args->name,
                                vertices, header.vertlen,
                                indices, header.indlen);
 
         free(vertices);
         free(indices);
+        free(args->name);
+        free(args);
 }
 
 size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
-                             const enum componentType type) {
+                             const enum componentType type, struct asyncLoader *loader,
+                             struct varSizeGrowingArray *components) {
         assert(type == COMPONENT_GEOMETRY);
 
         char *name = strfile(f);
@@ -1291,15 +1308,14 @@ size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
                 die("Cannot read geometry file");
         }
 
-        FILE *ff = fopen(path, "r");
-        if (ff == NULL) {
-                perror("fopen");
-                bail("Cannot read geometry file.\n");
-        }
-        readGeometryFile(geometry, name, ff);
-        fclose(ff);
+        geometry->loaded = false;
+        struct readGeometryFileArgs *args = smalloc(sizeof(*args));
+        args->components = components;
+        args->geometryIdx = geometry->base.idx;
+        args->name = name;
         
-        free(name);
+        asyncLoader_read(loader, path, readGeometryFile, args);
+        
         free(filename);
         free(path);
         
@@ -1309,23 +1325,27 @@ size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
 void geometry_draw(const struct geometry *const geometry) {
         assert(geometry->base.type == COMPONENT_GEOMETRY);
         
-        glBindVertexArray(geometry->vao);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geometry->ibo);
-        glDrawElements(GL_TRIANGLES, geometry->nindices, GL_UNSIGNED_INT, 0);
+        if (geometry->loaded) {
+                glBindVertexArray(geometry->vao);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geometry->ibo);
+                glDrawElements(GL_TRIANGLES, geometry->nindices, GL_UNSIGNED_INT, 0);
+        }
 }
 
 void geometry_free(struct geometry *const geometry) {
         assert(geometry->base.type == COMPONENT_GEOMETRY);
         
         component_free((struct component*)geometry);
-        
-        glDeleteBuffers(1, &geometry->vbo);
-        glDeleteBuffers(1, &geometry->ibo);
-        glDeleteVertexArrays(1, &geometry->vao);
 
-        // Not necessary since deleted objects are ignored by glDelete*, but
-        // more expressive. (zero is also ignored)
-        geometry->vbo = 0;
-        geometry->ibo = 0;
-        geometry->vao = 0;
+        if (geometry->loaded) {
+                glDeleteBuffers(1, &geometry->vbo);
+                glDeleteBuffers(1, &geometry->ibo);
+                glDeleteVertexArrays(1, &geometry->vao);
+
+                // Not necessary since deleted objects are ignored by glDelete*, but
+                // more expressive. (zero is also ignored)
+                geometry->vbo = 0;
+                geometry->ibo = 0;
+                geometry->vao = 0;
+        }
 }

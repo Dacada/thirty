@@ -55,7 +55,9 @@ void scene_initFromFile(struct scene *scene, struct game *game, const char *file
  * Take a step in loading a scene. It will load everything defined either in
  * the BOGLE file or through the scene_addLoadingStep functions. It returns
  * false if the function needs to be called again later to continue
- * loading. And true if the loading process finished.
+ * loading. And true if the loading process finished. No new scenes should be
+ * created between the first call to this function and the function finally
+ * returning true.
  */
 bool scene_load(struct scene *scene)
         __attribute__((access (read_write, 1)))

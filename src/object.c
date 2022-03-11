@@ -24,8 +24,8 @@ static inline void assign_idx(struct object *const object,
         uint32_t idx;
         sfread(&idx, sizeof(idx), 1, f);
         if (idx != 0) {
-                componentCollection_set(object->componentsMemory, &object->components, object->idx,
-                                        component, offset + idx - 1);
+                componentCollection_set(object->componentsMemory, &object->components,
+                                        object->idx, component, offset + idx - 1);
         }
 }
 

@@ -95,7 +95,9 @@ struct scene *game_getSceneFromIdx(const struct game *game, size_t idx)
 
 /*
  * Set the game's current scene that will be updated and drawn. The change
- * takes place just before the next frame starts.
+ * starts to takes place just before the next frame starts but finishes at some
+ * undefined time afterwards. When the new scene is ready an even will be
+ * fired. No new scenes should be created until this event fires.
  */
 void game_setCurrentScene(struct game *game, size_t idx)
         __attribute__((access (read_write, 1)))

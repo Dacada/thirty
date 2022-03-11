@@ -18,8 +18,11 @@ void camera_init(struct camera *const cam, const char *const name,
 }
 
 size_t camera_initFromFile(struct camera *const cam, FILE *const f,
-                           const enum componentType type) {
+                           const enum componentType type, struct asyncLoader *loader,
+                           struct varSizeGrowingArray *components) {
         assert(type == COMPONENT_CAMERA);
+        asyncLoader_setFinished(loader);
+        (void)components;
         
         uint32_t width;
         uint32_t height;

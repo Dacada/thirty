@@ -104,9 +104,12 @@ void material_init(struct material *material, const char *const name,
 }
 
 size_t material_initFromFile(struct material *const material, FILE *const f,
-                             const enum componentType type) {
+                             const enum componentType type, struct asyncLoader *loader,
+                           struct varSizeGrowingArray *components) {
         assert(type == COMPONENT_MATERIAL_SKYBOX ||
                type == COMPONENT_MATERIAL_UBER);
+        asyncLoader_setFinished(loader);
+        (void)components;
         
         uint8_t shader_type;
         sfread(&shader_type, sizeof(shader_type), 1, f);

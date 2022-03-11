@@ -4,6 +4,8 @@
 #include <thirty/component.h>
 #include <thirty/shader.h>
 #include <thirty/animation.h>
+#include <thirty/asyncLoader.h>
+#include <thirty/dsutils.h>
 
 /*
  * A collection of animations. This component handles playing, stopping,
@@ -36,9 +38,13 @@ struct animationCollection {
  * correct offset.
  */
 size_t animationCollection_initFromFile(struct animationCollection *col,
-                                        FILE *f, enum componentType type)
+                                        FILE *f, enum componentType type,
+                                        struct asyncLoader *loader,
+                                        struct varSizeGrowingArray *components)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
+        __attribute__((access (read_write, 4)))
+        __attribute__((access (read_write, 5)))
         __attribute__((nonnull));
 
 /*

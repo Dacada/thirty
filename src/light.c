@@ -25,8 +25,15 @@ void light_init(struct light *const light, const enum componentType type,
         
 }
 
-size_t light_initFromFile(struct light *const light,
-                          FILE *const f, const enum componentType type) {
+size_t light_initFromFile(struct light *const light, FILE *const f,
+                          const enum componentType type, struct asyncLoader *loader,
+                           struct varSizeGrowingArray *components) {
+        assert(type == COMPONENT_LIGHT_DIRECTION ||
+               type == COMPONENT_LIGHT_POINT ||
+               type == COMPONENT_LIGHT_SPOT);
+        asyncLoader_setFinished(loader);
+        (void)components;
+        
         char *name = strfile(f);
 
         vec3s attenuation;

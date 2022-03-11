@@ -2,9 +2,12 @@
 #include <thirty/util.h>
 
 size_t animationCollection_initFromFile(struct animationCollection *const col,
-                                        FILE *const f,
-                                        const enum componentType type) {
+                                        FILE *const f, const enum componentType type,
+                                        struct asyncLoader *loader,
+                                        struct varSizeGrowingArray *components) {
         assert(type == COMPONENT_ANIMATIONCOLLECTION);
+        asyncLoader_setFinished(loader);
+        (void)components;
         
         char *name = strfile(f);
         component_init(&col->base, name);

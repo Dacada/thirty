@@ -1,26 +1,9 @@
 #include <thirty/scene.h>
+#include <thirty/asyncLoader.h>
 #include <thirty/util.h>
 
 #define BOGLE_MAGIC_SIZE 5
 #define OBJECT_TREE_NUMBER_BASE 10
-
-__attribute__((access (write_only, 1, 2)))
-__attribute__((access (read_write, 3)))
-__attribute__((access (read_only, 4)))
-__attribute__((access (read_write, 12)))
-__attribute__((nonnull))
-static void parse_objects(struct growingArray *objects, unsigned nobjs,
-                          struct varSizeGrowingArray *components,
-                          struct game *game, size_t scene, size_t idxOffset,
-                          unsigned ncams, unsigned ngeos, unsigned nmats,
-                          unsigned nlights, unsigned nanims, FILE *const f) {
-        for (unsigned i=0; i<nobjs; i++) {
-                struct object *obj = growingArray_append(objects);
-                obj->idx = objects->length;  // idx 0 is root
-                object_initFromFile(obj, game, components, scene, idxOffset,
-                                    ncams, ngeos, nmats, nlights, nanims, f);
-        }
-}
 
 __attribute__((access (read_write, 1)))
 __attribute__((access (read_write, 2)))
@@ -92,13 +75,7 @@ static void scene_initBasic(struct scene *const scene, struct game *const game) 
         scene_addLoadingStep(scene, loadRootObj, NULL);
 }
 
-static bool loadBogleFile(struct scene *const scene, void *const args) {
-        char *const filename = args;
-        
-        size_t idxOffset = componentCollection_currentOffset(&scene->components);
-
-        FILE *f = sfopen(filename, "r");
-        
+struct bogleFileLoadArgs {
         struct {
                 uint8_t magic[BOGLE_MAGIC_SIZE];
                 uint8_t version;
@@ -109,65 +86,120 @@ static bool loadBogleFile(struct scene *const scene, void *const args) {
                 uint32_t nanims;
                 uint32_t nobjs;
         } header;
+        FILE *f;
+        size_t idxOffset;
+        
+        struct asyncLoader *asyncLoaders;
+        size_t totalComponents;
+        size_t lastUnfinished;
+};
 
-        sfread(&header.magic, sizeof(uint8_t), BOGLE_MAGIC_SIZE, f);
-        if (strncmp((char*)(header.magic), "BOGLE", BOGLE_MAGIC_SIZE) != 0) {
+static void parse_objects(struct bogleFileLoadArgs *args, struct growingArray *objects,
+                          struct varSizeGrowingArray *components, struct game *game,
+                          size_t scene) {
+        for (unsigned i=0; i<args->header.nobjs; i++) {
+                struct object *obj = growingArray_append(objects);
+                obj->idx = objects->length;  // idx 0 is root
+                object_initFromFile(obj, game, components, scene, args->idxOffset,
+                                    args->header.ncams, args->header.ngeos,
+                                    args->header.nmats, args->header.nlights,
+                                    args->header.nanims, args->f);
+        }
+}
+
+static bool loadBogleFileObjects(struct scene *const scene, void *const vargs) {
+        struct bogleFileLoadArgs *args = vargs;
+
+        growingArray_init(&scene->objects, sizeof(struct object), args->header.nobjs);
+
+        // TODO: Read the chunk of the file needed all at once (async) and parse it into the objects later
+        parse_objects(args, &scene->objects, &scene->components, scene->game, scene->idx);
+        // TODO: Read the chunk of the file needed all at once (async) and parse it into the object tree later
+        parse_object_tree(scene, args->f);
+
+        const int c = fgetc(args->f);
+        if (c != EOF) {
+                bail("Malformated file, trash at the end, I'm being very strict so I won't just ignore it.\n");
+        }
+
+        fclose(args->f);
+        free(args);
+
+        return true;
+}
+
+static bool awaitBogleComponentLoad(struct scene *const scene, void *const vargs) {
+        struct bogleFileLoadArgs *args = vargs;
+
+        for (size_t i=args->lastUnfinished; i<args->totalComponents; i++) {
+                if (!asyncLoader_finished(&args->asyncLoaders[i])) {
+                        scene_addLoadingStep(scene, awaitBogleComponentLoad, args);
+                        args->lastUnfinished = i;
+                        return false;
+                }
+        }
+
+        free(args->asyncLoaders);
+        scene_addLoadingStep(scene, loadBogleFileObjects, args);
+        return true;
+}
+
+static bool loadBogleFile(struct scene *const scene, void *const vargs) {
+        char *const filename = vargs;
+
+        struct bogleFileLoadArgs *args = smalloc(sizeof(*args));
+        
+        args->idxOffset = componentCollection_currentOffset(&scene->components);
+
+        args->f = sfopen(filename, "r");
+
+        sfread(&args->header.magic, sizeof(uint8_t), BOGLE_MAGIC_SIZE, args->f);
+        if (strncmp((char*)(args->header.magic), "BOGLE", BOGLE_MAGIC_SIZE) != 0) {
                 bail("Malformatted scene file\n");
         }
 
-        sfread(&header.version, sizeof(header.version), 1, f);
-        if (header.version != 0) {
+        sfread(&args->header.version, sizeof(args->header.version), 1, args->f);
+        if (args->header.version != 0) {
                 bail("Unsupported scene file version: %d "
-                     "(support only 0)\n", header.version);
+                     "(support only 0)\n", args->header.version);
         }
 
-        sfread(&header.ncams, sizeof(header.ncams), 1, f);
-        sfread(&header.ngeos, sizeof(header.ngeos), 1, f);
-        sfread(&header.nmats, sizeof(header.nmats), 1, f);
-        sfread(&header.nlights, sizeof(header.nlights), 1, f);
-        sfread(&header.nanims, sizeof(header.nanims), 1, f);
-        sfread(&header.nobjs, sizeof(header.nobjs), 1, f);
+        sfread(&args->header.ncams, sizeof(args->header.ncams), 1, args->f);
+        sfread(&args->header.ngeos, sizeof(args->header.ngeos), 1, args->f);
+        sfread(&args->header.nmats, sizeof(args->header.nmats), 1, args->f);
+        sfread(&args->header.nlights, sizeof(args->header.nlights), 1, args->f);
+        sfread(&args->header.nanims, sizeof(args->header.nanims), 1, args->f);
+        sfread(&args->header.nobjs, sizeof(args->header.nobjs), 1, args->f);
 
         sfread(scene->globalAmbientLight.raw,
                sizeof(*scene->globalAmbientLight.raw),
                sizeof(scene->globalAmbientLight) /
-               sizeof(*scene->globalAmbientLight.raw), f);
+               sizeof(*scene->globalAmbientLight.raw), args->f);
 
+        args->totalComponents = args->header.ncams + args->header.ngeos + args->header.nmats + args->header.nlights + args->header.nanims;
+        args->asyncLoaders = smallocarray(args->totalComponents, sizeof(struct asyncLoader));
+        args->lastUnfinished = 0;
+        
 #define LOAD_DATA(n, which, baseType)                                   \
-        do {                                                            \
-                for (unsigned i=0; i<(n); i++) {                        \
-                        uint8_t type;                                   \
-                        sfread(&type, sizeof(type), 1, f);              \
-                        struct which *comp =                            \
-                                componentCollection_create(&scene->components, \
-                                        scene->game, (baseType) + type); \
-                        which##_initFromFile(comp, f, (baseType) + type); \
-                }                                                       \
-        } while (0)
-
-        LOAD_DATA(header.ncams, camera, COMPONENT_CAMERA);
-        LOAD_DATA(header.ngeos, geometry, COMPONENT_GEOMETRY);
-        LOAD_DATA(header.nmats, material, COMPONENT_MATERIAL);
-        LOAD_DATA(header.nlights, light, COMPONENT_LIGHT);
-        LOAD_DATA(header.nanims, animationCollection,
-                  COMPONENT_ANIMATIONCOLLECTION);
-#undef LOAD_DATA
-
-        growingArray_init(&scene->objects,
-                          sizeof(struct object), header.nobjs);
-
-        parse_objects(&scene->objects, header.nobjs, &scene->components, scene->game,
-                      scene->idx, idxOffset, header.ncams, header.ngeos, header.nmats,
-                      header.nlights, header.nanims, f);
-        parse_object_tree(scene, f);
-
-        const int c = fgetc(f);
-        if (c != EOF) {
-                bail("Malformated file, trash at the end, I'm being "
-                     "very strict so I won't just ignore it.\n");
+        for (unsigned i=0; i<(n); i++) {                                \
+                uint8_t type;                                           \
+                sfread(&type, sizeof(type), 1, args->f);                \
+                struct which *comp = componentCollection_create(        \
+                        &scene->components, scene->game, (baseType) + type); \
+                which##_initFromFile(comp, args->f, (baseType) + type,  \
+                                     &args->asyncLoaders[j++], &scene->components); \
         }
 
-        fclose(f);
+        size_t j=0;
+        LOAD_DATA(args->header.ncams, camera, COMPONENT_CAMERA);
+        LOAD_DATA(args->header.ngeos, geometry, COMPONENT_GEOMETRY);
+        LOAD_DATA(args->header.nmats, material, COMPONENT_MATERIAL);
+        LOAD_DATA(args->header.nlights, light, COMPONENT_LIGHT);
+        LOAD_DATA(args->header.nanims, animationCollection, COMPONENT_ANIMATIONCOLLECTION);
+#undef LOAD_DATA
+
+        scene_addLoadingStep(scene, awaitBogleComponentLoad, args);
+        
         return true;
 }
 
