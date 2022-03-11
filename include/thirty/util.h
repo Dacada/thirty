@@ -64,6 +64,9 @@
 
 #endif
 
+bool is_safe_multiply(const size_t a, const size_t b)
+        __attribute__((const));
+
 float clamp_angle(float angle, float min, float max)
         __attribute__((const));
 

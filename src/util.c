@@ -15,8 +15,7 @@
 
 #define BUFFER_SIZE 256
 
-__attribute__((const))
-static bool is_safe_multiply(const size_t a, const size_t b) {
+bool is_safe_multiply(const size_t a, const size_t b) {
         if (a == 0 || b == 0) {
                 return true;
         }
