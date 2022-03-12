@@ -24,18 +24,15 @@ TIDY_CHECKS := "-checks=-*,bugprone-*,linuxkernel-*,misc-*,modernize-*,performan
 
 OBJECTS_DEBUG := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%_dbg.o,$(SOURCES))
 OBJECTS_RELEASE := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%_rel.o,$(SOURCES))
-OBJECTS_DEVELOP := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%_dev.o,$(SOURCES))
 
 # Add object files for the generated glad files
 OBJECTS_DEBUG += $(OBJ_DIR)/glad_dbg.o $(OBJ_DIR)/stb_image_dbg.o
 OBJECTS_RELEASE += $(OBJ_DIR)/glad_rel.o $(OBJ_DIR)/stb_image_rel.o
-OBJECTS_DEVELOP += $(OBJ_DIR)/glad_dev.o $(OBJ_DIR)/stb_image_dev.o
 
 DEPENDS_DEBUG := $(OBJECTS_DEBUG:.o=.d)
 DEPENDS_RELEASE := $(OBJECTS_RELEASE:.o=.d)
-DEPENDS_DEVELOP := $(OBJECTS_DEVELOP:.o=.d)
 
-TARGETS := $(BIN_DIR)/thirty_dbg.a $(BIN_DIR)/thirty_rel.a $(BIN_DIR)/thirty_dev.a
+TARGETS := $(BIN_DIR)/thirty_dbg.a $(BIN_DIR)/thirty_rel.a
 
 
 CC := gcc
@@ -49,7 +46,6 @@ GLAD_FLAGS := --profile=core --api=gl=3.3 --spec=gl --extensions= --out-path=$$t
 
 CFLAGS_DEBUG := -MMD -Og -g -fno-omit-frame-pointer
 CFLAGS_RELEASE := -MMD -DNDEBUG -flto -O2 -g
-CFLAGS_DEVELOP := -MMD -Werror -fno-omit-frame-pointer
 
 GLAD_FLAGS_DEBUG := --generator=c-debug
 GLAD_FLAGS_RELEASE := --generator=c
@@ -69,10 +65,9 @@ define FIND_SYSHEADERS_CMD
 )
 endef
 
-.PHONY: dbg dev rel clean veryclean purify impolute etags glad_rel glad_dbg static-analysis tidy_src tidy_include line-count
+.PHONY: dbg rel clean veryclean purify impolute etags glad_rel glad_dbg static-analysis tidy_src tidy_include line-count
 
 rel: glad_rel $(BIN_DIR)/thirty.a
-dev: glad_dbg etags $(BIN_DIR)/thirty_dev.a
 dbg: glad_dbg $(BIN_DIR)/thirty_dbg.a
 
 clean:
@@ -128,16 +123,13 @@ sysh_TAGS:
 
 $(BIN_DIR)/thirty_dbg.a: $(OBJECTS_DEBUG)
 $(BIN_DIR)/thirty_rel.a: $(OBJECTS_RELEASE)
-$(BIN_DIR)/thirty_dev.a: $(OBJECTS_DEVELOP)
 
 $(OBJ_DIR)/%_dbg.o: CFLAGS += $(CFLAGS_DEBUG)
 $(OBJ_DIR)/%_rel.o: CFLAGS += $(CFLAGS_RELEASE)
-$(OBJ_DIR)/%_dev.o: CFLAGS += $(CFLAGS_DEVELOP)
 
 # The debug version of glad.c has a lot of functions missing
 # prototypes for some reason
 $(OBJ_DIR)/glad_dbg.o: CFLAGS += -Wno-missing-prototypes
-$(OBJ_DIR)/glad_dev.o: CFLAGS += -Wno-missing-prototypes
 
 # Remove some spurious warnings from stb_image
 $(OBJ_DIR)/stb_image_%.o: CFLAGS += -Wno-cast-qual
@@ -149,7 +141,6 @@ $(OBJ_DIR)/stb_image_%.o: CFLAGS += -Wno-missing-prototypes
 # Specific dependencies for glad generated files
 $(OBJ_DIR)/glad_rel.o: $(SRC_DIR)/glad_rel.c
 $(OBJ_DIR)/glad_dbg.o: $(SRC_DIR)/glad_dbg.c
-$(OBJ_DIR)/glad_dev.o: $(SRC_DIR)/glad_dbg.c
 	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
@@ -159,9 +150,6 @@ $(OBJ_DIR)/%_dbg.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h $(INCLUDE_DIR)/nuk
 	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
 $(OBJ_DIR)/%_rel.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h $(INCLUDE_DIR)/nuklear/nuklear.h $(INCLUDE_DIR)/nuklear/glfw.h
-	@mkdir -p $(OBJ_DIR)
-	$(CC) -c $(CFLAGS) -o $@ $<
-$(OBJ_DIR)/%_dev.o: $(SRC_DIR)/%.c $(INCLUDE_DIR)/stb_image.h $(INCLUDE_DIR)/nuklear/nuklear.h $(INCLUDE_DIR)/nuklear/glfw.h
 	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) -o $@ $<
 
@@ -220,4 +208,3 @@ $(SRC_DIR)/.clang_complete $(INCLUDE_DIR)/.clang_complete: Makefile
 
 -include $(DEPENDS_DEBUG)
 -include $(DEPENDS_RELEASE)
--include $(DEPENDS_DEVELOP)
