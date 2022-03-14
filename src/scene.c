@@ -1,5 +1,6 @@
 #include <thirty/scene.h>
 #include <thirty/util.h>
+#include <thirty/asyncLoader.h>
 
 #define BOGLE_MAGIC_SIZE 5
 #define OBJECT_TREE_NUMBER_BASE 10
@@ -226,6 +227,7 @@ static void prepareLoadingProcess(struct scene *const scene) {
         
         scene->loading = true;
         scene->loaded = false;
+        scene->totalSizeFinishedAsyncLoad = 0;
 }
 
 bool scene_load(struct scene *const scene) {
@@ -269,9 +271,19 @@ void scene_unload(struct scene *const scene) {
 }
 
 bool scene_awaitAsyncLoaders(struct scene *const scene) {
-        size_t remaining = asyncLoader_await();
+        size_t size;
+        bool done = !asyncLoader_await(&size);
+        scene->totalSizeFinishedAsyncLoad += size;
 
-        if (remaining == 0) {
+        if (size != 0) {
+                struct eventBrokerSceneLoadProgress args = {
+                        .current = scene->totalSizeFinishedAsyncLoad,
+                        .total = asyncLoader_totalSize(),
+                };
+                eventBroker_fire(EVENT_BROKER_SCENE_LOAD_PROGRESS, &args);
+        }
+
+        if (done) {
                 asyncLoader_destroy();
                 scene->loading = false;
                 scene->loaded = true;

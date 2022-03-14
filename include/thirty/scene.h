@@ -24,6 +24,7 @@ struct scene {
         struct growingArray freePtrs;
 
         struct growingArray loadingStack;
+        size_t totalSizeFinishedAsyncLoad;
         bool loading;
         bool loaded;
 };

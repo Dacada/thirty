@@ -13,7 +13,6 @@ struct loader {
         size_t size;
         void *buf;
         bool finished;
-        bool reaped;
         asyncLoader_cb callback;
         void *callbackArgs;
 };
@@ -22,7 +21,8 @@ static sem_t semaphore;
 static pthread_mutex_t mutex;
 static struct growingArray queue;
 static size_t tail;
-static size_t firstUnfinished;
+static size_t reapTail;
+static size_t totalSize;
 
 static pthread_t threads[THREADS];
 
@@ -64,7 +64,8 @@ static void *worker(void *args) {
 void asyncLoader_init(void) {
         growingArray_init(&queue, sizeof(struct loader), 8);
         tail = 0;
-        firstUnfinished = 0;
+        reapTail = 0;
+        totalSize = 0;
         
         sem_init(&semaphore, 0, 0);
         pthread_mutex_init(&mutex, NULL);
@@ -81,12 +82,13 @@ void asyncLoader_enqueueRead(const char *const filepath, asyncLoader_cb callback
         slseek(fd, 0, SEEK_SET);
         void *buf = smalloc(size);
 
+        totalSize += size;
+
         struct loader loader = {
                 .fd = fd,
                 .size = size,
                 .buf = buf,
                 .finished = false,
-                .reaped = false,
                 .callback = callback,
                 .callbackArgs = callbackArgs,
         };
@@ -100,51 +102,49 @@ void asyncLoader_enqueueRead(const char *const filepath, asyncLoader_cb callback
         sem_post(&semaphore);
 }
 
-size_t asyncLoader_await(void) {
-        bool foundFirstUnfinished = false;
-        size_t completed = firstUnfinished;
-
+bool asyncLoader_await(size_t *sizePtr) {
         size_t length;
-        for (size_t i=firstUnfinished;; i++) {
-                pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&mutex);
+        {
                 length = queue.length;
-                pthread_mutex_unlock(&mutex);
-                if (i >= length) {
-                        break;
-                }
-                
-                asyncLoader_cb callback = NULL;
-                void *callbackArgs = NULL;
-                void *buffer = NULL;
-                size_t size = 0;
-                
-                pthread_mutex_lock(&mutex);
-                struct loader *ptr = growingArray_get(&queue, i);
-                bool finished = ptr->finished;
-                bool reaped = ptr->reaped;
-                ptr->reaped = true;
-                if (!reaped) {
+        }
+        pthread_mutex_unlock(&mutex);
+        
+        if (reapTail >= length) {
+                return false;
+        }
+        
+        asyncLoader_cb callback = NULL;
+        void *callbackArgs = NULL;
+        void *buffer = NULL;
+        size_t size = 0;
+        bool finished;
+        pthread_mutex_lock(&mutex);
+        {
+                struct loader *ptr = growingArray_get(&queue, reapTail);
+                finished = ptr->finished;
+                if (finished) {
                         callback = ptr->callback;
                         callbackArgs = ptr->callbackArgs;
                         buffer = ptr->buf;
                         size = ptr->size;
                 }
-                pthread_mutex_unlock(&mutex);
-
-                if (finished) {
-                        completed++;
-                        if (!reaped) {
-                                callback(buffer, size, callbackArgs);
-                        }
-                } else {
-                        if (!foundFirstUnfinished) {
-                                firstUnfinished = i;
-                                foundFirstUnfinished = true;
-                        }
-                }
+        }
+        pthread_mutex_unlock(&mutex);
+        
+        if (finished) {
+                callback(buffer, size, callbackArgs);
+                reapTail++;
+                *sizePtr = size;
+        } else {
+                *sizePtr = 0;
         }
         
-        return length - completed;
+        return true;
+}
+
+size_t asyncLoader_totalSize(void) {
+        return totalSize;
 }
 
 void asyncLoader_destroy(void) {
@@ -168,9 +168,9 @@ void asyncLoader_copyBytes(void *restrict dest, const void *restrict src,
         if (!is_safe_multiply(nmemb, size)) {
                 bail("multiplication would overflow: %lu * %lu", nmemb, size);
         }
-        size_t totalSize = nmemb * size;
+        size_t total = nmemb * size;
         const void *offsetSrc = (const char*)src + *offset;
-        memcpy(dest, offsetSrc, totalSize);
-        *offset += totalSize;
+        memcpy(dest, offsetSrc, total);
+        *offset += total;
         
 }

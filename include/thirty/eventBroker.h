@@ -43,6 +43,9 @@ enum eventBrokerEvent {
 
         // Fires whenever the current scene changes
         EVENT_BROKER_SCENE_CHANGED,
+
+        // Fires when the current scene's loading progress changed
+        EVENT_BROKER_SCENE_LOAD_PROGRESS,
         
         // Draw step
         EVENT_BROKER_DRAW,
@@ -107,6 +110,11 @@ struct eventBrokerSetup {
 
 struct eventBrokerSceneChanged {
         const size_t prevSceneIdx;
+};
+
+struct eventBrokerSceneLoadProgress {
+        const size_t current;
+        const size_t total;
 };
 
 struct eventBrokerDraw {

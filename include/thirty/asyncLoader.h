@@ -2,6 +2,7 @@
 #define ASYNCLOADER_H
 
 #include <stddef.h>
+#include <stdbool.h>
 
 typedef void(*asyncLoader_cb)(void*, size_t, void*);
 
@@ -16,9 +17,14 @@ void asyncLoader_enqueueRead(const char *filepath, asyncLoader_cb callback,
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull (1)));
 
-// Nonblocking. Should be called periodically. Return number of remaining async
-// load operations.
-size_t asyncLoader_await(void);
+// Nonblocking. Should be called periodically. Reaps at most one sync load
+// operation. Returns false if all operations have been reaped. If size is not
+// null, writes the size of the reaped operation to *size if one was reaped or
+// zero otherwise.
+bool asyncLoader_await(size_t *sizePtr);
+
+// Returns the total size of all enqueued reads
+size_t asyncLoader_totalSize(void);
 
 // Free all resources used by a collection of async loader system. Should be
 // called if system won't be used for a while to free up resources.
