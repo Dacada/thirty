@@ -3,6 +3,7 @@
 #include <thirty/util.h>
 #include <cglm/cglm.h>
 #include <unistd.h> //TODO: Only for linux
+#include <fcntl.h> //TODO: Only for linux
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -131,6 +132,15 @@ FILE *sfopen(const char *const pathname, const char *const mode) {
         return f;
 }
 
+int sopen(const char *const pathname, const int flags) {
+        int fd = open(pathname, flags);
+        if (fd < 0) {
+                perror(pathname);
+                die("Failed to open file.");
+        }
+        return fd;
+}
+
 DIR *sopendir(const char *const pathname) {
         DIR *const d = opendir(pathname);
         if (d == NULL) {
@@ -145,6 +155,15 @@ void sfseek(FILE *const stream, const long offset, const int whence) {
                 perror("fseek");
                 die(NULL);
         }
+}
+
+size_t slseek(int filedes, off_t offset, int whence) {
+        off_t res = lseek(filedes, offset, whence);
+        if (res < 0) {
+                perror("lseek");
+                die(NULL);
+        }
+        return (size_t)res;
 }
 
 size_t sftell(FILE *const stream) {

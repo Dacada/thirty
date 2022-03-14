@@ -137,6 +137,11 @@ FILE *sfopen(const char *pathname, const char *mode)
         __attribute__((returns_nonnull))
         __attribute__((warn_unused_result));
 
+int sopen(const char *pathname, int flags)
+        __attribute__((access (read_only, 1)))
+        __attribute__((nonnull))
+        __attribute__((warn_unused_result));
+
 DIR *sopendir(const char *pathname)
         __attribute__((access (read_only, 1)))
         __attribute__((nonnull))
@@ -146,6 +151,8 @@ DIR *sopendir(const char *pathname)
 void sfseek(FILE *stream, long offset, int whence)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
+
+size_t slseek(int filedes, off_t offset, int whence);
 
 size_t sftell(FILE *stream)
         __attribute__((access (read_write, 1)))
