@@ -1284,6 +1284,7 @@ static void readGeometryFile(void *const data, const size_t len, void *const var
 
         free(vertices);
         free(indices);
+        free(data);
         free(args->name);
         free(args);
 }
