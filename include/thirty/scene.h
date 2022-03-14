@@ -72,6 +72,13 @@ void scene_unload(struct scene *scene)
         __attribute__((nonnull));
 
 /*
+ * Return whether all of the scene's async loaders have finished.
+ */
+bool scene_awaitAsyncLoaders(struct scene *scene)
+        __attribute__((access (read_write, 1)))
+        __attribute__((nonnull));
+
+/*
  * Add a function to be called during the scene loading process. These
  * functions shall be called sequentially in the same order they were added
  * when scene_load is called. The args pointer must be either NULL or a pointer

@@ -1,4 +1,5 @@
 #include <thirty/material.h>
+#include <thirty/asyncLoader.h>
 #include <thirty/util.h>
 
 #define getTextureInfo(cnst, material, tex, textureType)                \
@@ -95,21 +96,18 @@ void material_init(struct material *material, const char *const name,
 
         for (enum material_textureType tex = MATERIAL_TEXTURE_AMBIENT;
              tex < MATERIAL_TEXTURE_TOTAL; tex++) {
-                struct texture *texture = getVarTextureInfo(
-                        material, tex, NULL);
+                struct texture *texture = getVarTextureInfo(material, tex, NULL);
                 if (texture != NULL) {
-                        texture_init(texture, NULL, 0, 0);
+                        texture_init(texture, 0, 0);
                 }
         }
 }
 
 size_t material_initFromFile(struct material *const material, FILE *const f,
-                             const enum componentType type, struct asyncLoader *loader,
-                           struct varSizeGrowingArray *components) {
+                             const enum componentType type,
+                             struct varSizeGrowingArray *const components) {
         assert(type == COMPONENT_MATERIAL_SKYBOX ||
                type == COMPONENT_MATERIAL_UBER);
-        asyncLoader_setFinished(loader);
-        (void)components;
         
         uint8_t shader_type;
         sfread(&shader_type, sizeof(shader_type), 1, f);
@@ -119,23 +117,103 @@ size_t material_initFromFile(struct material *const material, FILE *const f,
         free(name);
         
         if (type == COMPONENT_MATERIAL_UBER) {
-                material_uber_initFromFile((struct material_uber*)material, f);
+                material_uber_initFromFile((struct material_uber*)material, f, components);
                 return sizeof(struct material_uber);
         }
         
         bail("Error parsing scene: Invalid material: %u\n", type);
 }
 
-void material_setTexture(struct material *const material,
-                         const enum material_textureType tex,
-                         const char *const name) {
-        assert(material->base.type == COMPONENT_MATERIAL_SKYBOX ||
-               material->base.type == COMPONENT_MATERIAL_UBER);
+static char *buildpathTex(const char *const file, const char *const ext) {
+        char *path = pathjoin_dyn(2, "textures", file);
+        size_t pathlen = strlen(path);
+        size_t extlen = strlen(ext);
         
+        if (path[pathlen-1] == '/') {
+                pathlen -= 1;
+        }
+        
+        path = sreallocarray(path, pathlen + extlen + 1, sizeof(char));
+        strcpy(path+pathlen, ext);
+        if (!accessible(path, true, false, false)) {
+                die("Cannot read texture file");
+        }
+        return path;
+}
+
+struct readTextureArgs {
+        struct varSizeGrowingArray *components;
+        size_t materialIdx;
+        enum material_textureType tex;
+};
+
+static void readTexture(void *buff, size_t size, void *vargs) {
+        struct readTextureArgs *args = vargs;
+        assert(size <= INT_MAX);
+        
+        struct material *material = varSizeGrowingArray_get(args->components, args->materialIdx, NULL);
+        struct texture *texture = getVarTextureInfo(material, args->tex, NULL);
+        texture_load(texture, buff, size);
+        
+        free(args);
+        free(buff);
+}
+
+struct readManyTexturesSubArgs {
+        struct varSizeGrowingArray *components;
+        size_t materialIdx;
+        enum material_textureType tex;
+        int nfiles;
+        int loaded;
+        void **buffers;
+        size_t *sizes;
+};
+
+struct readManyTexturesArgs {
+        struct readManyTexturesSubArgs *args;
+        int i;
+};
+
+static void readManyTextures(void *buff, size_t size, void *vargs) {
+        assert(size <= INT_MAX);
+        
+        struct readManyTexturesArgs *sargs = vargs;
+        struct readManyTexturesSubArgs *args = sargs->args;
+
+        args->buffers[sargs->i] = buff;
+        args->sizes[sargs->i] = size;
+        
+        free(sargs);
+        sargs = NULL;
+
+        args->loaded++;
+        if (args->loaded < args->nfiles) {
+                return;
+        }
+
+        struct material *material = varSizeGrowingArray_get(args->components, args->materialIdx, NULL);
+        struct texture *texture = getVarTextureInfo(material, args->tex, NULL);
+
+        if (material->base.type == COMPONENT_MATERIAL_SKYBOX) {
+                texture_loadCubeMap(texture, args->buffers, args->sizes);
+        } else {
+                assert_fail();
+        }
+
+        for (int i=0; i<args->nfiles; i++) {
+                free(args->buffers[i]);
+        }
+
+        free(args->buffers);
+        free(args->sizes);
+        free(args);
+}
+
+static void initTexture(struct material *const material,
+                        const enum material_textureType tex) {
         GLenum textureSlot = GL_TEXTURE0 + tex;
         GLenum textureType;
-        struct texture *texture = getVarTextureInfo(material, tex,
-                                                    &textureType);
+        struct texture *texture = getVarTextureInfo(material, tex, &textureType);
         if (texture == NULL) {
                 return;
         }
@@ -144,8 +222,57 @@ void material_setTexture(struct material *const material,
                 texture_free(texture);
         }
 
-        texture_init(texture, name, textureSlot, textureType);
-        texture_load(texture);
+        texture_init(texture, textureSlot, textureType);
+}
+
+void material_setTexture(struct material *const material,
+                         const enum material_textureType tex,
+                         const char *const name,
+                         struct varSizeGrowingArray *components) {
+        assert(material->base.type == COMPONENT_MATERIAL_UBER);
+        initTexture(material, tex);
+        
+        struct readTextureArgs *args = smalloc(sizeof(*args));
+        args->components = components;
+        args->materialIdx = material->base.idx;
+        args->tex = tex;
+
+        char *path = buildpathTex(name, ".png");
+        asyncLoader_enqueueRead(path, readTexture, args);
+        free(path);
+}
+
+void material_setSkyboxTexture(struct material *const material,
+                               const char *const name,
+                               struct varSizeGrowingArray *const components) {
+        assert(material->base.type == COMPONENT_MATERIAL_SKYBOX);
+        const enum material_textureType tex = MATERIAL_TEXTURE_ENVIRONMENT;
+        initTexture(material, tex);
+
+        struct readManyTexturesSubArgs *sargs = smalloc(sizeof(*sargs));
+        sargs->components = components;
+        sargs->materialIdx = material->base.idx;
+        sargs->tex = tex;
+        sargs->nfiles = 6;
+        sargs->loaded = 0;
+        sargs->buffers = smallocarray(6, sizeof(void*));
+        sargs->sizes = smallocarray(6, sizeof(size_t));
+
+        char *path;
+        const char *suffixes[6] = {
+                "_right.png", "_left.png", "_top.png",
+                "_bottom.png", "_front.png", "_back.png"
+        };
+
+        for (int i=0; i<6; i++) {
+                struct readManyTexturesArgs *args = smalloc(sizeof(*args));
+                args->args = sargs;
+                args->i = i;
+                
+                path = buildpathTex(name, suffixes[i]);
+                asyncLoader_enqueueRead(path, readManyTextures, args);
+                free(path);
+        }
 }
 
 void material_unsetTexture(struct material *const material,
@@ -287,8 +414,8 @@ void material_uber_initDefaults(struct material_uber *const material,
         uberInitTexturesEmpty(material);
 }
 
-void material_uber_initFromFile(struct material_uber *const material,
-                                FILE *const f) {
+void material_uber_initFromFile(struct material_uber *const material, FILE *const f,
+                                struct varSizeGrowingArray *components) {
         assert(material->base.base.type == COMPONENT_MATERIAL_UBER);
         
         sfread(material->ambientColor.raw, sizeof(float), 4, f);
@@ -325,8 +452,9 @@ void material_uber_initFromFile(struct material_uber *const material,
                                 smallocarray(nchars+1, sizeof(*name));
                         sfread(name, nchars, sizeof(*name), f);
                         name[nchars] = '\0';
+
                         material_setTexture((struct material*)material,
-                                            tex, name);
+                                            tex, name, components);
                         free(name);
                 }
         }
@@ -340,8 +468,8 @@ void material_skybox_init(struct material_skybox *const material,
 }
 
 void material_skybox_initFromName(struct material_skybox *const material,
-                                  const char *const name) {
+                                  const char *const name,
+                                  struct varSizeGrowingArray *components) {
         material_skybox_init(material, name, SHADER_SKYBOX);
-        material_setTexture((struct material *)material,
-                            MATERIAL_TEXTURE_ENVIRONMENT, name);
+        material_setSkyboxTexture((struct material *)material, name, components);
 }

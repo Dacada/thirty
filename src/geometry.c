@@ -1,4 +1,5 @@
 #include <thirty/geometry.h>
+#include <thirty/asyncLoader.h>
 #include <thirty/util.h>
 
 #define VERTEX_ATTRIB 0
@@ -1288,8 +1289,8 @@ static void readGeometryFile(void *const data, const size_t len, void *const var
 }
 
 size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
-                             const enum componentType type, struct asyncLoader *loader,
-                             struct varSizeGrowingArray *components) {
+                             const enum componentType type,
+                             struct varSizeGrowingArray *const components) {
         assert(type == COMPONENT_GEOMETRY);
 
         char *name = strfile(f);
@@ -1313,8 +1314,8 @@ size_t geometry_initFromFile(struct geometry *const geometry, FILE *const f,
         args->components = components;
         args->geometryIdx = geometry->base.idx;
         args->name = name;
-        
-        asyncLoader_read(loader, path, readGeometryFile, args);
+
+        asyncLoader_enqueueRead(path, readGeometryFile, args);
         
         free(filename);
         free(path);

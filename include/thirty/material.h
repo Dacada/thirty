@@ -4,7 +4,6 @@
 #include <thirty/shader.h>
 #include <thirty/component.h>
 #include <thirty/texture.h>
-#include <thirty/asyncLoader.h>
 #include <thirty/dsutils.h>
 
 /*
@@ -59,12 +58,11 @@ void material_init(struct material *material, const char *name,
  * the actual used size.
  */
 size_t material_initFromFile(struct material *material, FILE *f,
-                             enum componentType type, struct asyncLoader *loader,
+                             enum componentType type,
                              struct varSizeGrowingArray *components)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
         __attribute__((access (read_write, 4)))
-        __attribute__((access (read_write, 5)))
         __attribute__((nonnull));
 
 /*
@@ -76,10 +74,23 @@ size_t material_initFromFile(struct material *material, FILE *f,
  */
 void material_setTexture(struct material *material,
                          enum material_textureType tex,
-                         const char *name)
+                         const char *const name,
+                         struct varSizeGrowingArray *components)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 3)))
-        __attribute__((nonnull (1)));
+        __attribute__((access (read_write, 4)))
+        __attribute__((nonnull (1,4)));
+
+/*
+ * Associate a texture with the material. Only for skybox textures.
+ */
+void material_setSkyboxTexture(struct material *const material,
+                               const char *const name,
+                               struct varSizeGrowingArray *components)
+        __attribute__((access (write_only, 1)))
+        __attribute__((access (read_only, 2)))
+        __attribute__((access (read_write, 3)))
+        __attribute__((nonnull (1,3)));
 
 /*
  * Unassociate a texture with the material, freeing any resources along the
@@ -168,7 +179,8 @@ void material_uber_initDefaults(struct material_uber *material,
  * Initialize the material from a Bogle file that already has been seeked to
  * the right offset.
  */
-void material_uber_initFromFile(struct material_uber *material, FILE *f)
+void material_uber_initFromFile(struct material_uber *material, FILE *f,
+                                struct varSizeGrowingArray *components)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
         __attribute__((nonnull));
@@ -195,8 +207,8 @@ void material_skybox_init(struct material_skybox *material,
 /*
  * Initialize the skybox material from the base name of its texture.
  */
-void material_skybox_initFromName(struct material_skybox *material,
-                                  const char *name)
+void material_skybox_initFromName(struct material_skybox *material, const char *name,
+                                  struct varSizeGrowingArray *components)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_only, 2)))
         __attribute__((nonnull));

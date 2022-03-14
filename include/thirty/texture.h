@@ -12,28 +12,30 @@
 
 struct texture {
         bool loaded;
-        char *name;
         GLenum slot;
         GLuint idx;
         GLenum type;
 };
 
 /*
- * Initialize a texture from the given parameters. Name is the file's name
- * without extension in the assets/textures directory. All textures are PNG.
+ * Initialize a texture from the given parameters.
  */
-void texture_init(struct texture *tex, const char *name,
-                  GLenum slot, GLenum type)
+void texture_init(struct texture *tex, GLenum slot, GLenum type)
         __attribute__((access (write_only, 1)))
-        __attribute__((access (read_only, 2)))
         __attribute__((nonnull (1)));
 
 /*
- * Load a texture from its file.
+ * Load a texture from a loaded png image buffer. Only for single image textures.
  */
-void texture_load(struct texture *tex)
+void texture_load(struct texture *tex, void *buff, size_t size)
         __attribute__((access (read_write, 1)))
         __attribute__((nonnull));
+
+/*
+ * Load cubemap texture with six png image buffers. Order: right, left, top,
+ * bottom, front, back.
+ */
+void texture_loadCubeMap(struct texture *text, void *buffs[6], size_t sizes[6]);
 
 /*
  * Bind the texture to use for OpenGL

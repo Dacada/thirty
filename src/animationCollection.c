@@ -3,10 +3,8 @@
 
 size_t animationCollection_initFromFile(struct animationCollection *const col,
                                         FILE *const f, const enum componentType type,
-                                        struct asyncLoader *loader,
-                                        struct varSizeGrowingArray *components) {
+                                        struct varSizeGrowingArray *const components) {
         assert(type == COMPONENT_ANIMATIONCOLLECTION);
-        asyncLoader_setFinished(loader);
         (void)components;
         
         char *name = strfile(f);

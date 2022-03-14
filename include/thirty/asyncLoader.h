@@ -1,50 +1,33 @@
 #ifndef ASYNCLOADER_H
 #define ASYNCLOADER_H
 
-#include <stdbool.h>
 #include <stddef.h>
-#include <aio.h>
 
 typedef void(*asyncLoader_cb)(void*, size_t, void*);
 
-struct asyncLoader {
-        struct aiocb aiocb;
-        bool finished;
-        void *buf;
-        asyncLoader_cb onFinishCb;
-        void *onFinishCbArgs;
-};
+// Initialize async loading system
+void asyncLoader_init(void);
 
-// Check whether an async read finished. If true is returned, a callback will
-// possibly be called.
-bool asyncLoader_finished(struct asyncLoader *loader)
+// Enqueue a read to the async loading system. When the read finished, the
+// callback will be called with the buffer with the data, the size of the data
+// and the args pointer.
+void asyncLoader_enqueueRead(const char *filepath, asyncLoader_cb callback,
+                             void *callbackArgs)
         __attribute__((access (read_only, 1)))
-        __attribute__((nonnull));
+        __attribute__((nonnull (1)));
 
-// Set an uninitialized async loader as finished. Nothing is called on
-// asyncLoader_finished returning true.
-void asyncLoader_setFinished(struct asyncLoader *loader)
-        __attribute__((access (read_write, 1)))
-        __attribute__((nonnull));
+// Nonblocking. Should be called periodically. Return number of remaining async
+// load operations.
+size_t asyncLoader_await(void);
 
-/*
- * Open a file and read it in its entirety asynchronously. When finished, a
- * call to asyncLoader_finish will return true and will also call the cb
- * function. The first argument is a pointer to the read data, the second the
- * size in bytes of the data and the third is the args parameter of this
- * function. The data pointer should not be freed during the call to cb.
- */
-void asyncLoader_read(struct asyncLoader *loader, const char *filename,
-                      asyncLoader_cb, void *args)
-        __attribute__((access (write_only, 1)))
-        __attribute__((access (read_only, 2)))
-        __attribute__((nonnull));
+// Free all resources used by a collection of async loader system. Should be
+// called if system won't be used for a while to free up resources.
+void asyncLoader_destroy(void);
 
-// Helper function to copy bytes from a memory area
-void asyncLoader_copyBytes(void *restrict dest, const void *restrict src, size_t nmemb, size_t size, size_t *ptr)
-        __attribute__((access (write_only, 1)))
-        __attribute__((access (read_only, 2)))
-        __attribute__((access (read_write, 5)))
-        __attribute__((nonnull));
+// Helper function to copy over nmemb elements of size size into dest from src
+// at the offset indicated by *offset which is then shifted forward by
+// nmemb*size bytes.
+void asyncLoader_copyBytes(void *restrict dest, const void *restrict src,
+                           size_t nmemb, size_t size, size_t *offset);
 
 #endif /* ASYNCLOADER_H */

@@ -2,7 +2,6 @@
 #define CAMERA_H
 
 #include <thirty/component.h>
-#include <thirty/asyncLoader.h>
 #include <thirty/dsutils.h>
 #include <cglm/struct.h>
 
@@ -32,11 +31,10 @@ void camera_init(struct camera *cam, const char *name, float aspect,
  * Initialize a camera from a BOGLE file positioned at the correct offset.
  */
 size_t camera_initFromFile(struct camera *cam, FILE *f, enum componentType type,
-                           struct asyncLoader *loader, struct varSizeGrowingArray *components)
+                           struct varSizeGrowingArray *components)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
         __attribute__((access (read_write, 4)))
-        __attribute__((access (read_write, 5)))
         __attribute__((nonnull));
 
 /*

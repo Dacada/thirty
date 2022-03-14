@@ -1,52 +1,22 @@
 #include <thirty/texture.h>
 #include <thirty/util.h>
 
-__attribute__((access (read_only, 1)))
-__attribute__((access (read_only, 2)))
-__attribute__((nonnull))
-static char *buildpathTex(const char *const file, const char *const ext) {
-        char *path = pathjoin_dyn(2, "textures", file);
-        size_t pathlen = strlen(path);
-        size_t extlen = strlen(ext);
-        
-        if (path[pathlen-1] == '/') {
-                pathlen -= 1;
-        }
-        
-        path = sreallocarray(path, pathlen + extlen + 1, sizeof(char));
-        strcpy(path+pathlen, ext);
-        if (!accessible(path, true, false, false)) {
-                die("Cannot read texture file");
-        }
-        return path;
-}
-
-void texture_init(struct texture *const tex, const char *const name,
-                    const GLenum slot, const GLenum type) {
+void texture_init(struct texture *const tex, const GLenum slot, const GLenum type) {
         tex->loaded = false;
         tex->slot = slot;
         tex->type = type;
-        if (name == NULL) {
-                tex->name = NULL;
-        } else {
-                tex->name = sstrdup(name);
-        }
 }
 
 __attribute__((access (read_only, 1)))
 __attribute__((nonnull (1)))
-static void loadImageIntoGl(const char *const filename,
-                            const GLenum type, const bool flip) {
-        // TODO: Remove this and use callbacks instead
-        fprintf(stderr, "Loading texture %s ...\n", filename);
-        
+static void decodeImageIntoGl(void *buffer, int size, GLenum type, bool flip) {
         stbi_set_flip_vertically_on_load(flip);
 
         int width;
         int height;
         int nrChannels;
         unsigned char *const data __attribute__ ((nonstring)) =
-                stbi_load(filename, &width, &height, &nrChannels, 0);
+                stbi_load_from_memory(buffer, size, &width, &height, &nrChannels, 0);
         if (data == NULL) {
                 bail("Can't read texture image data.\n");
         }
@@ -69,53 +39,48 @@ static void loadImageIntoGl(const char *const filename,
         stbi_image_free(data);
 }
 
-void texture_load(struct texture *const tex) {
+static inline void genGLtexture(struct texture *const tex) {
         glGenTextures(1, &tex->idx);
         glActiveTexture(tex->slot);
         glBindTexture(tex->type, tex->idx);
-        
-        if (tex->type == GL_TEXTURE_2D) {
-                char *filepath = buildpathTex(tex->name, ".png");
-                loadImageIntoGl(filepath, tex->type, true);
-                free(filepath);
-                
-                glTexParameteri(tex->type, GL_TEXTURE_WRAP_S, GL_REPEAT);
-                glTexParameteri(tex->type, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                glTexParameteri(tex->type, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(tex->type, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glGenerateMipmap(tex->type);
-        } else if (tex->type == GL_TEXTURE_CUBE_MAP) {
-                char *filepath;
-                filepath = buildpathTex(tex->name, "_right.png");
-                loadImageIntoGl(filepath, GL_TEXTURE_CUBE_MAP_POSITIVE_X, false);
-                free(filepath);
-                
-                filepath = buildpathTex(tex->name, "_left.png");
-                loadImageIntoGl(filepath, GL_TEXTURE_CUBE_MAP_NEGATIVE_X, false);
-                free(filepath);
-                
-                filepath = buildpathTex(tex->name, "_top.png");
-                loadImageIntoGl(filepath, GL_TEXTURE_CUBE_MAP_POSITIVE_Y, false);
-                free(filepath);
-                
-                filepath = buildpathTex(tex->name, "_bottom.png");
-                loadImageIntoGl(filepath, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, false);
-                free(filepath);
-                
-                filepath = buildpathTex(tex->name, "_front.png");
-                loadImageIntoGl(filepath, GL_TEXTURE_CUBE_MAP_POSITIVE_Z, false);
-                free(filepath);
-                
-                filepath = buildpathTex(tex->name, "_back.png");
-                loadImageIntoGl(filepath, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, false);
-                free(filepath);
-                
-                glTexParameteri(tex->type, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameteri(tex->type, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                glTexParameteri(tex->type, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-                glTexParameteri(tex->type, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(tex->type, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+static inline void setGLtextureParams(struct texture *const tex) {
+        glTexParameteri(tex->type, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(tex->type, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(tex->type, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(tex->type, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+
+void texture_load(struct texture *const tex, void *buf, size_t size) {
+        assert(tex->type == GL_TEXTURE_2D);
+        genGLtexture(tex);
+
+        assert(size <= INT_MAX);
+        decodeImageIntoGl(buf, (int)size, tex->type, true);
+
+        setGLtextureParams(tex);
+        glGenerateMipmap(tex->type);
+
+        tex->loaded = true;
+}
+
+void texture_loadCubeMap(struct texture *const tex, void *buf[6], size_t sizes[6]) {
+        assert(tex->type == GL_TEXTURE_CUBE_MAP);
+        genGLtexture(tex);
+
+        for (int i=0; i<6; i++) {
+                assert(sizes[i] <= INT_MAX);
         }
+
+        decodeImageIntoGl(buf[0], (int)sizes[0], GL_TEXTURE_CUBE_MAP_POSITIVE_X, false);
+        decodeImageIntoGl(buf[1], (int)sizes[1], GL_TEXTURE_CUBE_MAP_NEGATIVE_X, false);
+        decodeImageIntoGl(buf[2], (int)sizes[2], GL_TEXTURE_CUBE_MAP_POSITIVE_Y, false);
+        decodeImageIntoGl(buf[3], (int)sizes[3], GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, false);
+        decodeImageIntoGl(buf[4], (int)sizes[4], GL_TEXTURE_CUBE_MAP_POSITIVE_Z, false);
+        decodeImageIntoGl(buf[5], (int)sizes[5], GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, false);
+
+        setGLtextureParams(tex);
+        glTexParameteri(tex->type, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         
         tex->loaded = true;
 }
@@ -132,5 +97,4 @@ void texture_free(struct texture *const tex) {
                 glDeleteTextures(1, &tex->idx);
                 tex->loaded = false;
         }
-        free(tex->name);
 }

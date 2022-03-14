@@ -1,5 +1,4 @@
 #include <thirty/scene.h>
-#include <thirty/asyncLoader.h>
 #include <thirty/util.h>
 
 #define BOGLE_MAGIC_SIZE 5
@@ -88,10 +87,6 @@ struct bogleFileLoadArgs {
         } header;
         FILE *f;
         size_t idxOffset;
-        
-        struct asyncLoader *asyncLoaders;
-        size_t totalComponents;
-        size_t lastUnfinished;
 };
 
 static void parse_objects(struct bogleFileLoadArgs *args, struct growingArray *objects,
@@ -128,29 +123,12 @@ static bool loadBogleFileObjects(struct scene *const scene, void *const vargs) {
         return true;
 }
 
-static bool awaitBogleComponentLoad(struct scene *const scene, void *const vargs) {
-        struct bogleFileLoadArgs *args = vargs;
-
-        for (size_t i=args->lastUnfinished; i<args->totalComponents; i++) {
-                if (!asyncLoader_finished(&args->asyncLoaders[i])) {
-                        scene_addLoadingStep(scene, awaitBogleComponentLoad, args);
-                        args->lastUnfinished = i;
-                        return false;
-                }
-        }
-
-        free(args->asyncLoaders);
-        scene_addLoadingStep(scene, loadBogleFileObjects, args);
-        return true;
-}
-
 static bool loadBogleFile(struct scene *const scene, void *const vargs) {
         char *const filename = vargs;
 
         struct bogleFileLoadArgs *args = smalloc(sizeof(*args));
         
         args->idxOffset = componentCollection_currentOffset(&scene->components);
-
         args->f = sfopen(filename, "r");
 
         sfread(&args->header.magic, sizeof(uint8_t), BOGLE_MAGIC_SIZE, args->f);
@@ -175,22 +153,15 @@ static bool loadBogleFile(struct scene *const scene, void *const vargs) {
                sizeof(*scene->globalAmbientLight.raw),
                sizeof(scene->globalAmbientLight) /
                sizeof(*scene->globalAmbientLight.raw), args->f);
-
-        args->totalComponents = args->header.ncams + args->header.ngeos + args->header.nmats + args->header.nlights + args->header.nanims;
-        args->asyncLoaders = smallocarray(args->totalComponents, sizeof(struct asyncLoader));
-        args->lastUnfinished = 0;
         
 #define LOAD_DATA(n, which, baseType)                                   \
         for (unsigned i=0; i<(n); i++) {                                \
                 uint8_t type;                                           \
                 sfread(&type, sizeof(type), 1, args->f);                \
-                struct which *comp = componentCollection_create(        \
-                        &scene->components, scene->game, (baseType) + type); \
-                which##_initFromFile(comp, args->f, (baseType) + type,  \
-                                     &args->asyncLoaders[j++], &scene->components); \
+                struct which *comp = componentCollection_create(&scene->components, scene->game, (baseType) + type); \
+                which##_initFromFile(comp, args->f, (baseType) + type, &scene->components); \
         }
 
-        size_t j=0;
         LOAD_DATA(args->header.ncams, camera, COMPONENT_CAMERA);
         LOAD_DATA(args->header.ngeos, geometry, COMPONENT_GEOMETRY);
         LOAD_DATA(args->header.nmats, material, COMPONENT_MATERIAL);
@@ -198,7 +169,7 @@ static bool loadBogleFile(struct scene *const scene, void *const vargs) {
         LOAD_DATA(args->header.nanims, animationCollection, COMPONENT_ANIMATIONCOLLECTION);
 #undef LOAD_DATA
 
-        scene_addLoadingStep(scene, awaitBogleComponentLoad, args);
+        scene_addLoadingStep(scene, loadBogleFileObjects, args);
         
         return true;
 }
@@ -239,6 +210,7 @@ void scene_initFromFile(struct scene *const scene,
 
 static void prepareLoadingProcess(struct scene *const scene) {
         growingArray_init(&scene->loadingStack, sizeof(struct scene_loadStep), scene->loadSteps.length);
+        asyncLoader_init();
 
         struct scene_loadStep *steps = smallocarray(scene->loadSteps.length, sizeof(struct scene_loadStep));
         long i=0;
@@ -277,8 +249,6 @@ bool scene_load(struct scene *const scene) {
         }
         
         growingArray_destroy(&scene->loadingStack);
-        scene->loading = false;
-        scene->loaded = true;
         return true;
 }
 
@@ -296,6 +266,19 @@ void scene_unload(struct scene *const scene) {
         componentCollection_freeCollection(&scene->components);
         scene->loading = false;
         scene->loaded = false;
+}
+
+bool scene_awaitAsyncLoaders(struct scene *const scene) {
+        size_t remaining = asyncLoader_await();
+
+        if (remaining == 0) {
+                asyncLoader_destroy();
+                scene->loading = false;
+                scene->loaded = true;
+                return true;
+        }
+
+        return false;
 }
 
 void scene_addLoadingStep(struct scene *const scene, const scene_loadCallback cb, void *const args) {
@@ -392,8 +375,7 @@ const struct object *scene_getObjectFromIdxConst(
         return growingArray_get(&scene->objects, object_idx-1);
 }
 
-size_t scene_setSkybox(struct scene *const scene,
-                       const char *const basename) {
+size_t scene_setSkybox(struct scene *const scene, const char *const basename) {
         struct object *const skybox = scene_createObject(
                 scene, basename, 0);
         
@@ -404,7 +386,7 @@ size_t scene_setSkybox(struct scene *const scene,
 
         struct material_skybox *mat = componentCollection_create(
                 &scene->components, scene->game, COMPONENT_MATERIAL_SKYBOX);
-        material_skybox_initFromName(mat, basename);
+        material_skybox_initFromName(mat, basename, &scene->components);
         object_setComponent(skybox, &mat->base.base);
 
         return skybox->idx;

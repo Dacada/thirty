@@ -3,7 +3,6 @@
 
 #include <thirty/shader.h>
 #include <thirty/component.h>
-#include <thirty/asyncLoader.h>
 #include <thirty/dsutils.h>
 
 #define NUM_LIGHTS 20
@@ -41,11 +40,10 @@ void light_init(struct light *light, enum componentType type, const char *name,
  * Initialize a light from a BOGLE file positioned at the correct offset.
  */
 size_t light_initFromFile(struct light *light, FILE *f, enum componentType type,
-                          struct asyncLoader *loader, struct varSizeGrowingArray *components)
+                          struct varSizeGrowingArray *components)
         __attribute__((access (write_only, 1)))
         __attribute__((access (read_write, 2)))
         __attribute__((access (read_write, 4)))
-        __attribute__((access (read_write, 5)))
         __attribute__((nonnull));
 
 /*

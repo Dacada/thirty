@@ -381,7 +381,11 @@ static void doChangeScene(struct game *const game) {
         }
         
         if (game->sceneMustChange) {
-                if (!scene_load(game_getSceneFromIdx(game, game->sceneToChangeTo))) {
+                struct scene *scene = game_getSceneFromIdx(game, game->sceneToChangeTo);
+                if (!scene_load(scene)) {
+                        return;
+                }
+                if (!scene_awaitAsyncLoaders(scene)) {
                         return;
                 }
                 
@@ -558,7 +562,10 @@ void game_free(struct game *const game) {
                 }
                 enet_host_destroy(game->client);
         }
-        
+
+        if (game->inScene) {
+                scene_unload(game_getCurrentScene(game));
+        }
         growingArray_foreach_START(&game->scenes, struct scene *, scene)
                 scene_free(scene);
         growingArray_foreach_END;

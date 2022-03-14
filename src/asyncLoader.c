@@ -1,69 +1,176 @@
 #include <thirty/asyncLoader.h>
+#include <thirty/dsutils.h>
 #include <thirty/util.h>
+#include <pthread.h>
+#include <semaphore.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <string.h>
-#include <errno.h>
 
-bool asyncLoader_finished(struct asyncLoader *const loader) {
-        if (loader->finished) {
-                return true;
+#define THREADS 2
+
+struct loader {
+        int fd;
+        size_t size;
+        void *buf;
+        bool finished;
+        bool reaped;
+        asyncLoader_cb callback;
+        void *callbackArgs;
+};
+
+static sem_t semaphore;
+static pthread_mutex_t mutex;
+static struct growingArray queue;
+static size_t tail;
+static size_t firstUnfinished;
+
+static pthread_t threads[THREADS];
+
+static void *worker(void *args) {
+        (void)args;
+        for (;;) {
+                struct loader loader;
+                size_t idx;
+                
+                sem_wait(&semaphore);
+                pthread_mutex_lock(&mutex);
+                {
+                        idx = tail;
+                        tail++;
+                
+                        struct loader *ptr = growingArray_get(&queue, idx);
+                        loader = *ptr;
+                }
+                pthread_mutex_unlock(&mutex);
+
+                ssize_t s = read(loader.fd, loader.buf, loader.size);
+                if (s < 0) {
+                        perror("read");
+                } else if ((size_t)s != loader.size) {
+                        fprintf(stderr, "read: unexpected read size %ld (expected %lu)\n",
+                                s, loader.size);
+                }
+
+                pthread_mutex_lock(&mutex);
+                {
+                        struct loader *ptr = growingArray_get(&queue, idx);
+                        ptr->finished = true;
+                }
+                pthread_mutex_unlock(&mutex);
+        }
+        assert_fail();
+}
+
+void asyncLoader_init(void) {
+        growingArray_init(&queue, sizeof(struct loader), 8);
+        tail = 0;
+        firstUnfinished = 0;
+        
+        sem_init(&semaphore, 0, 0);
+        pthread_mutex_init(&mutex, NULL);
+        
+        for (int i=0; i<THREADS; i++) {
+                pthread_create(&threads[i], NULL, worker, NULL);
+        }
+}
+
+void asyncLoader_enqueueRead(const char *const filepath, asyncLoader_cb callback,
+                             void *const callbackArgs) {
+        int fd = sopen(filepath, O_RDONLY);
+        size_t size = (size_t)slseek(fd, 0, SEEK_END);
+        slseek(fd, 0, SEEK_SET);
+        void *buf = smalloc(size);
+
+        struct loader loader = {
+                .fd = fd,
+                .size = size,
+                .buf = buf,
+                .finished = false,
+                .reaped = false,
+                .callback = callback,
+                .callbackArgs = callbackArgs,
+        };
+
+        pthread_mutex_lock(&mutex);
+        {
+                struct loader *ptr = growingArray_append(&queue);
+                *ptr = loader;
+        }
+        pthread_mutex_unlock(&mutex);
+        sem_post(&semaphore);
+}
+
+size_t asyncLoader_await(void) {
+        bool foundFirstUnfinished = false;
+        size_t completed = firstUnfinished;
+
+        size_t length;
+        for (size_t i=firstUnfinished;; i++) {
+                pthread_mutex_lock(&mutex);
+                length = queue.length;
+                pthread_mutex_unlock(&mutex);
+                if (i >= length) {
+                        break;
+                }
+                
+                asyncLoader_cb callback = NULL;
+                void *callbackArgs = NULL;
+                void *buffer = NULL;
+                size_t size = 0;
+                
+                pthread_mutex_lock(&mutex);
+                struct loader *ptr = growingArray_get(&queue, i);
+                bool finished = ptr->finished;
+                bool reaped = ptr->reaped;
+                ptr->reaped = true;
+                if (!reaped) {
+                        callback = ptr->callback;
+                        callbackArgs = ptr->callbackArgs;
+                        buffer = ptr->buf;
+                        size = ptr->size;
+                }
+                pthread_mutex_unlock(&mutex);
+
+                if (finished) {
+                        completed++;
+                        if (!reaped) {
+                                callback(buffer, size, callbackArgs);
+                        }
+                } else {
+                        if (!foundFirstUnfinished) {
+                                firstUnfinished = i;
+                                foundFirstUnfinished = true;
+                        }
+                }
+        }
+        
+        return length - completed;
+}
+
+void asyncLoader_destroy(void) {
+        for (int i=0; i<THREADS; i++) {
+                pthread_cancel(threads[i]);
+        }
+        for (int i=0; i<THREADS; i++) {
+                void *ret;
+                pthread_join(threads[i], &ret);
+                assert(ret == PTHREAD_CANCELED);
         }
 
-        switch (aio_error(&loader->aiocb)) {
-        case EINPROGRESS:
-                return false;
-        case ECANCELED:
-                bail("asynchronous IO request was cancelled");
-        case 0:
-                break;
-        default:
-                perror("aio");
-                die(NULL);
-        }
+        pthread_mutex_destroy(&mutex);
+        sem_destroy(&semaphore);
 
-        loader->onFinishCb(loader->buf, loader->aiocb.aio_nbytes, loader->onFinishCbArgs);
-        close(loader->aiocb.aio_fildes);
-        free(loader->buf);
-        
-        loader->finished = true;
-        return true;
+        growingArray_destroy(&queue);
 }
 
-void asyncLoader_setFinished(struct asyncLoader *const loader) {
-        loader->finished = true;
-        loader->onFinishCb = NULL;
-        loader->onFinishCbArgs = NULL;
-}
-
-void asyncLoader_read(struct asyncLoader *const loader, const char *const filename,
-                      asyncLoader_cb cb, void *const args) {
-        int fd = open(filename, O_RDONLY);
-        ssize_t sizeSign = lseek(fd, 0, SEEK_END);
-        assert(sizeSign > 0);
-        size_t size = (size_t)sizeSign;
-        loader->buf = smalloc(size);
-        
-        loader->aiocb.aio_fildes = fd;
-        loader->aiocb.aio_offset = 0;
-        loader->aiocb.aio_buf = loader->buf;
-        loader->aiocb.aio_nbytes = size;
-        loader->aiocb.aio_reqprio = 0;
-        loader->aiocb.aio_sigevent.sigev_notify = SIGEV_NONE;
-        
-        loader->finished = false;
-        loader->onFinishCb = cb;
-        loader->onFinishCbArgs = args;
-
-        aio_read(&loader->aiocb);
-}
-
-void asyncLoader_copyBytes(void *const restrict dest, const void *const restrict src,
-                           const size_t nmemb, const size_t size, size_t *const ptr) {
+void asyncLoader_copyBytes(void *restrict dest, const void *restrict src,
+                           size_t nmemb, size_t size, size_t *offset) {
         if (!is_safe_multiply(nmemb, size)) {
-                die("copyButes would overflow (%lu elements of size %lu)", nmemb, size);
+                bail("multiplication would overflow: %lu * %lu", nmemb, size);
         }
-        size_t amount = nmemb * size;
-        memcpy(dest, (const char*)src + *ptr, amount);
-        *ptr += amount;
+        size_t totalSize = nmemb * size;
+        const void *offsetSrc = (const char*)src + *offset;
+        memcpy(dest, offsetSrc, totalSize);
+        *offset += totalSize;
+        
 }
